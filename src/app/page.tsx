@@ -122,7 +122,7 @@ export default function HomePage() {
           <div className="flex items-center justify-between h-16">
             <Link href="/" className="flex items-center gap-3">
               <Image
-                src="/logo.png"
+                src="/logo.svg"
                 alt="Adogalo"
                 width={40}
                 height={40}
@@ -364,7 +364,7 @@ export default function HomePage() {
             <div>
               <div className="flex items-center gap-3 mb-4">
                 <Image
-                  src="/logo.png"
+                  src="/logo.svg"
                   alt="Adogalo"
                   width={32}
                   height={32}

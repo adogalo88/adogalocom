@@ -47,7 +47,7 @@ export default function LoginPage() {
         <CardHeader className="text-center">
           <div className="flex justify-center mb-4">
             <Image
-              src="/logo.png"
+              src="/logo.svg"
               alt="Adogalo"
               width={60}
               height={60}

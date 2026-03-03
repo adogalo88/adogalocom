@@ -172,7 +172,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
           {/* Logo */}
           <div className="flex items-center gap-3 px-6 py-5 border-b border-border/50">
             <Image
-              src="/logo.png"
+              src="/logo.svg"
               alt="Adogalo"
               width={40}
               height={40}
