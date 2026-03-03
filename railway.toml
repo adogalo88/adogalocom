@@ -9,7 +9,8 @@ buildCommand = "prisma generate --schema=prisma/schema.production.prisma && next
 [deploy]
 # Pastikan migrate jalan dari app root (/app) pakai schema production, lalu jalankan server dari standalone
 startCommand = "cd /app && prisma migrate deploy --schema=prisma/schema.production.prisma && cd .next/standalone && HOSTNAME=0.0.0.0 node server.js"
-healthcheckPath = "/"
+# Endpoint dedikasi: cepat, tanpa DB, selalu 200. Path "/" bisa lambat/error karena SSR.
+healthcheckPath = "/api/health"
 healthcheckTimeout = 300
 restartPolicyType = "on_failure"
 restartPolicyMaxRetries = 3
