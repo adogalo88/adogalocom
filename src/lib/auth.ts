@@ -214,6 +214,12 @@ export function hasRole(user: SafeUser | null, roles: UserRole[]): boolean {
   return roles.includes(user.role);
 }
 
+// Convert DB user (with password) to SafeUser (without password)
+export function toSafeUser<T extends { password: string }>(user: T): SafeUser {
+  const { password: _, ...safeUser } = user;
+  return safeUser as SafeUser;
+}
+
 // Check if user is verified
 export function isUserVerified(user: SafeUser | null): boolean {
   if (!user) return false;
