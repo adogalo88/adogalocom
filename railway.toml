@@ -7,7 +7,8 @@ builder = "nixpacks"
 buildCommand = "prisma generate --schema=prisma/schema.production.prisma && next build && cp -r .next/static .next/standalone/.next/ && cp -r public .next/standalone/"
 
 [deploy]
-startCommand = "prisma migrate deploy --schema=prisma/schema.production.prisma && HOSTNAME=0.0.0.0 node .next/standalone/server.js"
+# Jalankan server dari dalam folder standalone (wajib agar static & path benar)
+startCommand = "prisma migrate deploy --schema=prisma/schema.production.prisma && cd .next/standalone && HOSTNAME=0.0.0.0 node server.js"
 healthcheckPath = "/"
 healthcheckTimeout = 300
 restartPolicyType = "on_failure"
