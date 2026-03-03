@@ -2,10 +2,12 @@
 
 [build]
 builder = "nixpacks"
-buildCommand = "prisma generate && next build"
+# Use production schema (PostgreSQL) for deploy; DATABASE_URL must be set
+# Copy .next/static (CSS/JS) and public ke standalone agar style & assets terbaca
+buildCommand = "prisma generate --schema=prisma/schema.production.prisma && next build && cp -r .next/static .next/standalone/.next/ && cp -r public .next/standalone/"
 
 [deploy]
-startCommand = "prisma migrate deploy && node .next/standalone/server.js"
+startCommand = "prisma migrate deploy --schema=prisma/schema.production.prisma && HOSTNAME=0.0.0.0 node .next/standalone/server.js"
 healthcheckPath = "/"
 healthcheckTimeout = 300
 restartPolicyType = "on_failure"
@@ -17,3 +19,7 @@ name = "adogalo-web"
 [[services.env]]
 name = "NODE_ENV"
 value = "production"
+
+[[services.env]]
+name = "HOSTNAME"
+value = "0.0.0.0"

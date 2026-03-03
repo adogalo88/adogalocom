@@ -59,32 +59,67 @@ railway login
 2. Pilih **"GitHub Repo"**
 3. Pilih repository Adogalo
 
-### 3.2 Set Environment Variables
-Di service Web, tambahkan variables berikut:
+### 3.2 Cara Setup Variables di Railway (Langkah Detail)
+
+1. **Buka project** Anda di [railway.app](https://railway.app) → pilih project Adogalo.
+2. **Klik service Web** (bukan service PostgreSQL) di panel kiri.
+3. **Buka tab "Variables"** (atau **"Settings"** → **Variables**).
+4. Klik **"+ New Variable"** atau **"Add Variable"** / **"RAW Editor"**.
+5. **Tambahkan variable satu per satu** (atau paste di RAW Editor jika tersedia):
+
+| Variable         | Nilai / Cara dapat |
+|------------------|--------------------|
+| `DATABASE_URL`   | Dari service PostgreSQL: klik service **Postgres** → tab **Variables** → copy `DATABASE_URL`. Atau di service Web pilih **Reference** → pilih `Postgres` → pilih `DATABASE_URL`. |
+| `JWT_SECRET`     | Generate: `openssl rand -base64 32` di terminal, paste hasilnya. |
+| `NEXTAUTH_SECRET`| Generate: `openssl rand -base64 32` di terminal, paste hasilnya. |
+| `NEXTAUTH_URL`   | URL app Anda, contoh: `https://nama-app-anda.up.railway.app` (sesuaikan setelah Generate Domain). |
+| `NODE_ENV`       | `production` |
+| `HOSTNAME`       | `0.0.0.0` (agar server bisa dijangkau healthcheck Railway). |
+
+6. **Reference dari Postgres (untuk DATABASE_URL):**
+   - Di form variable, pilih **"Add Reference"** atau **"Reference Variable"**.
+   - Pilih service **Postgres** (atau nama service database Anda).
+   - Pilih variable **DATABASE_URL**.
+   - Railway akan isi otomatis dengan nilai dari database.
+
+7. **Simpan** — Railway akan redeploy otomatis setelah variables berubah.
+
+### 3.3 Set Environment Variables (Ringkas)
+Di service Web, pastikan variables berikut ada:
 
 ```env
-# Database (otomatis dari PostgreSQL service)
+# Database (reference dari PostgreSQL service)
 DATABASE_URL=${{Postgres.DATABASE_URL}}
 
 # Authentication - GANTI DENGAN NILAI SECURE!
 JWT_SECRET=generate-dengan-openssl-rand-base64-32
 NEXTAUTH_SECRET=generate-dengan-openssl-rand-base64-32
 
-# URL Production
+# URL Production (sesuaikan dengan domain Anda)
 NEXTAUTH_URL=https://nama-app-anda.up.railway.app
 
-# Environment
+# Wajib agar healthcheck bisa akses server
+HOSTNAME=0.0.0.0
 NODE_ENV=production
 ```
 
-### 3.3 Generate Secure Secrets
-Jalankan di terminal:
+### 3.4 Generate Secure Secrets
+**Linux / Mac / Git Bash:**
 ```bash
-# Untuk JWT_SECRET
-openssl rand -base64 32
+openssl rand -base64 32   # jalankan 2x untuk JWT_SECRET dan NEXTAUTH_SECRET
+```
 
-# Untuk NEXTAUTH_SECRET
-openssl rand -base64 32
+**Windows (tanpa OpenSSL):** Jalankan script di project:
+```bash
+node scripts/generate-secrets.js
+# atau
+bun scripts/generate-secrets.js
+```
+Script akan mencetak dua baris (JWT_SECRET=... dan NEXTAUTH_SECRET=...) — copy masing-masing ke Railway.
+
+**Alternatif (PowerShell):** satu secret per baris:
+```powershell
+[Convert]::ToBase64String([System.Security.Cryptography.RandomNumberGenerator]::GetBytes(32))
 ```
 
 ---
@@ -198,6 +233,14 @@ railway status
 ---
 
 ## 📝 TROUBLESHOOTING
+
+### Healthcheck Gagal / "Service Unavailable"
+1. **Pastikan variables sudah di-set** (terutama `DATABASE_URL`, `HOSTNAME=0.0.0.0`). Tanpa `DATABASE_URL`, `prisma migrate deploy` bisa gagal dan server tidak pernah jalan.
+2. **Cek runtime logs** (bukan hanya build log):
+   - Di Railway: klik service **Web** → tab **"Deployments"** → klik deployment terakhir → **"View Logs"** (atau **"Logs"**).
+   - Atau tab **"Logs"** di sisi kiri untuk log real-time.
+   - Cari error saat start (misalnya "Prisma", "ECONNREFUSED", "DATABASE_URL").
+3. **Cek `railway.toml`** sudah commit & push (termasuk `HOSTNAME=0.0.0.0` di start command).
 
 ### Build Error: Prisma Client
 ```bash
