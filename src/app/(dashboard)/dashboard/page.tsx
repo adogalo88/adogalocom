@@ -1,0 +1,555 @@
+'use client';
+
+import { useAuth } from '@/providers/AuthProvider';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import {
+  FolderKanban,
+  Package,
+  Wallet,
+  Users,
+  TrendingUp,
+  Clock,
+  CheckCircle,
+  AlertCircle,
+  ArrowRight,
+  Plus,
+} from 'lucide-react';
+import Link from 'next/link';
+
+export default function DashboardPage() {
+  const { user } = useAuth();
+
+  // Render dashboard based on role
+  const renderDashboard = () => {
+    switch (user?.role) {
+      case 'CLIENT':
+        return <ClientDashboard />;
+      case 'VENDOR':
+        return <VendorDashboard />;
+      case 'TUKANG':
+        return <TukangDashboard />;
+      case 'SUPPLIER':
+        return <SupplierDashboard />;
+      case 'ADMIN':
+        return <AdminDashboard />;
+      default:
+        return null;
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* Welcome Header */}
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <div>
+          <h1 className="text-2xl md:text-3xl font-bold">
+            Selamat Datang, <span className="text-[#fd904c]">{user?.name}</span>!
+          </h1>
+          <p className="text-muted-foreground mt-1">
+            Kelola proyek dan aktivitas Anda dari dashboard ini
+          </p>
+        </div>
+        <div className="flex gap-2">
+          <Link href="/dashboard/projects/create">
+            <Button className="bg-gradient-to-r from-[#fd904c] to-[#e57835] gap-2">
+              <Plus className="h-4 w-4" />
+              Pasang Proyek
+            </Button>
+          </Link>
+        </div>
+      </div>
+
+      {/* Role-based Dashboard Content */}
+      {renderDashboard()}
+    </div>
+  );
+}
+
+function ClientDashboard() {
+  return (
+    <>
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <StatsCard
+          title="Total Proyek"
+          value="12"
+          icon={<FolderKanban className="h-5 w-5" />}
+          trend="+2 bulan ini"
+          trendUp
+        />
+        <StatsCard
+          title="Proyek Aktif"
+          value="3"
+          icon={<Clock className="h-5 w-5" />}
+          description="Sedang berjalan"
+        />
+        <StatsCard
+          title="Material Request"
+          value="8"
+          icon={<Package className="h-5 w-5" />}
+          description="Permintaan material"
+        />
+        <StatsCard
+          title="Total Pengeluaran"
+          value="Rp 45.5 Jt"
+          icon={<Wallet className="h-5 w-5" />}
+          trend="+12% dari bulan lalu"
+          trendUp
+        />
+      </div>
+
+      {/* Quick Actions & Recent Projects */}
+      <div className="grid lg:grid-cols-3 gap-6">
+        {/* Recent Projects */}
+        <Card className="lg:col-span-2 glass-card">
+          <CardHeader className="flex flex-row items-center justify-between">
+            <div>
+              <CardTitle>Proyek Terbaru</CardTitle>
+              <CardDescription>Proyek yang sedang berjalan</CardDescription>
+            </div>
+            <Link href="/dashboard/projects">
+              <Button variant="ghost" size="sm" className="gap-1">
+                Lihat Semua <ArrowRight className="h-4 w-4" />
+              </Button>
+            </Link>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {[
+                { name: 'Renovasi Dapur', status: 'IN_PROGRESS', progress: 65, vendor: 'PT Maju Jaya' },
+                { name: 'Bangun Garasi', status: 'PUBLISHED', progress: 0, vendor: '-' },
+                { name: 'Perbaikan Atap', status: 'COMPLETED', progress: 100, vendor: 'CV Bangun Prima' },
+              ].map((project, index) => (
+                <div key={index} className="flex items-center gap-4 p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors">
+                  <div className="h-10 w-10 rounded-lg bg-gradient-to-br from-[#fd904c]/20 to-[#e57835]/20 flex items-center justify-center">
+                    <FolderKanban className="h-5 w-5 text-[#fd904c]" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium truncate">{project.name}</p>
+                    <p className="text-sm text-muted-foreground">Vendor: {project.vendor}</p>
+                  </div>
+                  <div className="text-right">
+                    <StatusBadge status={project.status} />
+                    <p className="text-xs text-muted-foreground mt-1">{project.progress}% selesai</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Notifications */}
+        <Card className="glass-card">
+          <CardHeader>
+            <CardTitle>Notifikasi Terbaru</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {[
+                { icon: <CheckCircle className="h-4 w-4 text-green-500" />, text: 'Penawaran material diterima', time: '5 menit lalu' },
+                { icon: <AlertCircle className="h-4 w-4 text-orange-500" />, text: 'Konfirmasi pembayaran', time: '1 jam lalu' },
+                { icon: <Users className="h-4 w-4 text-blue-500" />, text: 'Vendor baru mendaftar', time: '3 jam lalu' },
+              ].map((notif, index) => (
+                <div key={index} className="flex items-start gap-3 p-2 rounded-lg hover:bg-muted/50 transition-colors">
+                  {notif.icon}
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm">{notif.text}</p>
+                    <p className="text-xs text-muted-foreground">{notif.time}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    </>
+  );
+}
+
+function VendorDashboard() {
+  return (
+    <>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <StatsCard
+          title="Proyek Selesai"
+          value="28"
+          icon={<CheckCircle className="h-5 w-5" />}
+          trend="+5 bulan ini"
+          trendUp
+        />
+        <StatsCard
+          title="Proyek Aktif"
+          value="4"
+          icon={<FolderKanban className="h-5 w-5" />}
+          description="Sedang dikerjakan"
+        />
+        <StatsCard
+          title="Tim Kerja"
+          value="12"
+          icon={<Users className="h-5 w-5" />}
+          description="Tukang aktif"
+        />
+        <StatsCard
+          title="Pendapatan"
+          value="Rp 125 Jt"
+          icon={<TrendingUp className="h-5 w-5" />}
+          trend="+18% dari bulan lalu"
+          trendUp
+        />
+      </div>
+
+      <div className="grid lg:grid-cols-2 gap-6">
+        <Card className="glass-card">
+          <CardHeader>
+            <CardTitle>Proyek Tersedia</CardTitle>
+            <CardDescription>Proyek yang bisa Anda tawarkan</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {[
+                { name: 'Renovasi Rumah 2 Lantai', budget: 'Rp 150 Jt', location: 'Jakarta Selatan' },
+                { name: 'Pembangunan Kolam Renang', budget: 'Rp 80 Jt', location: 'Bekasi' },
+                { name: 'Renovasi Kantor', budget: 'Rp 200 Jt', location: 'Jakarta Pusat' },
+              ].map((project, index) => (
+                <div key={index} className="flex items-center gap-4 p-3 rounded-lg bg-muted/50">
+                  <div className="flex-1">
+                    <p className="font-medium">{project.name}</p>
+                    <p className="text-sm text-muted-foreground">{project.location}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="font-semibold text-[#fd904c]">{project.budget}</p>
+                    <Button size="sm" className="mt-1">Tawarkan</Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="glass-card">
+          <CardHeader>
+            <CardTitle>Tim Saya</CardTitle>
+            <CardDescription>Tukang yang bekerja dengan Anda</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {[
+                { name: 'Ahmad', role: 'Tukang Batu', status: 'Aktif' },
+                { name: 'Budi', role: 'Tukang Kayu', status: 'Aktif' },
+                { name: 'Candra', role: 'Mandor', status: 'Proyek A' },
+              ].map((member, index) => (
+                <div key={index} className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50">
+                  <div className="h-10 w-10 rounded-full bg-gradient-to-br from-[#fd904c] to-[#e57835] flex items-center justify-center text-white font-medium">
+                    {member.name.charAt(0)}
+                  </div>
+                  <div className="flex-1">
+                    <p className="font-medium">{member.name}</p>
+                    <p className="text-sm text-muted-foreground">{member.role}</p>
+                  </div>
+                  <span className="text-xs px-2 py-1 rounded-full bg-green-100 text-green-700">{member.status}</span>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    </>
+  );
+}
+
+function TukangDashboard() {
+  return (
+    <>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <StatsCard
+          title="Proyek Selesai"
+          value="45"
+          icon={<CheckCircle className="h-5 w-5" />}
+          trend="+3 bulan ini"
+          trendUp
+        />
+        <StatsCard
+          title="Rating"
+          value="4.8"
+          icon={<TrendingUp className="h-5 w-5" />}
+          description="Dari 32 ulasan"
+        />
+        <StatsCard
+          title="Pendapatan"
+          value="Rp 8.5 Jt"
+          icon={<Wallet className="h-5 w-5" />}
+          trend="Bulan ini"
+        />
+        <StatsCard
+          title="Proyek Aktif"
+          value="2"
+          icon={<FolderKanban className="h-5 w-5" />}
+          description="Sedang dikerjakan"
+        />
+      </div>
+
+      <div className="grid lg:grid-cols-2 gap-6">
+        <Card className="glass-card">
+          <CardHeader>
+            <CardTitle>Lowongan Tersedia</CardTitle>
+            <CardDescription>Pekerjaan yang sesuai keahlian Anda</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {[
+                { title: 'Tukang Batu - Proyek Renovasi', daily: 'Rp 250.000/hari', location: 'Jakarta' },
+                { title: 'Tukang Kayu - Pembuatan Furnitur', daily: 'Rp 300.000/hari', location: 'Tangerang' },
+              ].map((job, index) => (
+                <div key={index} className="p-3 rounded-lg bg-muted/50">
+                  <p className="font-medium">{job.title}</p>
+                  <div className="flex items-center justify-between mt-2">
+                    <span className="text-sm text-muted-foreground">{job.location}</span>
+                    <span className="font-semibold text-[#fd904c]">{job.daily}</span>
+                  </div>
+                  <Button size="sm" className="w-full mt-2">Lamar</Button>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="glass-card">
+          <CardHeader>
+            <CardTitle>Jadwal Minggu Ini</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {[
+                { day: 'Senin', project: 'Renovasi Dapur Pak Budi', time: '08:00 - 17:00' },
+                { day: 'Selasa', project: 'Renovasi Dapur Pak Budi', time: '08:00 - 17:00' },
+                { day: 'Rabu', project: 'Perbaikan Atap', time: '08:00 - 15:00' },
+              ].map((schedule, index) => (
+                <div key={index} className="flex items-center gap-4 p-3 rounded-lg border border-border">
+                  <div className="text-center px-3 py-1 rounded-lg bg-[#fd904c]/10 text-[#fd904c] font-medium">
+                    {schedule.day}
+                  </div>
+                  <div>
+                    <p className="font-medium">{schedule.project}</p>
+                    <p className="text-sm text-muted-foreground">{schedule.time}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    </>
+  );
+}
+
+function SupplierDashboard() {
+  return (
+    <>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <StatsCard
+          title="Total Penawaran"
+          value="56"
+          icon={<Package className="h-5 w-5" />}
+          trend="+8 minggu ini"
+          trendUp
+        />
+        <StatsCard
+          title="Diterima"
+          value="32"
+          icon={<CheckCircle className="h-5 w-5" />}
+          description="Penawaran diterima"
+        />
+        <StatsCard
+          title="Penjualan"
+          value="Rp 45 Jt"
+          icon={<TrendingUp className="h-5 w-5" />}
+          trend="+25% dari bulan lalu"
+          trendUp
+        />
+        <StatsCard
+          title="Rating"
+          value="4.9"
+          icon={<Wallet className="h-5 w-5" />}
+          description="Dari 28 ulasan"
+        />
+      </div>
+
+      <Card className="glass-card">
+        <CardHeader>
+          <CardTitle>Permintaan Material Terbaru</CardTitle>
+          <CardDescription>Material yang sedang dicari klien</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid md:grid-cols-3 gap-4">
+            {[
+              { material: 'Semen Portland 50kg', qty: '100 sak', budget: 'Rp 8.5 Jt' },
+              { material: 'Batako', qty: '5000 biji', budget: 'Rp 12.5 Jt' },
+              { material: 'Keramik Lantai 60x60', qty: '200 m²', budget: 'Rp 15 Jt' },
+            ].map((item, index) => (
+              <div key={index} className="p-4 rounded-lg bg-muted/50">
+                <p className="font-medium">{item.material}</p>
+                <p className="text-sm text-muted-foreground">Jumlah: {item.qty}</p>
+                <p className="font-semibold text-[#fd904c] mt-2">{item.budget}</p>
+                <Button size="sm" className="w-full mt-3">Buat Penawaran</Button>
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+    </>
+  );
+}
+
+function AdminDashboard() {
+  return (
+    <>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <StatsCard
+          title="Total User"
+          value="2,456"
+          icon={<Users className="h-5 w-5" />}
+          trend="+45 minggu ini"
+          trendUp
+        />
+        <StatsCard
+          title="Proyek Aktif"
+          value="128"
+          icon={<FolderKanban className="h-5 w-5" />}
+          description="Sedang berjalan"
+        />
+        <StatsCard
+          title="Transaksi"
+          value="Rp 2.5 M"
+          icon={<Wallet className="h-5 w-5" />}
+          trend="Bulan ini"
+        />
+        <StatsCard
+          title="Pending Verifikasi"
+          value="23"
+          icon={<AlertCircle className="h-5 w-5" />}
+          description="Perlu review"
+        />
+      </div>
+
+      <div className="grid lg:grid-cols-2 gap-6">
+        <Card className="glass-card">
+          <CardHeader>
+            <CardTitle>User Baru Menunggu Verifikasi</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {[
+                { name: 'PT Konstruksi Jaya', role: 'Vendor', date: 'Hari ini' },
+                { name: 'Budi Tukang Kayu', role: 'Tukang', date: 'Kemarin' },
+                { name: 'CV Material Prima', role: 'Supplier', date: '2 hari lalu' },
+              ].map((user, index) => (
+                <div key={index} className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
+                  <div className="flex items-center gap-3">
+                    <div className="h-10 w-10 rounded-full bg-gradient-to-br from-[#fd904c] to-[#e57835] flex items-center justify-center text-white">
+                      {user.name.charAt(0)}
+                    </div>
+                    <div>
+                      <p className="font-medium">{user.name}</p>
+                      <p className="text-sm text-muted-foreground">{user.role} • {user.date}</p>
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button size="sm" variant="outline">Review</Button>
+                    <Button size="sm">Verifikasi</Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="glass-card">
+          <CardHeader>
+            <CardTitle>Statistik Platform</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="p-4 rounded-lg bg-muted/50">
+                <p className="text-sm text-muted-foreground">Klien</p>
+                <p className="text-2xl font-bold">1,234</p>
+              </div>
+              <div className="p-4 rounded-lg bg-muted/50">
+                <p className="text-sm text-muted-foreground">Vendor</p>
+                <p className="text-2xl font-bold">456</p>
+              </div>
+              <div className="p-4 rounded-lg bg-muted/50">
+                <p className="text-sm text-muted-foreground">Tukang</p>
+                <p className="text-2xl font-bold">678</p>
+              </div>
+              <div className="p-4 rounded-lg bg-muted/50">
+                <p className="text-sm text-muted-foreground">Supplier</p>
+                <p className="text-2xl font-bold">88</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    </>
+  );
+}
+
+function StatsCard({
+  title,
+  value,
+  icon,
+  trend,
+  trendUp,
+  description,
+}: {
+  title: string;
+  value: string;
+  icon: React.ReactNode;
+  trend?: string;
+  trendUp?: boolean;
+  description?: string;
+}) {
+  return (
+    <Card className="glass-card">
+      <CardContent className="p-6">
+        <div className="flex items-center justify-between">
+          <p className="text-sm font-medium text-muted-foreground">{title}</p>
+          <div className="h-10 w-10 rounded-lg bg-gradient-to-br from-[#fd904c]/20 to-[#e57835]/20 flex items-center justify-center text-[#fd904c]">
+            {icon}
+          </div>
+        </div>
+        <p className="text-2xl font-bold mt-2">{value}</p>
+        {trend && (
+          <p className={`text-xs mt-1 ${trendUp ? 'text-green-600' : 'text-red-600'}`}>
+            {trend}
+          </p>
+        )}
+        {description && (
+          <p className="text-xs text-muted-foreground mt-1">{description}</p>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function StatusBadge({ status }: { status: string }) {
+  const styles: Record<string, string> = {
+    IN_PROGRESS: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
+    PUBLISHED: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400',
+    COMPLETED: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400',
+    DRAFT: 'bg-gray-100 text-gray-700 dark:bg-gray-900/30 dark:text-gray-400',
+  };
+
+  const labels: Record<string, string> = {
+    IN_PROGRESS: 'Berjalan',
+    PUBLISHED: 'Dipublikasi',
+    COMPLETED: 'Selesai',
+    DRAFT: 'Draft',
+  };
+
+  return (
+    <span className={`text-xs px-2 py-1 rounded-full ${styles[status] || styles.DRAFT}`}>
+      {labels[status] || status}
+    </span>
+  );
+}

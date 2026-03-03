@@ -1,0 +1,868 @@
+// Adogalo Marketplace Platform - Prisma Schema
+// Development: SQLite | Production: PostgreSQL (Railway)
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:/home/z/my-project/db/custom.db"
+}
+
+// =====================
+// LOCATION (INDONESIA)
+// =====================
+
+model Province {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  code      String?  // Kode provinsi (misal: 31 untuk DKI Jakarta)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  cities City[]
+
+  @@map("provinces")
+}
+
+model City {
+  id         String   @id @default(cuid())
+  name       String
+  code       String?  // Kode kota/kabupaten
+  provinceId String
+  isActive   Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  // Relations
+  province  Province   @relation(fields: [provinceId], references: [id], onDelete: Cascade)
+  users     User[]
+  projects  Project[]
+  materials Material[]
+
+  @@unique([name, provinceId])
+  @@map("cities")
+}
+
+// =====================
+// USER & AUTHENTICATION
+// =====================
+
+enum UserRole {
+  CLIENT
+  VENDOR
+  TUKANG
+  SUPPLIER
+  ADMIN
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+  PENDING_VERIFICATION
+}
+
+model User {
+  id                String     @id @default(cuid())
+  email             String     @unique
+  password          String
+  name              String
+  phone             String?
+  avatar            String?
+  role              UserRole   @default(CLIENT)
+  status            UserStatus @default(PENDING_VERIFICATION)
+  ktpNumber         String? // Nomor KTP
+  ktpPhoto          String? // Foto KTP
+  npwpNumber        String? // Nomor NPWP
+  address           String?
+  cityId            String? // Reference to City model
+  postalCode        String?
+  bankName          String?
+  bankAccountNumber String?
+  bankAccountName   String?
+  specialty         String? // For TUKANG: keahlian khusus
+  experience        Int? // For TUKANG: tahun pengalaman
+  description       String? // Deskripsi untuk profil publik
+  rating            Float      @default(0)
+  totalReviews      Int        @default(0)
+  totalProjects     Int        @default(0) // Total proyek selesai (untuk vendor/tukang)
+  isVerified        Boolean    @default(false)
+  verifiedAt        DateTime?
+  verifiedBy        String?
+  createdAt         DateTime   @default(now())
+  updatedAt         DateTime   @updatedAt
+
+  // Relations
+  city              City?              @relation(fields: [cityId], references: [id])
+  projectsAsClient  Project[]          @relation("ClientProjects")
+  projectsAsVendor  Project[]          @relation("VendorProjects")
+  applications      Application[]
+  materials         Material[]
+  offers            MaterialOffer[]
+  boqs              BOQ[]
+  teamMemberships   TeamMember[]
+  portfolio         Portfolio[]
+  reviewsGiven      Review[]           @relation("ReviewsGiven")
+  reviewsReceived   Review[]           @relation("ReviewsReceived")
+  sentMessages      Message[]          @relation("SentMessages")
+  receivedMessages  Message[]          @relation("ReceivedMessages")
+  notifications     Notification[]
+  transactions      Transaction[]
+  subscriptions     Subscription[]
+  rfqSubmissions    RFQSubmission[] // Penawaran RFQ proyek
+  materialRfqOffers MaterialRFQOffer[] // Penawaran RFQ material
+  otps              OTP[] // OTP untuk verifikasi
+  verifiedProjects  Project[]          @relation("ProjectVerifier") // Projects verified by this admin
+  verifiedMaterials Material[]         @relation("MaterialVerifier") // Materials verified by this admin
+
+  @@map("users")
+}
+
+// =====================
+// OTP (One-Time Password)
+// =====================
+
+enum OTPType {
+  EMAIL_VERIFICATION // Verifikasi email saat registrasi
+  PASSWORD_RESET // Reset password
+  LOGIN_VERIFICATION // Verifikasi login
+}
+
+model OTP {
+  id        String    @id @default(cuid())
+  email     String // Email yang diverifikasi
+  code      String // Kode OTP (6 digit)
+  type      OTPType   @default(EMAIL_VERIFICATION)
+  userId    String? // User ID (null jika untuk registrasi baru)
+  expiresAt DateTime // Waktu kadaluarsa
+  usedAt    DateTime? // Waktu digunakan
+  createdAt DateTime  @default(now())
+
+  // Relations
+  user User? @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([email, type]) // Satu OTP aktif per email per tipe
+  @@map("otps")
+}
+
+// =====================
+// PLATFORM SETTINGS
+// =====================
+
+model PlatformSettings {
+  id                        String   @id @default("default")
+  subscriptionEnabled       Boolean  @default(false) // Enable/disable subscription system
+  tukangSubscriptionPrice   Float    @default(25000) // Default price for Tukang
+  supplierSubscriptionPrice Float    @default(49000) // Default price for Supplier
+  maintenanceMode           Boolean  @default(false)
+  createdAt                 DateTime @default(now())
+  updatedAt                 DateTime @updatedAt
+
+  @@map("platform_settings")
+}
+
+// =====================
+// SUBSCRIPTION PLANS (Dynamic)
+// =====================
+
+enum SubscriptionPlanType {
+  TUKANG
+  SUPPLIER
+}
+
+model SubscriptionPlanConfig {
+  id              String               @id @default(cuid())
+  name            String // e.g., "Basic", "Pro", "Premium"
+  type            SubscriptionPlanType
+  price           Float // Monthly price
+  features        String // JSON array of features
+  maxApplications Int // Max applications/offers per month (0 = unlimited)
+  priority        Int // Higher = more priority in listings
+  isActive        Boolean              @default(true)
+  sortOrder       Int                  @default(0)
+  createdAt       DateTime             @default(now())
+  updatedAt       DateTime             @updatedAt
+
+  @@map("subscription_plan_configs")
+}
+
+// =====================
+// PROJECTS
+// =====================
+
+enum ProjectType {
+  TENDER // Proyek tender (kontrak)
+  HARIAN // Proyek harian
+}
+
+enum TenderSubtype {
+  WITH_RFQ // TENDER dengan RFQ (Request for Quotation)
+  WITHOUT_RFQ // TENDER tanpa RFQ (default)
+}
+
+enum ProjectStatus {
+  DRAFT
+  PENDING_VERIFICATION // Menunggu verifikasi admin
+  PUBLISHED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+  REJECTED // Ditolak admin
+}
+
+model Category {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  description String?
+  icon        String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  projects Project[]
+
+  @@map("categories")
+}
+
+model Project {
+  id              String        @id @default(cuid())
+  title           String
+  description     String
+  type            ProjectType   @default(TENDER)
+  tenderSubtype   TenderSubtype @default(WITHOUT_RFQ) // Subtype untuk TENDER
+  status          ProjectStatus @default(DRAFT)
+  budget          Float?
+  cityId          String? // Reference to City model for location
+  address         String? // Detailed address
+  workerNeeded    Int?
+  requirements    String? // JSON array of requirements
+  photos          String? // JSON array of photo URLs (terpisah dari files)
+  files           String? // JSON array of document file URLs (terpisah dari photos)
+  startDate       DateTime?
+  endDate         DateTime?
+  categoryId      String?
+  clientId        String
+  vendorId        String?
+  acceptedAt      DateTime?
+  completedAt     DateTime?
+  // Verification fields
+  verifiedAt      DateTime?
+  verifiedBy      String?
+  rejectionReason String?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  // Relations
+  city         City?         @relation(fields: [cityId], references: [id])
+  category     Category?     @relation(fields: [categoryId], references: [id])
+  client       User          @relation("ClientProjects", fields: [clientId], references: [id])
+  vendor       User?         @relation("VendorProjects", fields: [vendorId], references: [id])
+  verifier     User?         @relation("ProjectVerifier", fields: [verifiedBy], references: [id])
+  applications Application[]
+  boqs         BOQ[]
+  rfq          RFQ?
+  teamMembers  TeamMember[]
+  materials    Material[]
+  transactions Transaction[]
+  reviews      Review[]
+
+  @@map("projects")
+}
+
+enum ApplicationStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+  WITHDRAWN
+}
+
+model Application {
+  id             String            @id @default(cuid())
+  projectId      String
+  userId         String
+  coverLetter    String?
+  proposedBudget Float?
+  status         ApplicationStatus @default(PENDING)
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+
+  // Relations
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, userId])
+  @@map("applications")
+}
+
+// =====================
+// MATERIALS MARKETPLACE
+// =====================
+
+enum MaterialQuotationType {
+  SIMPLE // Simple form: title, quantity, budget
+  RFQ // RFQ with items and photos per item
+  PDF // Upload PDF quotation
+}
+
+enum MaterialStatus {
+  DRAFT
+  PENDING_VERIFICATION // Menunggu verifikasi admin
+  PUBLISHED
+  IN_PROGRESS
+  FULFILLED
+  CANCELLED
+  REJECTED // Ditolak admin
+}
+
+model Material {
+  id              String                @id @default(cuid())
+  title           String
+  description     String?
+  quantity        Int
+  unit            String
+  budget          Float?
+  quotationType   MaterialQuotationType @default(SIMPLE)
+  status          MaterialStatus        @default(DRAFT)
+  cityId          String? // Reference to City model for location
+  address         String? // Detailed address
+  photos          String? // JSON array of photo URLs (terpisah dari files)
+  files           String? // JSON array of document file URLs (untuk PDF quotation)
+  deadline        DateTime?
+  clientId        String // Bisa CLIENT atau VENDOR (menggunakan field yang sama)
+  projectId       String?
+  // Verification fields
+  verifiedAt      DateTime?
+  verifiedBy      String?
+  rejectionReason String?
+  createdAt       DateTime              @default(now())
+  updatedAt       DateTime              @updatedAt
+
+  // Relations
+  city              City?               @relation(fields: [cityId], references: [id])
+  client            User                @relation(fields: [clientId], references: [id])
+  project           Project?            @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  verifier          User?               @relation("MaterialVerifier", fields: [verifiedBy], references: [id])
+  offers            MaterialOffer[]
+  rfqItems          MaterialRFQItem[]
+  materialRfqOffers MaterialRFQOffer[]
+
+  @@map("materials")
+}
+
+// =====================
+// MATERIAL RFQ (Items with photos)
+// =====================
+
+model MaterialRFQItem {
+  id          String   @id @default(cuid())
+  materialId  String
+  itemName    String
+  description String?
+  quantity    Float
+  unit        String
+  photo       String? // Photo URL for this item
+  sortOrder   Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  material Material               @relation(fields: [materialId], references: [id], onDelete: Cascade)
+  prices   MaterialRFQItemPrice[]
+
+  @@map("material_rfq_items")
+}
+
+// Penawaran dari Supplier untuk Material RFQ
+enum MaterialRFQOfferStatus {
+  DRAFT
+  SUBMITTED
+  ACCEPTED
+  REJECTED
+}
+
+model MaterialRFQOffer {
+  id          String                 @id @default(cuid())
+  materialId  String
+  supplierId  String
+  status      MaterialRFQOfferStatus @default(DRAFT)
+  notes       String?
+  totalOffer  Float?
+  submittedAt DateTime?
+  createdAt   DateTime               @default(now())
+  updatedAt   DateTime               @updatedAt
+
+  // Relations
+  material Material               @relation(fields: [materialId], references: [id], onDelete: Cascade)
+  supplier User                   @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  prices   MaterialRFQItemPrice[]
+
+  @@unique([materialId, supplierId])
+  @@map("material_rfq_offers")
+}
+
+// Harga per item dari supplier
+model MaterialRFQItemPrice {
+  id         String   @id @default(cuid())
+  offerId    String
+  itemId     String
+  unitPrice  Float
+  totalPrice Float
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  // Relations
+  offer MaterialRFQOffer @relation(fields: [offerId], references: [id], onDelete: Cascade)
+  item  MaterialRFQItem  @relation(fields: [itemId], references: [id], onDelete: Cascade)
+
+  @@unique([offerId, itemId])
+  @@map("material_rfq_item_prices")
+}
+
+enum OfferStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+  DELIVERING // Sedang dalam pengiriman
+  DELIVERED // Sudah diterima client
+}
+
+model MaterialOffer {
+  id             String      @id @default(cuid())
+  materialId     String
+  supplierId     String
+  price          Float
+  notes          String?
+  status         OfferStatus @default(PENDING)
+  // Delivery tracking
+  deliveryDate   DateTime? // Tanggal pengiriman
+  deliveryNotes  String? // Catatan pengiriman
+  deliveryPhotos String? // JSON array of delivery proof photos
+  deliveredAt    DateTime? // Waktu konfirmasi diterima
+  deliveredBy    String? // User yang konfirmasi
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+
+  // Relations
+  material Material @relation(fields: [materialId], references: [id], onDelete: Cascade)
+  supplier User     @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+
+  @@unique([materialId, supplierId])
+  @@map("material_offers")
+}
+
+// =====================
+// RFQ (Request for Quotation) - untuk TENDER dengan RFQ
+// =====================
+
+enum RFQStatus {
+  DRAFT
+  PUBLISHED
+  CLOSED // Penawaran ditutup, client sedang mengevaluasi
+  ACCEPTED
+  REJECTED
+}
+
+model RFQ {
+  id          String    @id @default(cuid())
+  projectId   String    @unique
+  title       String
+  description String?
+  status      RFQStatus @default(DRAFT)
+  notes       String?
+  deadline    DateTime? // Batas waktu pengisian
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  // Relations
+  project     Project         @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  items       RFQItem[]
+  submissions RFQSubmission[] // Penawaran dari berbagai vendor
+
+  @@map("rfqs")
+}
+
+model RFQItem {
+  id          String   @id @default(cuid())
+  rfqId       String
+  itemName    String // Nama item pekerjaan
+  description String? // Deskripsi item
+  quantity    Float // Jumlah
+  unit        String // Satuan (m, m2, m3, kg, pcs, dll)
+  sortOrder   Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  rfq    RFQ            @relation(fields: [rfqId], references: [id], onDelete: Cascade)
+  prices RFQItemPrice[] // Harga dari berbagai vendor
+
+  @@map("rfq_items")
+}
+
+// Penawaran/Submit dari Vendor untuk RFQ tertentu
+enum RFQSubmissionStatus {
+  DRAFT // Vendor masih mengisi
+  SUBMITTED // Sudah dikirim ke client
+  ACCEPTED // Penawaran diterima
+  REJECTED // Penawaran ditolak
+}
+
+model RFQSubmission {
+  id          String              @id @default(cuid())
+  rfqId       String
+  vendorId    String
+  status      RFQSubmissionStatus @default(DRAFT)
+  notes       String? // Catatan dari vendor
+  totalOffer  Float? // Total penawaran (dihitung dari item prices)
+  submittedAt DateTime? // Waktu submit
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+
+  // Relations
+  rfq    RFQ            @relation(fields: [rfqId], references: [id], onDelete: Cascade)
+  vendor User           @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  prices RFQItemPrice[]
+
+  @@unique([rfqId, vendorId]) // Satu vendor hanya bisa submit sekali per RFQ
+  @@map("rfq_submissions")
+}
+
+// Harga per item dari vendor
+model RFQItemPrice {
+  id           String   @id @default(cuid())
+  submissionId String
+  itemId       String
+  unitPrice    Float // Harga per satuan dari vendor
+  totalPrice   Float // quantity * unitPrice
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  // Relations
+  submission RFQSubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+  item       RFQItem       @relation(fields: [itemId], references: [id], onDelete: Cascade)
+
+  @@unique([submissionId, itemId]) // Satu harga per item per submission
+  @@map("rfq_item_prices")
+}
+
+// =====================
+// BOQ (Bill of Quantities) / RAB
+// =====================
+
+enum BOQStatus {
+  DRAFT
+  SUBMITTED
+  ACCEPTED
+  REJECTED
+}
+
+model BOQ {
+  id          String    @id @default(cuid())
+  projectId   String
+  vendorId    String
+  title       String
+  description String?
+  totalPrice  Float
+  items       String // JSON array of BOQ items
+  status      BOQStatus @default(DRAFT)
+  notes       String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  // Relations
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  vendor  User    @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+
+  @@map("boqs")
+}
+
+// =====================
+// TEAM MANAGEMENT
+// =====================
+
+enum TukangRole {
+  TUKANG_BATU // Tukang batu
+  TUKANG_KAYU // Tukang kayu
+  TUKANG_BESI // Tukang besi
+  TUKANG_LISTRIK // Tukang listrik
+  TUKANG_PLOMBON // Tukang plumbon
+  TUKANG_CAT // Tukang cat
+  MANDOR // Mandor
+  PEKERJA_LEPAS // Pekerja lepas
+}
+
+enum SalaryType {
+  HOURLY
+  DAILY
+  WEEKLY
+  MONTHLY
+  FIXED
+}
+
+model TeamMember {
+  id           String     @id @default(cuid())
+  projectId    String
+  userId       String
+  role         TukangRole
+  salaryType   SalaryType
+  salaryAmount Float
+  startDate    DateTime?
+  endDate      DateTime?
+  isActive     Boolean    @default(true)
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  // Relations
+  project        Project         @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user           User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  salaryPayments SalaryPayment[]
+  attendances    Attendance[] // Absensi harian
+
+  @@unique([projectId, userId])
+  @@map("team_members")
+}
+
+enum SalaryPaymentStatus {
+  PENDING
+  VERIFIED
+  FAILED
+}
+
+model SalaryPayment {
+  id              String              @id @default(cuid())
+  teamMemberId    String
+  amount          Float
+  periodStart     DateTime
+  periodEnd       DateTime
+  status          SalaryPaymentStatus @default(PENDING)
+  paymentProof    String?
+  rejectionReason String?
+  verifiedAt      DateTime?
+  verifiedBy      String?
+  paidAt          DateTime?
+  notes           String?
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+
+  // Relations
+  teamMember TeamMember @relation(fields: [teamMemberId], references: [id], onDelete: Cascade)
+
+  @@map("salary_payments")
+}
+
+// =====================
+// ATTENDANCE (Absensi Harian)
+// =====================
+
+enum AttendanceStatus {
+  PRESENT // Hadir
+  ABSENT // Tidak hadir
+  LATE // Terlambat
+  HALF_DAY // Setengah hari
+  EXCUSED // Izin
+}
+
+model Attendance {
+  id           String           @id @default(cuid())
+  teamMemberId String
+  date         DateTime // Tanggal absensi
+  status       AttendanceStatus @default(PRESENT)
+  checkIn      DateTime? // Waktu masuk
+  checkOut     DateTime? // Waktu keluar
+  notes        String? // Catatan
+  photoProof   String? // Bukti foto absensi
+  recordedBy   String? // ID user yang mencatat (mandor/client)
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+
+  // Relations
+  teamMember TeamMember @relation(fields: [teamMemberId], references: [id], onDelete: Cascade)
+
+  @@unique([teamMemberId, date]) // Satu absensi per anggota per hari
+  @@map("attendances")
+}
+
+// =====================
+// PORTFOLIO
+// =====================
+
+model Portfolio {
+  id          String   @id @default(cuid())
+  userId      String
+  title       String
+  description String
+  images      String // JSON array of image URLs
+  projectId   String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("portfolios")
+}
+
+// =====================
+// REVIEWS
+// =====================
+
+model Review {
+  id         String   @id @default(cuid())
+  projectId  String
+  reviewerId String
+  revieweeId String
+  rating     Int // 1-5
+  comment    String
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  // Relations
+  project  Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  reviewer User    @relation("ReviewsGiven", fields: [reviewerId], references: [id], onDelete: Cascade)
+  reviewee User    @relation("ReviewsReceived", fields: [revieweeId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, reviewerId, revieweeId])
+  @@map("reviews")
+}
+
+// =====================
+// MESSAGING
+// =====================
+
+model Message {
+  id         String    @id @default(cuid())
+  senderId   String
+  receiverId String
+  content    String
+  isRead     Boolean   @default(false)
+  readAt     DateTime?
+  createdAt  DateTime  @default(now())
+
+  // Relations
+  sender   User @relation("SentMessages", fields: [senderId], references: [id], onDelete: Cascade)
+  receiver User @relation("ReceivedMessages", fields: [receiverId], references: [id], onDelete: Cascade)
+
+  @@map("messages")
+}
+
+// =====================
+// NOTIFICATIONS
+// =====================
+
+enum NotificationType {
+  PROJECT_NEW
+  PROJECT_APPLICATION
+  PROJECT_ACCEPTED
+  PROJECT_REJECTED
+  PROJECT_COMPLETED
+  PROJECT_VERIFIED
+  PROJECT_REJECTED_ADMIN
+  MATERIAL_NEW
+  MATERIAL_OFFER
+  MATERIAL_ACCEPTED
+  MATERIAL_VERIFIED
+  MATERIAL_REJECTED_ADMIN
+  PAYMENT_RECEIVED
+  PAYMENT_VERIFIED
+  PAYMENT_REJECTED
+  MESSAGE_NEW
+  REVIEW_NEW
+  SUBSCRIPTION_EXPIRING
+  SUBSCRIPTION_EXPIRED
+  SYSTEM
+  BROADCAST
+}
+
+model Notification {
+  id        String           @id @default(cuid())
+  userId    String
+  type      NotificationType
+  title     String
+  message   String
+  data      String? // JSON for additional data
+  isRead    Boolean          @default(false)
+  readAt    DateTime?
+  createdAt DateTime         @default(now())
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("notifications")
+}
+
+// =====================
+// TRANSACTIONS
+// =====================
+
+enum TransactionType {
+  PROJECT_PAYMENT
+  MATERIAL_PAYMENT
+  SUBSCRIPTION
+  WITHDRAWAL
+  REFUND
+}
+
+enum TransactionStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
+model Transaction {
+  id              String            @id @default(cuid())
+  userId          String
+  projectId       String?
+  type            TransactionType
+  amount          Float
+  fee             Float             @default(0)
+  total           Float
+  status          TransactionStatus @default(PENDING)
+  paymentMethod   String?
+  paymentProof    String?
+  rejectionReason String?
+  verifiedAt      DateTime?
+  verifiedBy      String?
+  notes           String?
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  // Relations
+  user    User     @relation(fields: [userId], references: [id])
+  project Project? @relation(fields: [projectId], references: [id], onDelete: SetNull)
+
+  @@map("transactions")
+}
+
+// =====================
+// SUBSCRIPTIONS
+// =====================
+
+enum SubscriptionStatus {
+  ACTIVE
+  EXPIRED
+  CANCELLED
+}
+
+model Subscription {
+  id        String             @id @default(cuid())
+  userId    String
+  planId    String? // Reference to SubscriptionPlanConfig
+  plan      String // Plan name (for backwards compatibility)
+  price     Float // Price paid
+  status    SubscriptionStatus @default(ACTIVE)
+  startDate DateTime           @default(now())
+  endDate   DateTime?
+  autoRenew Boolean            @default(false)
+  createdAt DateTime           @default(now())
+  updatedAt DateTime           @updatedAt
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("subscriptions")
+}

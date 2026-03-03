@@ -1,0 +1,19 @@
+# Railway Configuration for Adogalo Marketplace
+
+[build]
+builder = "nixpacks"
+buildCommand = "prisma generate && next build"
+
+[deploy]
+startCommand = "prisma migrate deploy && node .next/standalone/server.js"
+healthcheckPath = "/"
+healthcheckTimeout = 300
+restartPolicyType = "on_failure"
+restartPolicyMaxRetries = 3
+
+[[services]]
+name = "adogalo-web"
+
+[[services.env]]
+name = "NODE_ENV"
+value = "production"
