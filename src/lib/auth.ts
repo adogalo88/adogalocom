@@ -139,6 +139,9 @@ export async function getCurrentUser(): Promise<SafeUser | null> {
               select: { id: true, name: true }
             }
           }
+        },
+        materialCategories: {
+          select: { id: true, name: true }
         }
       }
     });

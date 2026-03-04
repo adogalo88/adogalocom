@@ -14,6 +14,7 @@ const updateProfileSchema = z.object({
   bankAccountName: z.string().optional(),
   specialty: z.string().optional(),
   experience: z.number().optional(),
+  materialCategoryIds: z.array(z.string()).optional(), // Supplier: kategori material (multi-select)
 });
 
 export async function PATCH(request: NextRequest) {
@@ -37,7 +38,9 @@ export async function PATCH(request: NextRequest) {
       );
     }
 
-    const updateData = validationResult.data;
+    const updateData = { ...validationResult.data };
+    const materialCategoryIds = updateData.materialCategoryIds;
+    delete (updateData as { materialCategoryIds?: unknown }).materialCategoryIds;
 
     // Remove undefined values
     Object.keys(updateData).forEach(key => {
@@ -46,9 +49,14 @@ export async function PATCH(request: NextRequest) {
       }
     });
 
+    const data: Parameters<typeof db.user.update>[0]['data'] = { ...updateData };
+    if (currentUser.role === 'SUPPLIER' && Array.isArray(materialCategoryIds)) {
+      data.materialCategories = { set: materialCategoryIds.map((id) => ({ id })) };
+    }
+
     const user = await db.user.update({
       where: { id: currentUser.id },
-      data: updateData,
+      data,
     });
 
     // Return user without password

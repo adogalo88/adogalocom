@@ -153,39 +153,66 @@ export async function GET(request: NextRequest) {
     // Review statistics
     const totalReviews = await db.review.count();
 
-    // Monthly user growth (last 12 months)
-    const monthlyUserGrowth = await db.$queryRaw`
-      SELECT 
-        strftime('%Y-%m', createdAt) as month,
-        COUNT(*) as count
-      FROM users
-      WHERE createdAt >= datetime('now', '-12 months')
-      GROUP BY strftime('%Y-%m', createdAt)
-      ORDER BY month ASC
-    ` as { month: string; count: number }[];
+    // Monthly user growth (last 12 months) - PostgreSQL compatible
+    const twelveMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 12, 1);
+    const usersLast12 = await db.user.findMany({
+      where: { createdAt: { gte: twelveMonthsAgo } },
+      select: { createdAt: true },
+    });
+    const monthlyUserGrowthMap = new Map<string, number>();
+    for (let m = 11; m >= 0; m--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - m, 1);
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+      monthlyUserGrowthMap.set(key, 0);
+    }
+    usersLast12.forEach((u) => {
+      const key = `${u.createdAt.getFullYear()}-${String(u.createdAt.getMonth() + 1).padStart(2, '0')}`;
+      monthlyUserGrowthMap.set(key, (monthlyUserGrowthMap.get(key) ?? 0) + 1);
+    });
+    const monthlyUserGrowth = Array.from(monthlyUserGrowthMap.entries())
+      .sort((a, b) => a[0].localeCompare(b[0]))
+      .map(([month, count]) => ({ month, count }));
 
     // Monthly project growth (last 12 months)
-    const monthlyProjectGrowth = await db.$queryRaw`
-      SELECT 
-        strftime('%Y-%m', createdAt) as month,
-        COUNT(*) as count
-      FROM projects
-      WHERE createdAt >= datetime('now', '-12 months')
-      GROUP BY strftime('%Y-%m', createdAt)
-      ORDER BY month ASC
-    ` as { month: string; count: number }[];
+    const projectsLast12 = await db.project.findMany({
+      where: { createdAt: { gte: twelveMonthsAgo } },
+      select: { createdAt: true },
+    });
+    const monthlyProjectGrowthMap = new Map<string, number>();
+    for (let m = 11; m >= 0; m--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - m, 1);
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+      monthlyProjectGrowthMap.set(key, 0);
+    }
+    projectsLast12.forEach((p) => {
+      const key = `${p.createdAt.getFullYear()}-${String(p.createdAt.getMonth() + 1).padStart(2, '0')}`;
+      monthlyProjectGrowthMap.set(key, (monthlyProjectGrowthMap.get(key) ?? 0) + 1);
+    });
+    const monthlyProjectGrowth = Array.from(monthlyProjectGrowthMap.entries())
+      .sort((a, b) => a[0].localeCompare(b[0]))
+      .map(([month, count]) => ({ month, count }));
 
     // Monthly revenue (last 12 months)
-    const monthlyRevenue = await db.$queryRaw`
-      SELECT 
-        strftime('%Y-%m', createdAt) as month,
-        SUM(total) as total
-      FROM transactions
-      WHERE status = 'COMPLETED'
-        AND createdAt >= datetime('now', '-12 months')
-      GROUP BY strftime('%Y-%m', createdAt)
-      ORDER BY month ASC
-    ` as { month: string; total: number }[];
+    const transactionsLast12 = await db.transaction.findMany({
+      where: {
+        status: 'COMPLETED',
+        createdAt: { gte: twelveMonthsAgo },
+      },
+      select: { createdAt: true, total: true },
+    });
+    const monthlyRevenueMap = new Map<string, number>();
+    for (let m = 11; m >= 0; m--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - m, 1);
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+      monthlyRevenueMap.set(key, 0);
+    }
+    transactionsLast12.forEach((t) => {
+      const key = `${t.createdAt.getFullYear()}-${String(t.createdAt.getMonth() + 1).padStart(2, '0')}`;
+      monthlyRevenueMap.set(key, (monthlyRevenueMap.get(key) ?? 0) + (t.total || 0));
+    });
+    const monthlyRevenue = Array.from(monthlyRevenueMap.entries())
+      .sort((a, b) => a[0].localeCompare(b[0]))
+      .map(([month, total]) => ({ month, total }));
 
     // Top categories by project count
     const topCategories = await db.category.findMany({

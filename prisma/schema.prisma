@@ -118,6 +118,7 @@ model User {
   otps              OTP[] // OTP untuk verifikasi
   verifiedProjects  Project[]          @relation("ProjectVerifier") // Projects verified by this admin
   verifiedMaterials Material[]         @relation("MaterialVerifier") // Materials verified by this admin
+  materialCategories MaterialCategory[] // Kategori material yang dipilih supplier (profil)
 
   @@map("users")
 }
@@ -240,6 +241,7 @@ model MaterialCategory {
   parent   MaterialCategory?  @relation("MaterialCategoryHierarchy", fields: [parentId], references: [id], onDelete: Cascade)
   children MaterialCategory[] @relation("MaterialCategoryHierarchy")
   materials Material[]
+  supplierUsers User[] // Supplier yang memilih kategori ini di profil
 
   @@index([parentId])
   @@map("material_categories")

@@ -15,7 +15,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { Loader2, User, MapPin, Building, CreditCard, Shield, Camera } from 'lucide-react';
+import { Loader2, User, MapPin, Building, CreditCard, Shield, Camera, Package } from 'lucide-react';
 import { toast } from 'sonner';
 
 const profileSchema = z.object({
@@ -42,10 +42,23 @@ export default function SettingsPage() {
   const [cities, setCities] = useState<{ id: string; name: string; provinceId: string }[]>([]);
   const [selectedProvinceId, setSelectedProvinceId] = useState<string>('');
 
+  type MaterialCatItem = { id: string; name: string; description: string | null; parentId: string | null; children: { id: string; name: string }[] };
+  const [materialCategories, setMaterialCategories] = useState<MaterialCatItem[]>([]);
+  const [supplierCategoryIds, setSupplierCategoryIds] = useState<string[]>([]);
+  const [savingCategories, setSavingCategories] = useState(false);
+
   useEffect(() => {
     fetch('/api/provinces?activeOnly=true').then((r) => r.json()).then((d) => d.success && d.data && setProvinces(d.data));
     fetch('/api/cities?activeOnly=true').then((r) => r.json()).then((d) => d.success && d.data && setCities(d.data));
+    fetch('/api/material-categories')
+      .then((r) => r.json())
+      .then((d) => setMaterialCategories(Array.isArray(d?.categories) ? d.categories : []));
   }, []);
+
+  const userMaterialCategories = (user as { materialCategories?: { id: string; name: string }[] } | null)?.materialCategories ?? [];
+  useEffect(() => {
+    setSupplierCategoryIds(userMaterialCategories.map((c) => c.id));
+  }, [user?.id, userMaterialCategories.length]);
 
   const userCityId = (user as { cityId?: string | null; city?: { id: string } | null })?.cityId ?? (user as { city?: { id: string } | null })?.city?.id ?? null;
   const citiesByProvince = selectedProvinceId ? cities.filter((c) => c.provinceId === selectedProvinceId) : cities;
@@ -111,6 +124,34 @@ export default function SettingsPage() {
     }
   };
 
+  const toggleSupplierCategory = (id: string) => {
+    setSupplierCategoryIds((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+    );
+  };
+
+  const onSaveMaterialCategories = async () => {
+    if (user?.role !== 'SUPPLIER') return;
+    setSavingCategories(true);
+    try {
+      const response = await fetch('/api/users/me', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ materialCategoryIds: supplierCategoryIds }),
+      });
+      if (!response.ok) {
+        const err = await response.json();
+        throw new Error(err.error || 'Gagal menyimpan');
+      }
+      await refreshUser();
+      toast.success('Kategori material berhasil disimpan');
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Gagal menyimpan kategori material');
+    } finally {
+      setSavingCategories(false);
+    }
+  };
+
   const onBankSubmit = async (data: BankForm) => {
     setIsSubmitting(true);
     try {
@@ -158,7 +199,7 @@ export default function SettingsPage() {
       </div>
 
       <Tabs defaultValue="profile" className="space-y-6">
-        <TabsList className="grid grid-cols-4 w-full md:w-auto">
+        <TabsList className={`grid w-full md:w-auto ${user?.role === 'SUPPLIER' ? 'grid-cols-5' : 'grid-cols-4'}`}>
           <TabsTrigger value="profile" className="gap-2">
             <User className="h-4 w-4" />
             <span className="hidden sm:inline">Profil</span>
@@ -167,6 +208,12 @@ export default function SettingsPage() {
             <MapPin className="h-4 w-4" />
             <span className="hidden sm:inline">Alamat</span>
           </TabsTrigger>
+          {user?.role === 'SUPPLIER' && (
+            <TabsTrigger value="material-categories" className="gap-2">
+              <Package className="h-4 w-4" />
+              <span className="hidden sm:inline">Kategori Material</span>
+            </TabsTrigger>
+          )}
           <TabsTrigger value="bank" className="gap-2">
             <CreditCard className="h-4 w-4" />
             <span className="hidden sm:inline">Bank</span>
@@ -262,6 +309,65 @@ export default function SettingsPage() {
             </CardContent>
           </Card>
         </TabsContent>
+
+        {/* Kategori Material (Supplier only) */}
+        {user?.role === 'SUPPLIER' && (
+          <TabsContent value="material-categories">
+            <Card className="glass-card">
+              <CardHeader>
+                <CardTitle>Kategori Material</CardTitle>
+                <CardDescription>Pilih kategori material yang Anda sediakan (bisa lebih dari satu)</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {materialCategories.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">Belum ada kategori. Admin dapat menambahkannya di Dashboard → Kategori Material.</p>
+                ) : (
+                  <>
+                    <div className="rounded-lg border p-4 space-y-3 max-h-64 overflow-y-auto">
+                      {materialCategories.map((parent) => (
+                        <div key={parent.id} className="space-y-1">
+                          <label className="flex items-center gap-2 cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={supplierCategoryIds.includes(parent.id)}
+                              onChange={() => toggleSupplierCategory(parent.id)}
+                              className="rounded border-gray-300"
+                            />
+                            <span className="font-medium">{parent.name}</span>
+                          </label>
+                          {parent.children?.length > 0 && (
+                            <div className="pl-6 space-y-1">
+                              {parent.children.map((child: { id: string; name: string }) => (
+                                <label key={child.id} className="flex items-center gap-2 cursor-pointer">
+                                  <input
+                                    type="checkbox"
+                                    checked={supplierCategoryIds.includes(child.id)}
+                                    onChange={() => toggleSupplierCategory(child.id)}
+                                    className="rounded border-gray-300"
+                                  />
+                                  <span className="text-muted-foreground">{child.name}</span>
+                                </label>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                    <Button
+                      type="button"
+                      className="bg-gradient-to-r from-[#fd904c] to-[#e57835]"
+                      disabled={savingCategories}
+                      onClick={onSaveMaterialCategories}
+                    >
+                      {savingCategories && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+                      Simpan Kategori
+                    </Button>
+                  </>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+        )}
 
         {/* Address Tab */}
         <TabsContent value="address">

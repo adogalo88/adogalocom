@@ -25,7 +25,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Loader2, Search, Users, UserCheck, UserX, Shield, Star, Mail, MessageCircle, MoreHorizontal } from 'lucide-react';
+import { Loader2, Search, Users, UserCheck, UserX, Shield, Star, Mail, MessageCircle, MoreHorizontal, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 
 /** Format nomor untuk WhatsApp: 08xxx -> 628xxx */
@@ -136,6 +136,20 @@ export default function UsersPage() {
       refetchUsers();
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Gagal menangguhkan user');
+    }
+  };
+
+  const handleDelete = async (userId: string) => {
+    if (!confirm('Yakin ingin menghapus user ini? Tindakan tidak dapat dibatalkan.')) return;
+    try {
+      const response = await fetch(`/api/users/${userId}`, { method: 'DELETE' });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'Gagal menghapus user');
+      toast.success('User berhasil dihapus');
+      setSelectedUserId(null);
+      refetchUsers();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Gagal menghapus user');
     }
   };
 
@@ -416,6 +430,16 @@ export default function UsersPage() {
                                 Tangguhkan
                               </DropdownMenuItem>
                             )}
+                            <DropdownMenuSeparator />
+                            {u.id !== user?.id && (
+                              <DropdownMenuItem
+                                onClick={() => handleDelete(u.id)}
+                                className="text-destructive focus:text-destructive"
+                              >
+                                <Trash2 className="h-4 w-4 mr-2" />
+                                Hapus User
+                              </DropdownMenuItem>
+                            )}
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </TableCell>
@@ -435,6 +459,7 @@ export default function UsersPage() {
         onVerify={handleVerify}
         onActivate={handleActivate}
         onSuspend={handleSuspend}
+        onDelete={handleDelete}
         roleLabels={roleLabels}
         roleColors={roleColors}
         statusColors={statusColors}
@@ -450,6 +475,7 @@ interface UserDetailSheetProps {
   onVerify: (id: string) => void;
   onActivate: (id: string) => void;
   onSuspend: (id: string) => void;
+  onDelete: (id: string) => void;
   roleLabels: Record<string, string>;
   roleColors: Record<string, string>;
   statusColors: Record<string, string>;
@@ -462,6 +488,7 @@ function UserDetailSheet({
   onVerify,
   onActivate,
   onSuspend,
+  onDelete,
   roleLabels,
   roleColors,
   statusColors,
@@ -589,6 +616,14 @@ function UserDetailSheet({
                     Tangguhkan
                   </Button>
                 )}
+              </div>
+            )}
+            {currentUserId !== u.id && (
+              <div className="pt-4 border-t">
+                <Button size="sm" variant="destructive" onClick={() => onDelete(u.id)}>
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Hapus User
+                </Button>
               </div>
             )}
           </div>
