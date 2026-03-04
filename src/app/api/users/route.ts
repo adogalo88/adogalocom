@@ -93,7 +93,7 @@ export const GET = withRole(['ADMIN'], async (user: SafeUser, request: NextReque
     // Get total count
     const total = await db.user.count({ where });
 
-    // Get users with pagination
+    // Get users with pagination (User has cityId/city relation, no province field)
     const users = await db.user.findMany({
       where,
       select: {
@@ -105,8 +105,13 @@ export const GET = withRole(['ADMIN'], async (user: SafeUser, request: NextReque
         role: true,
         status: true,
         ktpNumber: true,
-        city: true,
-        province: true,
+        city: {
+          select: {
+            id: true,
+            name: true,
+            province: { select: { id: true, name: true } },
+          },
+        },
         specialty: true,
         experience: true,
         rating: true,

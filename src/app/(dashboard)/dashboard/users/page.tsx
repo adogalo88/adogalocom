@@ -20,9 +20,11 @@ export default function UsersPage() {
   const [statusFilter, setStatusFilter] = useState<string>('');
 
   const { data, isLoading, error } = useUsers({
-    search,
+    search: search || undefined,
     role: roleFilter || undefined,
     status: statusFilter || undefined,
+    limit: '100',
+    page: '1',
   });
 
   const users = data?.data || [];
@@ -175,7 +177,7 @@ export default function UsersPage() {
                 className="pl-10"
               />
             </div>
-            <Select value={roleFilter} onValueChange={setRoleFilter}>
+            <Select value={roleFilter || 'all'} onValueChange={(v) => setRoleFilter(v === 'all' ? '' : v)}>
               <SelectTrigger className="w-full md:w-40">
                 <SelectValue placeholder="Role" />
               </SelectTrigger>
@@ -188,7 +190,7 @@ export default function UsersPage() {
                 <SelectItem value="ADMIN">Admin</SelectItem>
               </SelectContent>
             </Select>
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <Select value={statusFilter || 'all'} onValueChange={(v) => setStatusFilter(v === 'all' ? '' : v)}>
               <SelectTrigger className="w-full md:w-48">
                 <SelectValue placeholder="Status" />
               </SelectTrigger>
