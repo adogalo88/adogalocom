@@ -212,34 +212,49 @@ function ClientDashboard() {
 }
 
 function VendorDashboard() {
+  const { data: stats, isLoading } = useQuery({
+    queryKey: ['dashboard', 'stats'],
+    queryFn: async () => {
+      const res = await fetch('/api/dashboard/stats');
+      if (!res.ok) throw new Error('Failed to load stats');
+      return res.json() as Promise<{
+        projectsCompleted: number;
+        projectsActive: number;
+        teamMembers: number;
+        revenue: number;
+      }>;
+    },
+  });
+
+  const projectsCompleted = stats?.projectsCompleted ?? 0;
+  const projectsActive = stats?.projectsActive ?? 0;
+  const teamMembers = stats?.teamMembers ?? 0;
+  const revenue = stats?.revenue ?? 0;
+
   return (
     <>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatsCard
           title="Proyek Selesai"
-          value="28"
+          value={isLoading ? '...' : String(projectsCompleted)}
           icon={<CheckCircle className="h-5 w-5" />}
-          trend="+5 bulan ini"
-          trendUp
         />
         <StatsCard
           title="Proyek Aktif"
-          value="4"
+          value={isLoading ? '...' : String(projectsActive)}
           icon={<FolderKanban className="h-5 w-5" />}
           description="Sedang dikerjakan"
         />
         <StatsCard
           title="Tim Kerja"
-          value="12"
+          value={isLoading ? '...' : String(teamMembers)}
           icon={<Users className="h-5 w-5" />}
           description="Tukang aktif"
         />
         <StatsCard
           title="Pendapatan"
-          value="Rp 125 Jt"
+          value={isLoading ? '...' : formatRupiah(revenue)}
           icon={<TrendingUp className="h-5 w-5" />}
-          trend="+18% dari bulan lalu"
-          trendUp
         />
       </div>
 
@@ -303,33 +318,49 @@ function VendorDashboard() {
 }
 
 function TukangDashboard() {
+  const { data: stats, isLoading } = useQuery({
+    queryKey: ['dashboard', 'stats'],
+    queryFn: async () => {
+      const res = await fetch('/api/dashboard/stats');
+      if (!res.ok) throw new Error('Failed to load stats');
+      return res.json() as Promise<{
+        projectsCompleted: number;
+        projectsActive: number;
+        rating: number | null;
+        totalReviews: number;
+      }>;
+    },
+  });
+
+  const projectsCompleted = stats?.projectsCompleted ?? 0;
+  const projectsActive = stats?.projectsActive ?? 0;
+  const rating = stats?.rating ?? 0;
+  const totalReviews = stats?.totalReviews ?? 0;
+
   return (
     <>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatsCard
           title="Proyek Selesai"
-          value="45"
+          value={isLoading ? '...' : String(projectsCompleted)}
           icon={<CheckCircle className="h-5 w-5" />}
-          trend="+3 bulan ini"
-          trendUp
         />
         <StatsCard
           title="Rating"
-          value="4.8"
+          value={isLoading ? '...' : rating.toFixed(1)}
           icon={<TrendingUp className="h-5 w-5" />}
-          description="Dari 32 ulasan"
-        />
-        <StatsCard
-          title="Pendapatan"
-          value="Rp 8.5 Jt"
-          icon={<Wallet className="h-5 w-5" />}
-          trend="Bulan ini"
+          description={isLoading ? '' : `Dari ${totalReviews} ulasan`}
         />
         <StatsCard
           title="Proyek Aktif"
-          value="2"
+          value={isLoading ? '...' : String(projectsActive)}
           icon={<FolderKanban className="h-5 w-5" />}
           description="Sedang dikerjakan"
+        />
+        <StatsCard
+          title="Total Proyek Tim"
+          value={isLoading ? '...' : String(projectsCompleted + projectsActive)}
+          icon={<Users className="h-5 w-5" />}
         />
       </div>
 
@@ -388,34 +419,51 @@ function TukangDashboard() {
 }
 
 function SupplierDashboard() {
+  const { data: stats, isLoading } = useQuery({
+    queryKey: ['dashboard', 'stats'],
+    queryFn: async () => {
+      const res = await fetch('/api/dashboard/stats');
+      if (!res.ok) throw new Error('Failed to load stats');
+      return res.json() as Promise<{
+        totalOffers: number;
+        acceptedOffers: number;
+        revenue: number;
+        rating: number | null;
+        totalReviews: number;
+      }>;
+    },
+  });
+
+  const totalOffers = stats?.totalOffers ?? 0;
+  const acceptedOffers = stats?.acceptedOffers ?? 0;
+  const revenue = stats?.revenue ?? 0;
+  const rating = stats?.rating ?? 0;
+  const totalReviews = stats?.totalReviews ?? 0;
+
   return (
     <>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatsCard
           title="Total Penawaran"
-          value="56"
+          value={isLoading ? '...' : String(totalOffers)}
           icon={<Package className="h-5 w-5" />}
-          trend="+8 minggu ini"
-          trendUp
         />
         <StatsCard
-          title="Diterima"
-          value="32"
+          title="Penawaran Diterima"
+          value={isLoading ? '...' : String(acceptedOffers)}
           icon={<CheckCircle className="h-5 w-5" />}
-          description="Penawaran diterima"
+          description="Penawaran berhasil"
         />
         <StatsCard
-          title="Penjualan"
-          value="Rp 45 Jt"
+          title="Total Penjualan"
+          value={isLoading ? '...' : formatRupiah(revenue)}
           icon={<TrendingUp className="h-5 w-5" />}
-          trend="+25% dari bulan lalu"
-          trendUp
         />
         <StatsCard
           title="Rating"
-          value="4.9"
+          value={isLoading ? '...' : rating.toFixed(1)}
           icon={<Wallet className="h-5 w-5" />}
-          description="Dari 28 ulasan"
+          description={isLoading ? '' : `Dari ${totalReviews} ulasan`}
         />
       </div>
 
@@ -446,31 +494,49 @@ function SupplierDashboard() {
 }
 
 function AdminDashboard() {
+  const { data: stats, isLoading } = useQuery({
+    queryKey: ['dashboard', 'stats'],
+    queryFn: async () => {
+      const res = await fetch('/api/dashboard/stats');
+      if (!res.ok) throw new Error('Failed to load stats');
+      return res.json() as Promise<{
+        totalUsers: number;
+        activeProjects: number;
+        totalRevenue: number;
+        pendingVerification: number;
+        countsByRole: Record<string, number>;
+      }>;
+    },
+  });
+
+  const totalUsers = stats?.totalUsers ?? 0;
+  const activeProjects = stats?.activeProjects ?? 0;
+  const totalRevenue = stats?.totalRevenue ?? 0;
+  const pendingVerification = stats?.pendingVerification ?? 0;
+  const countsByRole = stats?.countsByRole ?? {};
+
   return (
     <>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatsCard
           title="Total User"
-          value="2,456"
+          value={isLoading ? '...' : String(totalUsers)}
           icon={<Users className="h-5 w-5" />}
-          trend="+45 minggu ini"
-          trendUp
         />
         <StatsCard
           title="Proyek Aktif"
-          value="128"
+          value={isLoading ? '...' : String(activeProjects)}
           icon={<FolderKanban className="h-5 w-5" />}
           description="Sedang berjalan"
         />
         <StatsCard
-          title="Transaksi"
-          value="Rp 2.5 M"
+          title="Total Transaksi"
+          value={isLoading ? '...' : formatRupiah(totalRevenue)}
           icon={<Wallet className="h-5 w-5" />}
-          trend="Bulan ini"
         />
         <StatsCard
           title="Pending Verifikasi"
-          value="23"
+          value={isLoading ? '...' : String(pendingVerification)}
           icon={<AlertCircle className="h-5 w-5" />}
           description="Perlu review"
         />
@@ -516,19 +582,27 @@ function AdminDashboard() {
             <div className="grid grid-cols-2 gap-4">
               <div className="p-4 rounded-lg bg-muted/50">
                 <p className="text-sm text-muted-foreground">Klien</p>
-                <p className="text-2xl font-bold">1,234</p>
+                <p className="text-2xl font-bold">
+                  {isLoading ? '...' : String(countsByRole.CLIENT ?? 0)}
+                </p>
               </div>
               <div className="p-4 rounded-lg bg-muted/50">
                 <p className="text-sm text-muted-foreground">Vendor</p>
-                <p className="text-2xl font-bold">456</p>
+                <p className="text-2xl font-bold">
+                  {isLoading ? '...' : String(countsByRole.VENDOR ?? 0)}
+                </p>
               </div>
               <div className="p-4 rounded-lg bg-muted/50">
                 <p className="text-sm text-muted-foreground">Tukang</p>
-                <p className="text-2xl font-bold">678</p>
+                <p className="text-2xl font-bold">
+                  {isLoading ? '...' : String(countsByRole.TUKANG ?? 0)}
+                </p>
               </div>
               <div className="p-4 rounded-lg bg-muted/50">
                 <p className="text-sm text-muted-foreground">Supplier</p>
-                <p className="text-2xl font-bold">88</p>
+                <p className="text-2xl font-bold">
+                  {isLoading ? '...' : String(countsByRole.SUPPLIER ?? 0)}
+                </p>
               </div>
             </div>
           </CardContent>
