@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useUsers, useUser, formatDate } from '@/hooks/api';
 import { useAuth } from '@/providers/AuthProvider';
@@ -44,12 +44,32 @@ export default function UsersPage() {
   const [search, setSearch] = useState('');
   const [roleFilter, setRoleFilter] = useState<string>('');
   const [statusFilter, setStatusFilter] = useState<string>('');
+  const [provinceFilter, setProvinceFilter] = useState<string>('');
+  const [cityFilter, setCityFilter] = useState<string>('');
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
+
+  const [provinces, setProvinces] = useState<{ id: string; name: string }[]>([]);
+  const [cities, setCities] = useState<{ id: string; name: string; provinceId: string }[]>([]);
+
+  useEffect(() => {
+    fetch('/api/provinces?activeOnly=true')
+      .then((r) => r.json())
+      .then((d) => d.success && d.data && setProvinces(d.data));
+    fetch('/api/cities?activeOnly=true')
+      .then((r) => r.json())
+      .then((d) => d.success && d.data && setCities(d.data));
+  }, []);
+
+  const citiesByProvince = provinceFilter
+    ? cities.filter((c) => c.provinceId === provinceFilter)
+    : cities;
 
   const { data, isLoading, error } = useUsers({
     search: search || undefined,
     role: roleFilter || undefined,
     status: statusFilter || undefined,
+    provinceId: provinceFilter || undefined,
+    cityId: cityFilter || undefined,
     limit: '100',
     page: '1',
   });
@@ -244,6 +264,28 @@ export default function UsersPage() {
                 <SelectItem value="ACTIVE">Aktif</SelectItem>
                 <SelectItem value="PENDING_VERIFICATION">Menunggu</SelectItem>
                 <SelectItem value="SUSPENDED">Ditangguhkan</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={provinceFilter || 'all'} onValueChange={(v) => { setProvinceFilter(v === 'all' ? '' : v); setCityFilter(''); }}>
+              <SelectTrigger className="w-full md:w-44">
+                <SelectValue placeholder="Provinsi" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Semua Provinsi</SelectItem>
+                {provinces.map((p) => (
+                  <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={cityFilter || 'all'} onValueChange={(v) => setCityFilter(v === 'all' ? '' : v)}>
+              <SelectTrigger className="w-full md:w-44">
+                <SelectValue placeholder="Kota" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Semua Kota</SelectItem>
+                {citiesByProvince.map((c) => (
+                  <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>

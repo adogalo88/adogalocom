@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -31,6 +31,8 @@ const projectSchema = z.object({
   tenderSubtype: z.enum(['WITH_RFQ', 'WITHOUT_RFQ']).optional(),
   budget: z.number().min(0).optional(),
   location: z.string().optional(),
+  cityId: z.string().optional(),
+  address: z.string().max(500).optional(),
   workerNeeded: z.number().min(1).optional(),
   categoryId: z.string().optional(),
   startDate: z.string().optional(),
@@ -56,6 +58,15 @@ export default function CreateProjectPage() {
   
   const createProject = useCreateProject();
   const { data: categoriesData } = useCategories();
+  const [provinces, setProvinces] = useState<{ id: string; name: string }[]>([]);
+  const [cities, setCities] = useState<{ id: string; name: string; provinceId: string }[]>([]);
+  const [selectedProvinceId, setSelectedProvinceId] = useState<string>('');
+
+  useEffect(() => {
+    fetch('/api/provinces?activeOnly=true').then((r) => r.json()).then((d) => d.success && d.data && setProvinces(d.data));
+    fetch('/api/cities?activeOnly=true').then((r) => r.json()).then((d) => d.success && d.data && setCities(d.data));
+  }, []);
+  const citiesByProvince = selectedProvinceId ? cities.filter((c) => c.provinceId === selectedProvinceId) : cities;
 
   const {
     register,
@@ -156,6 +167,8 @@ export default function CreateProjectPage() {
         budget: data.budget || undefined,
         workerNeeded: data.workerNeeded || undefined,
         categoryId: data.categoryId || undefined,
+        cityId: data.cityId || undefined,
+        address: data.address || undefined,
         startDate: data.startDate ? new Date(data.startDate).toISOString() : undefined,
         endDate: data.endDate ? new Date(data.endDate).toISOString() : undefined,
         tenderSubtype: data.type === 'TENDER' ? data.tenderSubtype : undefined,
@@ -324,9 +337,51 @@ export default function CreateProjectPage() {
               </div>
             </div>
 
-            {/* Location */}
+            {/* Provinsi & Kota */}
+            <div className="grid md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Provinsi</Label>
+                <Select
+                  value={selectedProvinceId}
+                  onValueChange={(v) => { setSelectedProvinceId(v); setValue('cityId', ''); }}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Pilih provinsi" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {provinces.map((p) => (
+                      <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Kota / Kabupaten</Label>
+                <Select
+                  value={watch('cityId') || ''}
+                  onValueChange={(v) => setValue('cityId', v)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Pilih kota" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {citiesByProvince.map((c) => (
+                      <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
             <div className="space-y-2">
-              <Label htmlFor="location">Lokasi Proyek</Label>
+              <Label htmlFor="address">Alamat lengkap</Label>
+              <Input
+                id="address"
+                placeholder="Jalan, RT/RW, kelurahan, kecamatan"
+                {...register('address')}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="location">Lokasi (teks bebas, opsional)</Label>
               <Input
                 id="location"
                 placeholder="Contoh: Jakarta Selatan"

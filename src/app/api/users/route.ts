@@ -37,6 +37,8 @@ const listUsersQuerySchema = z.object({
   status: z.enum(['ACTIVE', 'INACTIVE', 'SUSPENDED', 'PENDING_VERIFICATION']).optional(),
   search: z.string().max(100).optional(),
   isVerified: z.enum(['true', 'false']).optional(),
+  provinceId: z.string().optional(),
+  cityId: z.string().optional(),
   sortBy: z.enum(['name', 'email', 'createdAt', 'rating']).optional(),
   sortOrder: z.enum(['asc', 'desc']).optional(),
 });
@@ -54,15 +56,17 @@ export const GET = withRole(['ADMIN'], async (user: SafeUser, request: NextReque
       return apiError('Parameter query tidak valid', 400, validationResult.error.flatten());
     }
 
-    const { 
-      page = '1', 
-      limit = '10', 
-      role, 
-      status, 
-      search, 
+    const {
+      page = '1',
+      limit = '10',
+      role,
+      status,
+      search,
       isVerified,
+      provinceId,
+      cityId,
       sortBy = 'createdAt',
-      sortOrder = 'desc'
+      sortOrder = 'desc',
     } = validationResult.data;
 
     const { skip, page: pageNum, limit: limitNum } = getPaginationParams({ page, limit });
@@ -80,6 +84,14 @@ export const GET = withRole(['ADMIN'], async (user: SafeUser, request: NextReque
 
     if (isVerified !== undefined) {
       where.isVerified = isVerified === 'true';
+    }
+
+    if (provinceId) {
+      where.city = { provinceId };
+    }
+
+    if (cityId) {
+      where.cityId = cityId;
     }
 
     if (search) {

@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import { useProjects, useCategories, formatCurrency, formatDate, getProjectStatusConfig } from '@/hooks/api';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -9,18 +10,29 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Loader2, Plus, Search, FolderKanban, MapPin, Calendar, Users } from 'lucide-react';
 import Link from 'next/link';
 import { useAuth } from '@/providers/AuthProvider';
-import { useState } from 'react';
 
 export default function ProjectsPage() {
   const { user } = useAuth();
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('');
   const [typeFilter, setTypeFilter] = useState<string>('');
+  const [provinceFilter, setProvinceFilter] = useState<string>('');
+  const [cityFilter, setCityFilter] = useState<string>('');
+  const [provinces, setProvinces] = useState<{ id: string; name: string }[]>([]);
+  const [cities, setCities] = useState<{ id: string; name: string; provinceId: string }[]>([]);
+
+  useEffect(() => {
+    fetch('/api/provinces?activeOnly=true').then((r) => r.json()).then((d) => d.success && d.data && setProvinces(d.data));
+    fetch('/api/cities?activeOnly=true').then((r) => r.json()).then((d) => d.success && d.data && setCities(d.data));
+  }, []);
+  const citiesByProvince = provinceFilter ? cities.filter((c) => c.provinceId === provinceFilter) : cities;
 
   const { data, isLoading, error } = useProjects({
-    search,
+    search: search || undefined,
     status: statusFilter || undefined,
     type: typeFilter || undefined,
+    provinceId: provinceFilter || undefined,
+    cityId: cityFilter || undefined,
   });
 
   const { data: categoriesData } = useCategories();
@@ -64,7 +76,7 @@ export default function ProjectsPage() {
                 className="pl-10"
               />
             </div>
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <Select value={statusFilter || 'all'} onValueChange={(v) => setStatusFilter(v === 'all' ? '' : v)}>
               <SelectTrigger className="w-full md:w-40">
                 <SelectValue placeholder="Status" />
               </SelectTrigger>
@@ -76,7 +88,7 @@ export default function ProjectsPage() {
                 <SelectItem value="CANCELLED">Dibatalkan</SelectItem>
               </SelectContent>
             </Select>
-            <Select value={typeFilter} onValueChange={setTypeFilter}>
+            <Select value={typeFilter || 'all'} onValueChange={(v) => setTypeFilter(v === 'all' ? '' : v)}>
               <SelectTrigger className="w-full md:w-40">
                 <SelectValue placeholder="Tipe" />
               </SelectTrigger>
@@ -84,6 +96,28 @@ export default function ProjectsPage() {
                 <SelectItem value="all">Semua Tipe</SelectItem>
                 <SelectItem value="TENDER">Tender</SelectItem>
                 <SelectItem value="HARIAN">Harian</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={provinceFilter || 'all'} onValueChange={(v) => { setProvinceFilter(v === 'all' ? '' : v); setCityFilter(''); }}>
+              <SelectTrigger className="w-full md:w-40">
+                <SelectValue placeholder="Provinsi" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Semua Provinsi</SelectItem>
+                {provinces.map((p) => (
+                  <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={cityFilter || 'all'} onValueChange={(v) => setCityFilter(v === 'all' ? '' : v)}>
+              <SelectTrigger className="w-full md:w-40">
+                <SelectValue placeholder="Kota" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Semua Kota</SelectItem>
+                {citiesByProvince.map((c) => (
+                  <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -30,18 +30,16 @@ const materialSchema = z.object({
   title: z.string().min(3, 'Judul minimal 3 karakter'),
   description: z.string().optional(),
   quotationType: z.enum(['SIMPLE', 'RFQ', 'PDF']),
-  // SIMPLE fields
   quantity: z.number().min(1, 'Jumlah minimal 1').optional(),
   unit: z.string().optional(),
   budget: z.number().min(0).optional(),
-  // Common fields
   location: z.string().optional(),
+  cityId: z.string().optional(),
+  address: z.string().max(500).optional(),
   deadline: z.string().optional(),
   projectId: z.string().optional(),
-  // RFQ fields
   rfqItems: z.array(rfqItemSchema).optional(),
-  // PDF field
-  pdfFile: z.string().optional(), // URL PDF
+  pdfFile: z.string().optional(),
 });
 
 type MaterialForm = z.infer<typeof materialSchema>;
@@ -69,6 +67,16 @@ export default function CreateMaterialPage() {
 
   const isVendor = user?.role === 'VENDOR';
   const isClient = user?.role === 'CLIENT';
+
+  const [provinces, setProvinces] = useState<{ id: string; name: string }[]>([]);
+  const [cities, setCities] = useState<{ id: string; name: string; provinceId: string }[]>([]);
+  const [selectedProvinceId, setSelectedProvinceId] = useState<string>('');
+
+  useEffect(() => {
+    fetch('/api/provinces?activeOnly=true').then((r) => r.json()).then((d) => d.success && d.data && setProvinces(d.data));
+    fetch('/api/cities?activeOnly=true').then((r) => r.json()).then((d) => d.success && d.data && setCities(d.data));
+  }, []);
+  const citiesByProvince = selectedProvinceId ? cities.filter((c) => c.provinceId === selectedProvinceId) : cities;
 
   const {
     register,
@@ -227,9 +235,11 @@ export default function CreateMaterialPage() {
         description: data.description,
         quotationType: data.quotationType,
         location: data.location,
+        cityId: data.cityId || undefined,
+        address: data.address || undefined,
         deadline: data.deadline ? new Date(data.deadline).toISOString() : undefined,
         projectId: data.projectId || undefined,
-        status: 'PENDING_VERIFICATION', // Always pending verification
+        status: 'PENDING_VERIFICATION',
         photos: photos.length > 0 ? JSON.stringify(photos.map(p => p.url)) : undefined,
       };
 
@@ -591,10 +601,52 @@ export default function CreateMaterialPage() {
               </div>
             )}
 
-            {/* Location & Deadline */}
+            {/* Provinsi & Kota */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="location">Lokasi Pengiriman</Label>
+                <Label>Provinsi</Label>
+                <Select
+                  value={selectedProvinceId}
+                  onValueChange={(v) => { setSelectedProvinceId(v); setValue('cityId', ''); }}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Pilih provinsi" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {provinces.map((p) => (
+                      <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Kota / Kabupaten</Label>
+                <Select
+                  value={watch('cityId') || ''}
+                  onValueChange={(v) => setValue('cityId', v)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Pilih kota" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {citiesByProvince.map((c) => (
+                      <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="address">Alamat lengkap</Label>
+              <Input
+                id="address"
+                placeholder="Jalan, RT/RW, kelurahan, kecamatan"
+                {...register('address')}
+              />
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="location">Lokasi (teks bebas, opsional)</Label>
                 <Input
                   id="location"
                   placeholder="Contoh: Jakarta Selatan"

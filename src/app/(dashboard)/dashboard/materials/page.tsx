@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useMaterials, formatCurrency, formatDate, getMaterialStatusConfig } from '@/hooks/api';
 import { useAuth } from '@/providers/AuthProvider';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -15,10 +15,22 @@ export default function MaterialsPage() {
   const { user } = useAuth();
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('');
+  const [provinceFilter, setProvinceFilter] = useState<string>('');
+  const [cityFilter, setCityFilter] = useState<string>('');
+  const [provinces, setProvinces] = useState<{ id: string; name: string }[]>([]);
+  const [cities, setCities] = useState<{ id: string; name: string; provinceId: string }[]>([]);
+
+  useEffect(() => {
+    fetch('/api/provinces?activeOnly=true').then((r) => r.json()).then((d) => d.success && d.data && setProvinces(d.data));
+    fetch('/api/cities?activeOnly=true').then((r) => r.json()).then((d) => d.success && d.data && setCities(d.data));
+  }, []);
+  const citiesByProvince = provinceFilter ? cities.filter((c) => c.provinceId === provinceFilter) : cities;
 
   const { data, isLoading, error } = useMaterials({
-    search,
+    search: search || undefined,
     status: statusFilter || undefined,
+    provinceId: provinceFilter || undefined,
+    cityId: cityFilter || undefined,
   });
 
   const materials = data?.data || [];
@@ -60,7 +72,7 @@ export default function MaterialsPage() {
                 className="pl-10"
               />
             </div>
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <Select value={statusFilter || 'all'} onValueChange={(v) => setStatusFilter(v === 'all' ? '' : v)}>
               <SelectTrigger className="w-full md:w-40">
                 <SelectValue placeholder="Status" />
               </SelectTrigger>
@@ -70,6 +82,28 @@ export default function MaterialsPage() {
                 <SelectItem value="IN_PROGRESS">Proses</SelectItem>
                 <SelectItem value="FULFILLED">Terpenuhi</SelectItem>
                 <SelectItem value="CANCELLED">Dibatalkan</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={provinceFilter || 'all'} onValueChange={(v) => { setProvinceFilter(v === 'all' ? '' : v); setCityFilter(''); }}>
+              <SelectTrigger className="w-full md:w-40">
+                <SelectValue placeholder="Provinsi" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Semua Provinsi</SelectItem>
+                {provinces.map((p) => (
+                  <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={cityFilter || 'all'} onValueChange={(v) => setCityFilter(v === 'all' ? '' : v)}>
+              <SelectTrigger className="w-full md:w-40">
+                <SelectValue placeholder="Kota" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Semua Kota</SelectItem>
+                {citiesByProvince.map((c) => (
+                  <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>

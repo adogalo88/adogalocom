@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
-import { verifyToken } from '@/lib/auth';
+import { getCurrentUser } from '@/lib/auth';
 
 // GET - Get single city
 export async function GET(
@@ -45,7 +45,7 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const user = await verifyToken(request);
+    const user = await getCurrentUser();
     if (!user || user.role !== 'ADMIN') {
       return NextResponse.json(
         { success: false, error: 'Tidak memiliki akses' },
@@ -138,7 +138,7 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const user = await verifyToken(request);
+    const user = await getCurrentUser();
     if (!user || user.role !== 'ADMIN') {
       return NextResponse.json(
         { success: false, error: 'Tidak memiliki akses' },

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
-import { verifyToken } from '@/lib/auth';
+import { getCurrentUser } from '@/lib/auth';
 
 // GET - List all provinces
 export async function GET(request: NextRequest) {
@@ -36,7 +36,7 @@ export async function GET(request: NextRequest) {
 // POST - Create new province (Admin only)
 export async function POST(request: NextRequest) {
   try {
-    const user = await verifyToken(request);
+    const user = await getCurrentUser();
     if (!user || user.role !== 'ADMIN') {
       return NextResponse.json(
         { success: false, error: 'Tidak memiliki akses' },
