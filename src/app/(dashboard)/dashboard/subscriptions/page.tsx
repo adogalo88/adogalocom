@@ -128,7 +128,7 @@ export default function AdminSubscriptionsPage() {
 
       const result = await response.json();
 
-      if (result.success) {
+      if (response.ok && result.settings) {
         setSettings(result.settings);
         toast.success('Pengaturan berhasil disimpan');
       } else {
@@ -160,7 +160,7 @@ export default function AdminSubscriptionsPage() {
 
       const result = await response.json();
 
-      if (result.success) {
+      if (response.ok && result.plan) {
         toast.success('Paket berhasil dibuat');
         setEditDialogOpen(false);
         resetPlanForm();
@@ -185,7 +185,7 @@ export default function AdminSubscriptionsPage() {
 
       const result = await response.json();
 
-      if (result.success) {
+      if (response.ok) {
         toast.success('Paket berhasil dihapus');
         fetchData();
       } else {

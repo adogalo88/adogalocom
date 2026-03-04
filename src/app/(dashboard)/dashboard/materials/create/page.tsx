@@ -38,6 +38,7 @@ const materialSchema = z.object({
   address: z.string().max(500).optional(),
   deadline: z.string().optional(),
   projectId: z.string().optional(),
+  categoryIds: z.array(z.string()).optional(),
   rfqItems: z.array(rfqItemSchema).optional(),
   pdfFile: z.string().optional(),
 });
@@ -72,9 +73,13 @@ export default function CreateMaterialPage() {
   const [cities, setCities] = useState<{ id: string; name: string; provinceId: string }[]>([]);
   const [selectedProvinceId, setSelectedProvinceId] = useState<string>('');
 
+  type MaterialCategoryItem = { id: string; name: string; description: string | null; parentId: string | null; children: { id: string; name: string; description: string | null }[] };
+  const [materialCategories, setMaterialCategories] = useState<MaterialCategoryItem[]>([]);
+
   useEffect(() => {
     fetch('/api/provinces?activeOnly=true').then((r) => r.json()).then((d) => d.success && d.data && setProvinces(d.data));
     fetch('/api/cities?activeOnly=true').then((r) => r.json()).then((d) => d.success && d.data && setCities(d.data));
+    fetch('/api/material-categories').then((r) => r.json()).then((d) => d.categories && setMaterialCategories(d.categories));
   }, []);
   const citiesByProvince = selectedProvinceId ? cities.filter((c) => c.provinceId === selectedProvinceId) : cities;
 
@@ -89,9 +94,18 @@ export default function CreateMaterialPage() {
     resolver: zodResolver(materialSchema),
     defaultValues: {
       quotationType: 'SIMPLE',
+      categoryIds: [] as string[],
       rfqItems: [{ itemName: '', description: '', quantity: 1, unit: 'buah' }],
     },
   });
+
+  const selectedCategoryIds = watch('categoryIds') ?? [];
+  const toggleCategory = (id: string) => {
+    const next = selectedCategoryIds.includes(id)
+      ? selectedCategoryIds.filter((x) => x !== id)
+      : [...selectedCategoryIds, id];
+    setValue('categoryIds', next);
+  };
 
   const quotationType = watch('quotationType');
 
@@ -239,6 +253,7 @@ export default function CreateMaterialPage() {
         address: data.address || undefined,
         deadline: data.deadline ? new Date(data.deadline).toISOString() : undefined,
         projectId: data.projectId || undefined,
+        categoryIds: (data.categoryIds && data.categoryIds.length > 0) ? data.categoryIds : undefined,
         status: 'PENDING_VERIFICATION',
         photos: photos.length > 0 ? JSON.stringify(photos.map(p => p.url)) : undefined,
       };
@@ -355,6 +370,43 @@ export default function CreateMaterialPage() {
                 {...register('description')}
               />
             </div>
+
+            {/* Kategori Material (multi-select) */}
+            {materialCategories.length > 0 && (
+              <div className="space-y-2">
+                <Label>Kategori Material (bisa pilih lebih dari satu)</Label>
+                <div className="rounded-lg border p-4 space-y-3 max-h-48 overflow-y-auto">
+                  {materialCategories.map((parent) => (
+                    <div key={parent.id} className="space-y-1">
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={selectedCategoryIds.includes(parent.id)}
+                          onChange={() => toggleCategory(parent.id)}
+                          className="rounded border-gray-300"
+                        />
+                        <span className="font-medium">{parent.name}</span>
+                      </label>
+                      {parent.children?.length > 0 && (
+                        <div className="pl-6 space-y-1">
+                          {parent.children.map((child) => (
+                            <label key={child.id} className="flex items-center gap-2 cursor-pointer">
+                              <input
+                                type="checkbox"
+                                checked={selectedCategoryIds.includes(child.id)}
+                                onChange={() => toggleCategory(child.id)}
+                                className="rounded border-gray-300"
+                              />
+                              <span className="text-muted-foreground">{child.name}</span>
+                            </label>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* SIMPLE Type Fields */}
             {quotationType === 'SIMPLE' && (

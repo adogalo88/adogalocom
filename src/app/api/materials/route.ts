@@ -25,7 +25,8 @@ const createMaterialSchema = z.object({
   files: z.string().optional(), // JSON array of file URLs
   deadline: z.string().datetime('Format deadline tidak valid').optional().nullable(),
   projectId: z.string().optional().nullable(),
-  status: z.enum(['DRAFT', 'PUBLISHED']).optional().default('DRAFT'),
+  categoryIds: z.array(z.string()).optional(), // Material category IDs (can select multiple)
+  status: z.enum(['DRAFT', 'PUBLISHED', 'PENDING_VERIFICATION']).optional().default('DRAFT'),
 });
 
 // Material with related data type
@@ -245,6 +246,9 @@ export async function POST(request: NextRequest) {
         projectId: data.projectId || null,
         clientId: user.id,
         status: data.status || 'DRAFT',
+        ...(data.categoryIds?.length
+          ? { categories: { connect: data.categoryIds.map((id) => ({ id })) } }
+          : {}),
       },
       include: {
         city: {

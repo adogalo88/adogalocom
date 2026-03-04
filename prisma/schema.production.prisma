@@ -232,6 +232,24 @@ model Category {
   @@map("categories")
 }
 
+// Kategori untuk material (bisa punya subkategori)
+model MaterialCategory {
+  id          String    @id @default(cuid())
+  name        String
+  description String?
+  parentId    String?
+  sortOrder   Int       @default(0)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  parent   MaterialCategory?  @relation("MaterialCategoryHierarchy", fields: [parentId], references: [id], onDelete: Cascade)
+  children MaterialCategory[] @relation("MaterialCategoryHierarchy")
+  materials Material[]
+
+  @@index([parentId])
+  @@map("material_categories")
+}
+
 model Project {
   id              String        @id @default(cuid())
   title           String
@@ -357,6 +375,7 @@ model Material {
   client            User                @relation(fields: [clientId], references: [id])
   project           Project?            @relation(fields: [projectId], references: [id], onDelete: SetNull)
   verifier          User?               @relation("MaterialVerifier", fields: [verifiedBy], references: [id])
+  categories        MaterialCategory[]
   offers            MaterialOffer[]
   rfqItems          MaterialRFQItem[]
   materialRfqOffers MaterialRFQOffer[]

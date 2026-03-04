@@ -103,6 +103,7 @@ const roleNavigation: Record<string, NavItem[]> = {
     { title: 'Pembayaran', href: '/dashboard/payments', icon: <CreditCard className="h-5 w-5" /> },
     { title: 'Langganan', href: '/dashboard/subscriptions', icon: <CreditCard className="h-5 w-5" /> },
     { title: 'Kategori', href: '/dashboard/categories', icon: <Layers className="h-5 w-5" /> },
+    { title: 'Kategori Material', href: '/dashboard/material-categories', icon: <Package className="h-5 w-5" /> },
     { title: 'Lokasi', href: '/dashboard/locations', icon: <MapPin className="h-5 w-5" /> },
     { title: 'Laporan', href: '/dashboard/reports', icon: <BarChart3 className="h-5 w-5" /> },
     { title: 'Pengaturan', href: '/dashboard/settings', icon: <Settings className="h-5 w-5" /> },

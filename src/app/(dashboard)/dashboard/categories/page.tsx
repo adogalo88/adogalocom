@@ -76,7 +76,7 @@ export default function CategoriesPage() {
   const updateMutation = useUpdateCategory(editingCategory || '');
   const deleteMutation = useDeleteCategory(deletingCategory || '');
 
-  const categories = data?.data || [];
+  const categories = data?.categories ?? data?.data ?? [];
 
   const handleSearch = () => {
     setSearch(searchInput);

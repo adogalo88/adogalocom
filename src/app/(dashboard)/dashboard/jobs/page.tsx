@@ -94,7 +94,7 @@ export default function JobsPage() {
 
   const jobs = jobsData?.data?.filter(p => p.workerNeeded && p.workerNeeded > 0) || [];
   const applications = applicationsData?.data || [];
-  const categories = categoriesData?.data || [];
+  const categories = categoriesData?.categories ?? categoriesData?.data ?? [];
 
   // Get application status for a job
   const getApplicationStatus = (projectId: string) => {

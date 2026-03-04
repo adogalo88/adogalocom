@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '@/providers/AuthProvider';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
@@ -21,8 +22,7 @@ const profileSchema = z.object({
   name: z.string().min(2, 'Nama minimal 2 karakter'),
   phone: z.string().optional(),
   address: z.string().optional(),
-  city: z.string().optional(),
-  province: z.string().optional(),
+  cityId: z.string().optional().nullable(),
   postalCode: z.string().optional(),
 });
 
@@ -38,6 +38,17 @@ type BankForm = z.infer<typeof bankSchema>;
 export default function SettingsPage() {
   const { user, refreshUser } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [provinces, setProvinces] = useState<{ id: string; name: string }[]>([]);
+  const [cities, setCities] = useState<{ id: string; name: string; provinceId: string }[]>([]);
+  const [selectedProvinceId, setSelectedProvinceId] = useState<string>('');
+
+  useEffect(() => {
+    fetch('/api/provinces?activeOnly=true').then((r) => r.json()).then((d) => d.success && d.data && setProvinces(d.data));
+    fetch('/api/cities?activeOnly=true').then((r) => r.json()).then((d) => d.success && d.data && setCities(d.data));
+  }, []);
+
+  const userCityId = (user as { cityId?: string | null; city?: { id: string } | null })?.cityId ?? (user as { city?: { id: string } | null })?.city?.id ?? null;
+  const citiesByProvince = selectedProvinceId ? cities.filter((c) => c.provinceId === selectedProvinceId) : cities;
 
   const profileForm = useForm<ProfileForm>({
     resolver: zodResolver(profileSchema),
@@ -45,11 +56,27 @@ export default function SettingsPage() {
       name: user?.name || '',
       phone: user?.phone || '',
       address: user?.address || '',
-      city: user?.city || '',
-      province: user?.province || '',
+      cityId: userCityId || undefined,
       postalCode: user?.postalCode || '',
     },
   });
+
+  const currentCityId = profileForm.watch('cityId');
+  const provinceForCity = currentCityId ? cities.find((c) => c.id === currentCityId)?.provinceId : '';
+  useEffect(() => {
+    if (provinceForCity && !selectedProvinceId) setSelectedProvinceId(provinceForCity);
+  }, [provinceForCity, selectedProvinceId]);
+
+  // Sync form when user (with city) and cities list are loaded
+  useEffect(() => {
+    if (!user || cities.length === 0) return;
+    const uid = (user as { cityId?: string | null; city?: { id: string } | null })?.cityId ?? (user as { city?: { id: string } | null })?.city?.id ?? null;
+    if (uid) {
+      profileForm.setValue('cityId', uid);
+      const provId = cities.find((c) => c.id === uid)?.provinceId;
+      if (provId) setSelectedProvinceId(provId);
+    }
+  }, [user?.id, cities.length]);
 
   const bankForm = useForm<BankForm>({
     resolver: zodResolver(bankSchema),
@@ -63,10 +90,11 @@ export default function SettingsPage() {
   const onProfileSubmit = async (data: ProfileForm) => {
     setIsSubmitting(true);
     try {
+      const payload = { ...data, cityId: data.cityId || null };
       const response = await fetch('/api/users/me', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
+        body: JSON.stringify(payload),
       });
       
       if (!response.ok) {
@@ -254,31 +282,47 @@ export default function SettingsPage() {
                   />
                 </div>
 
-                <div className="grid md:grid-cols-3 gap-4">
+                <div className="grid md:grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="city">Kota</Label>
-                    <Input
-                      id="city"
-                      placeholder="Jakarta Selatan"
-                      {...profileForm.register('city')}
-                    />
+                    <Label>Provinsi</Label>
+                    <Select
+                      value={selectedProvinceId}
+                      onValueChange={(v) => { setSelectedProvinceId(v); profileForm.setValue('cityId', ''); }}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Pilih provinsi" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {provinces.map((p) => (
+                          <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="province">Provinsi</Label>
-                    <Input
-                      id="province"
-                      placeholder="DKI Jakarta"
-                      {...profileForm.register('province')}
-                    />
+                    <Label>Kota / Kabupaten</Label>
+                    <Select
+                      value={profileForm.watch('cityId') || ''}
+                      onValueChange={(v) => profileForm.setValue('cityId', v)}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Pilih kota" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {citiesByProvince.map((c) => (
+                          <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="postalCode">Kode Pos</Label>
-                    <Input
-                      id="postalCode"
-                      placeholder="12345"
-                      {...profileForm.register('postalCode')}
-                    />
-                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="postalCode">Kode Pos</Label>
+                  <Input
+                    id="postalCode"
+                    placeholder="12345"
+                    {...profileForm.register('postalCode')}
+                  />
                 </div>
 
                 <Button
