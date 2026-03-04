@@ -49,9 +49,11 @@ export default function MaterialCategoriesPage() {
     try {
       const res = await fetch('/api/material-categories');
       const data = await res.json();
-      if (data.categories) setCategories(data.categories);
+      const list = Array.isArray(data?.categories) ? data.categories : [];
+      setCategories(list);
     } catch (e) {
       toast.error('Gagal memuat kategori material');
+      setCategories([]);
     } finally {
       setLoading(false);
     }
@@ -102,7 +104,9 @@ export default function MaterialCategoriesPage() {
       }
       toast.success('Kategori berhasil disimpan');
       setDialogOpen(false);
-      fetchCategories();
+      setFormName('');
+      setFormDescription('');
+      await fetchCategories();
     } catch {
       toast.error('Gagal menyimpan');
     } finally {

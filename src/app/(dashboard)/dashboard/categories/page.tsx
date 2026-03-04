@@ -76,7 +76,7 @@ export default function CategoriesPage() {
   const updateMutation = useUpdateCategory(editingCategory || '');
   const deleteMutation = useDeleteCategory(deletingCategory || '');
 
-  const categories = data?.categories ?? data?.data ?? [];
+  const categories = Array.isArray(data?.categories) ? data.categories : Array.isArray(data?.data) ? data.data : [];
 
   const handleSearch = () => {
     setSearch(searchInput);
@@ -245,58 +245,56 @@ export default function CategoriesPage() {
           </CardContent>
         </Card>
       ) : (
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {categories.map((category) => (
-            <Card key={category.id} className="glass-card hover:shadow-lg transition-shadow">
-              <CardHeader className="pb-2">
-                <div className="flex items-start justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="h-10 w-10 rounded-lg bg-gradient-to-br from-[#fd904c]/20 to-[#e57835]/20 flex items-center justify-center">
-                      <FolderTree className="h-5 w-5 text-[#fd904c]" />
+        <Card className="glass-card">
+          <CardContent className="p-0">
+            <div className="divide-y">
+              {categories.map((category) => {
+                const projectCount = (category as { _count?: { projects?: number }; projectCount?: number })._count?.projects ?? (category as { projectCount?: number }).projectCount ?? 0;
+                return (
+                  <div
+                    key={category.id}
+                    className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-4 hover:bg-muted/50 transition-colors"
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="h-9 w-9 rounded-lg bg-gradient-to-br from-[#fd904c]/20 to-[#e57835]/20 flex items-center justify-center flex-shrink-0">
+                        <FolderTree className="h-4 w-4 text-[#fd904c]" />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="font-medium">{category.name}</p>
+                        {category.description && (
+                          <p className="text-sm text-muted-foreground truncate max-w-md">{category.description}</p>
+                        )}
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          {projectCount} proyek · Dibuat: {formatDate((category as { createdAt?: string }).createdAt)}
+                        </p>
+                      </div>
                     </div>
-                    <CardTitle className="text-lg">{category.name}</CardTitle>
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleOpenEdit(category)}
+                        title="Edit"
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleOpenDelete(category.id)}
+                        disabled={projectCount > 0}
+                        className="text-red-500 hover:text-red-600 hover:bg-red-50"
+                        title="Hapus"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </div>
-                </div>
-                {category.description && (
-                  <CardDescription className="mt-2 line-clamp-2">
-                    {category.description}
-                  </CardDescription>
-                )}
-              </CardHeader>
-              <CardContent>
-                <div className="flex justify-between items-center">
-                  <div className="flex items-center gap-2">
-                    <Package className="h-4 w-4 text-muted-foreground" />
-                    <span className="text-sm text-muted-foreground">
-                      {category.projectCount} proyek
-                    </span>
-                  </div>
-                  <div className="flex gap-2">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => handleOpenEdit(category)}
-                    >
-                      <Pencil className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => handleOpenDelete(category.id)}
-                      disabled={category.projectCount > 0}
-                      className="text-red-500 hover:text-red-600 hover:bg-red-50"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
-                <p className="text-xs text-muted-foreground mt-3">
-                  Dibuat: {formatDate(category.createdAt)}
-                </p>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+                );
+              })}
+            </div>
+          </CardContent>
+        </Card>
       )}
 
       {/* Create/Edit Dialog */}

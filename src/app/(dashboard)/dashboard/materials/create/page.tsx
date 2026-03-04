@@ -79,7 +79,13 @@ export default function CreateMaterialPage() {
   useEffect(() => {
     fetch('/api/provinces?activeOnly=true').then((r) => r.json()).then((d) => d.success && d.data && setProvinces(d.data));
     fetch('/api/cities?activeOnly=true').then((r) => r.json()).then((d) => d.success && d.data && setCities(d.data));
-    fetch('/api/material-categories').then((r) => r.json()).then((d) => d.categories && setMaterialCategories(d.categories));
+    fetch('/api/material-categories')
+      .then((r) => r.json())
+      .then((d) => {
+        const list = Array.isArray(d?.categories) ? d.categories : [];
+        setMaterialCategories(list);
+      })
+      .catch(() => setMaterialCategories([]));
   }, []);
   const citiesByProvince = selectedProvinceId ? cities.filter((c) => c.provinceId === selectedProvinceId) : cities;
 
@@ -372,9 +378,13 @@ export default function CreateMaterialPage() {
             </div>
 
             {/* Kategori Material (multi-select) */}
-            {materialCategories.length > 0 && (
-              <div className="space-y-2">
-                <Label>Kategori Material (bisa pilih lebih dari satu)</Label>
+            <div className="space-y-2">
+              <Label>Kategori Material (bisa pilih lebih dari satu)</Label>
+              {materialCategories.length === 0 ? (
+                <p className="text-sm text-muted-foreground rounded-lg border p-4">
+                  Belum ada kategori material. Admin dapat menambahkannya di Dashboard → Kategori Material.
+                </p>
+              ) : (
                 <div className="rounded-lg border p-4 space-y-3 max-h-48 overflow-y-auto">
                   {materialCategories.map((parent) => (
                     <div key={parent.id} className="space-y-1">
@@ -389,7 +399,7 @@ export default function CreateMaterialPage() {
                       </label>
                       {parent.children?.length > 0 && (
                         <div className="pl-6 space-y-1">
-                          {parent.children.map((child) => (
+                          {parent.children.map((child: { id: string; name: string }) => (
                             <label key={child.id} className="flex items-center gap-2 cursor-pointer">
                               <input
                                 type="checkbox"
@@ -405,8 +415,8 @@ export default function CreateMaterialPage() {
                     </div>
                   ))}
                 </div>
-              </div>
-            )}
+              )}
+            </div>
 
             {/* SIMPLE Type Fields */}
             {quotationType === 'SIMPLE' && (
