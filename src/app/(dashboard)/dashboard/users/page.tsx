@@ -1,23 +1,50 @@
 'use client';
 
 import { useState } from 'react';
-import { useUsers, formatCurrency, formatDate } from '@/hooks/api';
+import { useQueryClient } from '@tanstack/react-query';
+import { useUsers, useUser, formatDate } from '@/hooks/api';
 import { useAuth } from '@/providers/AuthProvider';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Loader2, Search, Users, UserCheck, UserX, Shield, Star } from 'lucide-react';
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetDescription,
+} from '@/components/ui/sheet';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { Loader2, Search, Users, UserCheck, UserX, Shield, Star, Mail, MessageCircle, MoreHorizontal } from 'lucide-react';
 import { toast } from 'sonner';
+
+/** Format nomor untuk WhatsApp: 08xxx -> 628xxx */
+function toWhatsAppNumber(phone: string | null | undefined): string | null {
+  if (!phone || !phone.trim()) return null;
+  const digits = phone.replace(/\D/g, '');
+  if (digits.length < 9) return null;
+  if (digits.startsWith('0')) return '62' + digits.slice(1);
+  if (!digits.startsWith('62')) return '62' + digits;
+  return digits;
+}
 
 export default function UsersPage() {
   const { user } = useAuth();
+  const queryClient = useQueryClient();
   const [search, setSearch] = useState('');
   const [roleFilter, setRoleFilter] = useState<string>('');
   const [statusFilter, setStatusFilter] = useState<string>('');
+  const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
 
   const { data, isLoading, error } = useUsers({
     search: search || undefined,
@@ -37,24 +64,43 @@ export default function UsersPage() {
     admins: users.filter(u => u.role === 'ADMIN').length,
   };
 
+  const refetchUsers = () => {
+    queryClient.invalidateQueries({ queryKey: ['users'] });
+    if (selectedUserId) queryClient.invalidateQueries({ queryKey: ['user', selectedUserId] });
+  };
+
   const handleVerify = async (userId: string) => {
     try {
       const response = await fetch(`/api/users/${userId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          isVerified: true, 
+        body: JSON.stringify({
+          isVerified: true,
           status: 'ACTIVE',
           verifiedAt: new Date().toISOString(),
           verifiedBy: user?.id,
         }),
       });
-      
       if (!response.ok) throw new Error('Gagal memverifikasi user');
-      
       toast.success('User berhasil diverifikasi!');
+      refetchUsers();
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Gagal memverifikasi user');
+    }
+  };
+
+  const handleActivate = async (userId: string) => {
+    try {
+      const response = await fetch(`/api/users/${userId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'ACTIVE' }),
+      });
+      if (!response.ok) throw new Error('Gagal mengaktifkan user');
+      toast.success('User berhasil diaktifkan!');
+      refetchUsers();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Gagal mengaktifkan user');
     }
   };
 
@@ -65,10 +111,9 @@ export default function UsersPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status: 'SUSPENDED' }),
       });
-      
       if (!response.ok) throw new Error('Gagal menangguhkan user');
-      
       toast.success('User berhasil ditangguhkan!');
+      refetchUsers();
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Gagal menangguhkan user');
     }
@@ -234,7 +279,11 @@ export default function UsersPage() {
                 </TableHeader>
                 <TableBody>
                   {users.map((u) => (
-                    <TableRow key={u.id}>
+                    <TableRow
+                      key={u.id}
+                      className="cursor-pointer hover:bg-muted/50"
+                      onClick={() => setSelectedUserId(u.id)}
+                    >
                       <TableCell>
                         <div className="flex items-center gap-3">
                           <Avatar>
@@ -276,29 +325,57 @@ export default function UsersPage() {
                       <TableCell className="whitespace-nowrap">
                         {formatDate(u.createdAt)}
                       </TableCell>
-                      <TableCell>
-                        <div className="flex gap-1">
-                          {!u.isVerified && u.status === 'PENDING_VERIFICATION' && (
-                            <Button
-                              size="sm"
-                              className="bg-green-600 hover:bg-green-700"
-                              onClick={() => handleVerify(u.id)}
-                            >
-                              <UserCheck className="h-4 w-4 mr-1" />
-                              Verifikasi
+                      <TableCell onClick={(e) => e.stopPropagation()}>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon" className="h-8 w-8">
+                              <MoreHorizontal className="h-4 w-4" />
                             </Button>
-                          )}
-                          {u.status !== 'SUSPENDED' && u.role !== 'ADMIN' && (
-                            <Button
-                              size="sm"
-                              variant="destructive"
-                              onClick={() => handleSuspend(u.id)}
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="w-48">
+                            <DropdownMenuItem
+                              onClick={() => window.open(`mailto:${u.email}`, '_blank')}
                             >
-                              <UserX className="h-4 w-4 mr-1" />
-                              Tangguhkan
-                            </Button>
-                          )}
-                        </div>
+                              <Mail className="h-4 w-4 mr-2" />
+                              Email
+                            </DropdownMenuItem>
+                            {toWhatsAppNumber(u.phone) && (
+                              <DropdownMenuItem
+                                onClick={() =>
+                                  window.open(
+                                    `https://wa.me/${toWhatsAppNumber(u.phone)}`,
+                                    '_blank'
+                                  )
+                                }
+                              >
+                                <MessageCircle className="h-4 w-4 mr-2" />
+                                WhatsApp
+                              </DropdownMenuItem>
+                            )}
+                            <DropdownMenuSeparator />
+                            {!u.isVerified && u.status === 'PENDING_VERIFICATION' && (
+                              <DropdownMenuItem onClick={() => handleVerify(u.id)}>
+                                <UserCheck className="h-4 w-4 mr-2" />
+                                Verifikasi
+                              </DropdownMenuItem>
+                            )}
+                            {u.status === 'SUSPENDED' && (
+                              <DropdownMenuItem onClick={() => handleActivate(u.id)}>
+                                <UserCheck className="h-4 w-4 mr-2" />
+                                Aktifkan
+                              </DropdownMenuItem>
+                            )}
+                            {u.status !== 'SUSPENDED' && u.role !== 'ADMIN' && (
+                              <DropdownMenuItem
+                                onClick={() => handleSuspend(u.id)}
+                                className="text-destructive focus:text-destructive"
+                              >
+                                <UserX className="h-4 w-4 mr-2" />
+                                Tangguhkan
+                              </DropdownMenuItem>
+                            )}
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -308,6 +385,173 @@ export default function UsersPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* Detail user (Sheet) */}
+      <UserDetailSheet
+        userId={selectedUserId}
+        onClose={() => setSelectedUserId(null)}
+        onVerify={handleVerify}
+        onActivate={handleActivate}
+        onSuspend={handleSuspend}
+        roleLabels={roleLabels}
+        roleColors={roleColors}
+        statusColors={statusColors}
+        currentUserId={user?.id}
+      />
     </div>
+  );
+}
+
+interface UserDetailSheetProps {
+  userId: string | null;
+  onClose: () => void;
+  onVerify: (id: string) => void;
+  onActivate: (id: string) => void;
+  onSuspend: (id: string) => void;
+  roleLabels: Record<string, string>;
+  roleColors: Record<string, string>;
+  statusColors: Record<string, string>;
+  currentUserId?: string;
+}
+
+function UserDetailSheet({
+  userId,
+  onClose,
+  onVerify,
+  onActivate,
+  onSuspend,
+  roleLabels,
+  roleColors,
+  statusColors,
+  currentUserId,
+}: UserDetailSheetProps) {
+  const { data, isLoading } = useUser(userId ?? '');
+
+  const u = data?.user;
+  const isAdmin = u?.role === 'ADMIN';
+  const canChangeStatus = currentUserId !== u?.id;
+
+  const waNumber = u?.phone ? toWhatsAppNumber(u.phone) : null;
+
+  return (
+    <Sheet open={!!userId} onOpenChange={(open) => !open && onClose()}>
+      <SheetContent className="w-full sm:max-w-lg overflow-y-auto">
+        <SheetHeader>
+          <SheetTitle>Profil User</SheetTitle>
+          <SheetDescription>Detail informasi dan aksi untuk user ini</SheetDescription>
+        </SheetHeader>
+        {isLoading && (
+          <div className="flex justify-center py-12">
+            <Loader2 className="h-8 w-8 animate-spin text-[#fd904c]" />
+          </div>
+        )}
+        {!isLoading && u && (
+          <div className="space-y-6 py-4">
+            <div className="flex items-center gap-4">
+              <Avatar className="h-16 w-16">
+                <AvatarImage src={u.avatar || undefined} />
+                <AvatarFallback className="bg-gradient-to-br from-[#fd904c] to-[#e57835] text-white text-xl">
+                  {u.name.charAt(0).toUpperCase()}
+                </AvatarFallback>
+              </Avatar>
+              <div>
+                <p className="font-semibold text-lg">{u.name}</p>
+                <p className="text-sm text-muted-foreground">{u.email}</p>
+                <div className="flex gap-2 mt-2">
+                  <Badge className={roleColors[u.role]}>{roleLabels[u.role]}</Badge>
+                  <Badge className={statusColors[u.status]}>
+                    {u.status === 'ACTIVE' ? 'Aktif' :
+                     u.status === 'PENDING_VERIFICATION' ? 'Menunggu' :
+                     u.status === 'SUSPENDED' ? 'Ditangguhkan' : 'Tidak Aktif'}
+                  </Badge>
+                  {u.isVerified && (
+                    <Badge className="bg-green-100 text-green-700">Terverifikasi</Badge>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <div className="flex flex-wrap gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => window.open(`mailto:${u.email}`, '_blank')}
+              >
+                <Mail className="h-4 w-4 mr-2" />
+                Email
+              </Button>
+              {waNumber && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => window.open(`https://wa.me/${waNumber}`, '_blank')}
+                >
+                  <MessageCircle className="h-4 w-4 mr-2" />
+                  WhatsApp
+                </Button>
+              )}
+            </div>
+
+            <div className="space-y-3 text-sm">
+              {u.phone && (
+                <p><span className="text-muted-foreground">Telepon:</span> {u.phone}</p>
+              )}
+              {u.address && (
+                <p><span className="text-muted-foreground">Alamat:</span> {u.address}</p>
+              )}
+              {u.city && (
+                <p>
+                  <span className="text-muted-foreground">Kota:</span>{' '}
+                  {typeof u.city === 'object' && u.city !== null
+                    ? `${(u.city as { name: string }).name}${(u.city as { province?: { name: string } }).province ? `, ${(u.city as { province: { name: string } }).province.name}` : ''}`
+                    : String(u.city)}
+                </p>
+              )}
+              {u.specialty && (
+                <p><span className="text-muted-foreground">Keahlian:</span> {u.specialty}</p>
+              )}
+              {u.experience != null && (
+                <p><span className="text-muted-foreground">Pengalaman:</span> {u.experience} tahun</p>
+              )}
+              {u.description && (
+                <p><span className="text-muted-foreground">Deskripsi:</span> {u.description}</p>
+              )}
+              <p><span className="text-muted-foreground">Rating:</span> {u.rating?.toFixed(1) ?? '0'} ({u.totalReviews ?? 0} ulasan)</p>
+              <p><span className="text-muted-foreground">Terdaftar:</span> {formatDate(u.createdAt)}</p>
+              {(u as { _count?: { projectsAsClient?: number; projectsAsVendor?: number } })._count != null && (
+                <p>
+                  <span className="text-muted-foreground">Proyek (klien):</span> {(u as { _count: { projectsAsClient?: number } })._count.projectsAsClient ?? 0}
+                  {' · '}
+                  <span className="text-muted-foreground">Proyek (vendor):</span> {(u as { _count: { projectsAsVendor?: number } })._count.projectsAsVendor ?? 0}
+                </p>
+              )}
+            </div>
+
+            {canChangeStatus && !isAdmin && (
+              <div className="flex flex-wrap gap-2 pt-4 border-t">
+                {!u.isVerified && u.status === 'PENDING_VERIFICATION' && (
+                  <Button size="sm" className="bg-green-600 hover:bg-green-700" onClick={() => onVerify(u.id)}>
+                    <UserCheck className="h-4 w-4 mr-2" />
+                    Verifikasi
+                  </Button>
+                )}
+                {u.status === 'SUSPENDED' && (
+                  <Button size="sm" onClick={() => onActivate(u.id)}>
+                    <UserCheck className="h-4 w-4 mr-2" />
+                    Aktifkan
+                  </Button>
+                )}
+                {u.status !== 'SUSPENDED' && (
+                  <Button size="sm" variant="destructive" onClick={() => onSuspend(u.id)}>
+                    <UserX className="h-4 w-4 mr-2" />
+                    Tangguhkan
+                  </Button>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+      </SheetContent>
+    </Sheet>
   );
 }

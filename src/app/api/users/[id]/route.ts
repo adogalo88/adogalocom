@@ -43,20 +43,34 @@ export async function GET(
         ktpPhoto: true,
         npwpNumber: true,
         address: true,
-        city: true,
-        province: true,
+        city: {
+          select: {
+            id: true,
+            name: true,
+            province: { select: { id: true, name: true } },
+          },
+        },
         postalCode: true,
         bankName: true,
         bankAccountNumber: true,
         bankAccountName: true,
         specialty: true,
         experience: true,
+        description: true,
         rating: true,
         totalReviews: true,
         isVerified: true,
         verifiedAt: true,
         createdAt: true,
         updatedAt: true,
+        _count: {
+          select: {
+            projectsAsClient: true,
+            projectsAsVendor: true,
+            applications: true,
+            reviewsReceived: true,
+          },
+        },
       },
     });
 
