@@ -75,6 +75,9 @@ railway login
 | `NEXTAUTH_URL`   | URL app Anda, contoh: `https://nama-app-anda.up.railway.app` (sesuaikan setelah Generate Domain). |
 | `NODE_ENV`       | `production` |
 | `HOSTNAME`       | `0.0.0.0` (agar server bisa dijangkau healthcheck Railway). |
+| `BREVO_API_KEY`  | Untuk kirim OTP email: dapatkan dari [Brevo](https://app.brevo.com) → Settings → SMTP & API → API Keys. Lihat **[Panduan Brevo](#-panduan-setup-brevo-otp-email)** di bawah. |
+| `BREVO_SENDER_EMAIL` | (Opsional) Email pengirim, contoh: `noreply@domainanda.com`. Default: `noreply@adogalo.com`. |
+| `BREVO_SENDER_NAME`  | (Opsional) Nama pengirim, contoh: `Adogalo`. Default: `Adogalo`. |
 
 6. **Reference dari Postgres (untuk DATABASE_URL):**
    - Di form variable, pilih **"Add Reference"** atau **"Reference Variable"**.
@@ -101,6 +104,12 @@ NEXTAUTH_URL=https://nama-app-anda.up.railway.app
 # Wajib agar healthcheck bisa akses server
 HOSTNAME=0.0.0.0
 NODE_ENV=production
+
+# OTP email (Brevo) — wajib agar registrasi kirim OTP ke inbox
+BREVO_API_KEY=xkeysib-xxxx...
+# Opsional:
+# BREVO_SENDER_EMAIL=noreply@domainanda.com
+# BREVO_SENDER_NAME=Adogalo
 ```
 
 ### 3.4 Generate Secure Secrets
@@ -121,6 +130,38 @@ Script akan mencetak dua baris (JWT_SECRET=... dan NEXTAUTH_SECRET=...) — copy
 ```powershell
 [Convert]::ToBase64String([System.Security.Cryptography.RandomNumberGenerator]::GetBytes(32))
 ```
+
+---
+
+## 📧 PANDUAN SETUP BREVO (OTP EMAIL)
+
+Agar kode OTP benar-benar terkirim ke email user saat registrasi, konfigurasi Brevo (gratis 300 email/hari).
+
+### 1. Akun Brevo
+1. Daftar/login di **[app.brevo.com](https://app.brevo.com)** (gratis).
+2. Verifikasi email jika diminta.
+
+### 2. Ambil API Key
+1. Di dashboard Brevo, klik **ikon profil** (kanan atas) → **Settings** (Pengaturan).
+2. Di menu kiri: **SMTP & API** → **API Keys & MCP**  
+   (atau buka langsung: [app.brevo.com/settings/keys/api](https://app.brevo.com/settings/keys/api)).
+3. Klik **"Generate a new API key"** / **"Buat API key baru"**.
+4. Beri nama (mis. `Adogalo Production`), lalu **Generate**.
+5. **Copy API key** (format `xkeysib-...`) dan simpan. Nilai ini **hanya tampil sekali**; kalau hilang, buat key baru.
+
+### 3. Sender email (penting)
+Brevo hanya mengirim dari alamat yang sudah diverifikasi:
+1. Di Brevo: **Settings** → **Senders & IP** (atau **Senders, Domains & Dedicated IPs**).
+2. Tambah **Sender** (email + nama), lalu **verifikasi** email tersebut (Brevo kirim link verifikasi ke inbox).
+3. Gunakan email yang sudah diverifikasi sebagai pengirim. Di Railway set variable **`BREVO_SENDER_EMAIL`** = email itu (opsional; default di kode: `noreply@adogalo.com` — harus ada sender yang diverifikasi dengan domain/email itu di Brevo).
+
+### 4. Variable di Railway
+Di service **Web** → **Variables**, tambah:
+- **`BREVO_API_KEY`** = API key yang Anda copy (wajib).
+- **`BREVO_SENDER_EMAIL`** = email pengirim yang sudah diverifikasi di Brevo (opsional).
+- **`BREVO_SENDER_NAME`** = nama pengirim, mis. `Adogalo` (opsional).
+
+Simpan lalu redeploy. Setelah itu, registrasi akan mengirim OTP ke inbox user.
 
 ---
 
@@ -147,18 +188,31 @@ railway up --branch main
 
 ## 🌱 STEP 5: SEED DATABASE
 
-### 5.1 Jalankan Migration
-Di Railway dashboard, buka tab **"Settings"** → **"PRISMA"**:
+### 5.1 Buat Tabel di Production (wajib sekali jalan)
+Project ini belum punya file di `prisma/migrations`. Jadi **`migrate deploy` tidak membuat tabel**. Wajib jalankan **`db push`** sekali ke database production supaya semua tabel (termasuk `otps` untuk registrasi) terbentuk.
+
+**Opsi A – Railway CLI (dari folder project, sudah `railway link`):**
 ```bash
-npx prisma migrate deploy
+railway run npx prisma db push --schema=prisma/schema.production.prisma
 ```
 
-Atau via CLI:
+**Opsi B – Dari PC (tanpa CLI):**  
+Copy **DATABASE_URL_PUBLIC** dari service Postgres (bukan DATABASE_URL internal). Lalu di folder project:
 ```bash
-railway run npx prisma migrate deploy
+set DATABASE_URL=postgresql://...paste_url_public...
+npx prisma db push --schema=prisma/schema.production.prisma
+```
+(PowerShell: `$env:DATABASE_URL="postgresql://..."` lalu jalankan perintah yang sama.)
+
+Setelah itu, registrasi (OTP) dan fitur lain yang pakai DB akan jalan. Tidak perlu dijalankan lagi kecuali Anda mengubah schema.
+
+### 5.2 Jalankan Migration (kalau nanti pakai migrate)
+Kalau nanti Anda punya migration files:
+```bash
+railway run npx prisma migrate deploy --schema=prisma/schema.production.prisma
 ```
 
-### 5.2 Seed Data Awal
+### 5.3 Seed Data Awal (opsional)
 ```bash
 # Seed admin dan data dasar
 railway run bun prisma/seed.ts
@@ -247,6 +301,31 @@ railway status
 # Tambahkan di build command
 prisma generate && next build
 ```
+
+### Error: "the URL must start with the protocol `postgresql://` or `postgres://`"
+Artinya **DATABASE_URL** di service **Web** belum sampai ke container atau nilainya salah saat runtime.
+
+**Bukan karena file .env di repo:**  
+File `.env` di project Anda ada di `.gitignore`, jadi tidak ikut ke Git dan tidak dipakai Railway. Yang dipakai Railway hanya **Variables** yang Anda set di dashboard service **Web**. Jadi masalah ada di konfigurasi variable di Railway, bukan di .env lokal.
+
+**Perbaikan (coba berurutan):**
+
+1. **Variable harus di service Web**  
+   Pastikan **DATABASE_URL** ditambahkan di service **Web** (aplikasi Next.js), bukan hanya di service Postgres.
+
+2. **Coba isi langsung (tanpa Reference)**  
+   Kadang Reference ke service lain tidak ter-resolve saat container jalan.  
+   - Buka service **Postgres** → **Variables** → copy **nilai penuh** `DATABASE_URL` (bentuk: `postgresql://user:pass@host:port/railway`).  
+   - Buka service **Web** → **Variables** → buat/edit variable **DATABASE_URL** → paste nilai tadi (bukan teks seperti `${{Postgres.DATABASE_URL}}`).  
+   - Simpan dan deploy ulang.
+
+3. **Kalau pakai Reference**  
+   Pastikan memilih **"Add Reference"** / **"Reference Variable"** lalu pilih service Postgres dan variable **DATABASE_URL**. Jangan ketik manual `${{...}}`.
+
+4. **Cek nilai di deploy**  
+   Setelah deploy, di service Web buka **Deployments** → deployment terakhir → **View Logs**. Jika error Prisma masih muncul, kemungkinan DATABASE_URL tetap kosong/salah di environment container.
+
+Setelah diperbaiki, trigger deploy ulang.
 
 ### Database Connection Error
 ```bash

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { db } from '@/lib/db';
 import { validateEmail } from '@/lib/auth';
+import { isBrevoConfigured, sendOTPEmail } from '@/lib/email';
 
 const sendOTPSchema = z.object({
   email: z.string().email('Format email tidak valid'),
@@ -125,16 +126,25 @@ export async function POST(request: NextRequest) {
       // For now, we'll pass this data through the verification step
     }
 
-    // In production, send email here using service like Resend, SendGrid, etc.
-    // For development, we'll return the OTP in the response
+    // Kirim email via Brevo jika BREVO_API_KEY di-set; dev fallback: return OTP di response
     const isDevelopment = process.env.NODE_ENV === 'development';
-    
-    console.log(`[OTP] Code: ${otpCode} sent to ${email} (type: ${type})`);
+    if (isBrevoConfigured()) {
+      const result = await sendOTPEmail(email.toLowerCase(), otpCode, type);
+      if (!result.success) {
+        console.error('[OTP] Brevo send failed:', result.error);
+        return NextResponse.json(
+          { error: 'Gagal mengirim email. Coba lagi atau hubungi admin.' },
+          { status: 502 }
+        );
+      }
+    } else {
+      console.log(`[OTP] Code: ${otpCode} sent to ${email} (type: ${type}) — set BREVO_API_KEY to send real email`);
+    }
 
     return NextResponse.json({
       message: 'Kode OTP telah dikirim ke email Anda',
       expiresIn: 600, // 10 minutes in seconds
-      ...(isDevelopment && { otpCode }), // Only in development
+      ...(isDevelopment && !isBrevoConfigured() && { otpCode }), // Hanya di development tanpa Brevo
     });
 
   } catch (error) {
