@@ -10,10 +10,10 @@ export async function GET() {
       where: { parentId: null },
       include: {
         children: {
-          orderBy: { sortOrder: 'asc', name: 'asc' },
+          orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }],
         },
       },
-      orderBy: { sortOrder: 'asc', name: 'asc' },
+      orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }],
     });
 
     return apiSuccess({ categories });
