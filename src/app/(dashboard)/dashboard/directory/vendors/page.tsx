@@ -70,8 +70,8 @@ export default function VendorDirectoryPage() {
     const fetchCities = async () => {
       try {
         const res = await fetch('/api/cities?activeOnly=true');
-        const data = await res.json();
-        if (data.success) {
+        const data = await res.json().catch(() => ({}));
+        if (data?.success && Array.isArray(data.data)) {
           setCities(data.data);
         }
       } catch (error) {
@@ -94,11 +94,11 @@ export default function VendorDirectoryPage() {
       params.set('limit', '12');
 
       const res = await fetch(`/api/directory/vendors?${params.toString()}`);
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
 
-      if (data.success) {
-        setVendors(data.data);
-        setPagination(data.pagination);
+      if (data?.success) {
+        setVendors(Array.isArray(data.data) ? data.data : []);
+        setPagination(data.pagination ?? { page: 1, limit: 12, total: 0, totalPages: 0 });
       }
     } catch (error) {
       console.error('Failed to fetch vendors:', error);
@@ -141,25 +141,25 @@ export default function VendorDirectoryPage() {
                 className="pl-10"
               />
             </div>
-            <Select value={cityId} onValueChange={setCityId}>
+            <Select value={cityId || 'all'} onValueChange={(v) => setCityId(v === 'all' ? '' : v)}>
               <SelectTrigger>
                 <SelectValue placeholder="Semua Lokasi" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">Semua Lokasi</SelectItem>
+                <SelectItem value="all">Semua Lokasi</SelectItem>
                 {cities.map((city) => (
                   <SelectItem key={city.id} value={city.id}>
-                    {city.name}, {city.province.name}
+                    {city.name}, {city.province?.name ?? ''}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
-            <Select value={minRating} onValueChange={setMinRating}>
+            <Select value={minRating || 'all'} onValueChange={(v) => setMinRating(v === 'all' ? '' : v)}>
               <SelectTrigger>
                 <SelectValue placeholder="Rating Minimum" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">Semua Rating</SelectItem>
+                <SelectItem value="all">Semua Rating</SelectItem>
                 <SelectItem value="4.5">4.5+ Bintang</SelectItem>
                 <SelectItem value="4">4+ Bintang</SelectItem>
                 <SelectItem value="3.5">3.5+ Bintang</SelectItem>

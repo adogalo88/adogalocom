@@ -75,13 +75,13 @@ export default function SupplierDirectoryPage() {
           fetch('/api/cities?activeOnly=true'),
         ]);
         
-        const provincesData = await provincesRes.json();
-        const citiesData = await citiesRes.json();
-        
-        if (provincesData.success) {
+        const provincesData = await provincesRes.json().catch(() => ({}));
+        const citiesData = await citiesRes.json().catch(() => ({}));
+
+        if (provincesData?.success && Array.isArray(provincesData.data)) {
           setProvinces(provincesData.data);
         }
-        if (citiesData.success) {
+        if (citiesData?.success && Array.isArray(citiesData.data)) {
           setCities(citiesData.data);
         }
       } catch (error) {
@@ -93,7 +93,7 @@ export default function SupplierDirectoryPage() {
 
   // Filter cities based on selected province
   const filteredCities = provinceId
-    ? cities.filter(c => c.province.id === provinceId)
+    ? cities.filter((c) => c.province?.id === provinceId)
     : cities;
 
   // Fetch suppliers
@@ -110,11 +110,11 @@ export default function SupplierDirectoryPage() {
       params.set('limit', '12');
 
       const res = await fetch(`/api/directory/suppliers?${params.toString()}`);
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
 
-      if (data.success) {
-        setSuppliers(data.data);
-        setPagination(data.pagination);
+      if (data?.success) {
+        setSuppliers(Array.isArray(data.data) ? data.data : []);
+        setPagination(data.pagination ?? { page: 1, limit: 12, total: 0, totalPages: 0 });
       }
     } catch (error) {
       console.error('Failed to fetch suppliers:', error);
@@ -163,23 +163,23 @@ export default function SupplierDirectoryPage() {
                 className="pl-10"
               />
             </div>
-            <Select value={provinceId} onValueChange={handleProvinceChange}>
+            <Select value={provinceId || 'all'} onValueChange={(v) => handleProvinceChange(v === 'all' ? '' : v)}>
               <SelectTrigger>
                 <SelectValue placeholder="Provinsi" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">Semua Provinsi</SelectItem>
+                <SelectItem value="all">Semua Provinsi</SelectItem>
                 {provinces.map((p) => (
                   <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
-            <Select value={cityId} onValueChange={setCityId}>
+            <Select value={cityId || 'all'} onValueChange={(v) => setCityId(v === 'all' ? '' : v)}>
               <SelectTrigger>
                 <SelectValue placeholder="Kota/Kab." />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">Semua Kota</SelectItem>
+                <SelectItem value="all">Semua Kota</SelectItem>
                 {filteredCities.map((city) => (
                   <SelectItem key={city.id} value={city.id}>
                     {city.name}
@@ -187,12 +187,12 @@ export default function SupplierDirectoryPage() {
                 ))}
               </SelectContent>
             </Select>
-            <Select value={minRating} onValueChange={setMinRating}>
+            <Select value={minRating || 'all'} onValueChange={(v) => setMinRating(v === 'all' ? '' : v)}>
               <SelectTrigger>
                 <SelectValue placeholder="Rating" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">Semua Rating</SelectItem>
+                <SelectItem value="all">Semua Rating</SelectItem>
                 <SelectItem value="4.5">4.5+ ⭐</SelectItem>
                 <SelectItem value="4">4+ ⭐</SelectItem>
                 <SelectItem value="3.5">3.5+ ⭐</SelectItem>

@@ -85,8 +85,8 @@ export default function TukangDirectoryPage() {
     const fetchCities = async () => {
       try {
         const res = await fetch('/api/cities?activeOnly=true');
-        const data = await res.json();
-        if (data.success) {
+        const data = await res.json().catch(() => ({}));
+        if (data?.success && Array.isArray(data.data)) {
           setCities(data.data);
         }
       } catch (error) {
@@ -111,11 +111,11 @@ export default function TukangDirectoryPage() {
       params.set('limit', '12');
 
       const res = await fetch(`/api/directory/tukangs?${params.toString()}`);
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
 
-      if (data.success) {
-        setTukangs(data.data);
-        setPagination(data.pagination);
+      if (data?.success) {
+        setTukangs(Array.isArray(data.data) ? data.data : []);
+        setPagination(data.pagination ?? { page: 1, limit: 12, total: 0, totalPages: 0 });
       }
     } catch (error) {
       console.error('Failed to fetch tukangs:', error);
@@ -158,12 +158,12 @@ export default function TukangDirectoryPage() {
                 className="pl-10"
               />
             </div>
-            <Select value={cityId} onValueChange={setCityId}>
+            <Select value={cityId || 'all'} onValueChange={(v) => setCityId(v === 'all' ? '' : v)}>
               <SelectTrigger>
                 <SelectValue placeholder="Lokasi" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">Semua Lokasi</SelectItem>
+                <SelectItem value="all">Semua Lokasi</SelectItem>
                 {cities.map((city) => (
                   <SelectItem key={city.id} value={city.id}>
                     {city.name}
@@ -171,23 +171,23 @@ export default function TukangDirectoryPage() {
                 ))}
               </SelectContent>
             </Select>
-            <Select value={specialty} onValueChange={setSpecialty}>
+            <Select value={specialty || 'all'} onValueChange={(v) => setSpecialty(v === 'all' ? '' : v)}>
               <SelectTrigger>
                 <SelectValue placeholder="Keahlian" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">Semua Keahlian</SelectItem>
+                <SelectItem value="all">Semua Keahlian</SelectItem>
                 {TUKANG_SPECIALTIES.map((s) => (
                   <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
-            <Select value={minRating} onValueChange={setMinRating}>
+            <Select value={minRating || 'all'} onValueChange={(v) => setMinRating(v === 'all' ? '' : v)}>
               <SelectTrigger>
                 <SelectValue placeholder="Rating" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">Semua Rating</SelectItem>
+                <SelectItem value="all">Semua Rating</SelectItem>
                 <SelectItem value="4.5">4.5+ ⭐</SelectItem>
                 <SelectItem value="4">4+ ⭐</SelectItem>
                 <SelectItem value="3.5">3.5+ ⭐</SelectItem>
