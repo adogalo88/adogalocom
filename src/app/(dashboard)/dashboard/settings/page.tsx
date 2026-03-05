@@ -49,6 +49,7 @@ export default function SettingsPage() {
 
   // Data verifikasi (Vendor/Supplier/Tukang)
   const u = user as Record<string, unknown> | null;
+  const [verificationEntityType, setVerificationEntityType] = useState<'PERORANGAN' | 'BADAN_USAHA'>('BADAN_USAHA');
   const [verifPicName, setVerifPicName] = useState('');
   const [verifPicPhone, setVerifPicPhone] = useState('');
   const [verifPicKtpPhoto, setVerifPicKtpPhoto] = useState('');
@@ -78,6 +79,8 @@ export default function SettingsPage() {
 
   useEffect(() => {
     if (!u) return;
+    const vType = (u.verificationEntityType as string) === 'PERORANGAN' ? 'PERORANGAN' : 'BADAN_USAHA';
+    setVerificationEntityType(vType);
     setVerifPicName((u.picName as string) ?? '');
     setVerifPicPhone((u.picPhone as string) ?? '');
     setVerifPicKtpPhoto((u.picKtpPhoto as string) ?? '');
@@ -89,7 +92,7 @@ export default function SettingsPage() {
     setVerifSkckDoc((u.skckDoc as string) ?? '');
     setVerifExperience((u.experience as number) ?? '');
     setVerifAvatar((u.avatar as string) ?? '');
-  }, [u?.id, u?.picName, u?.picPhone, u?.picKtpPhoto, u?.nibDoc, u?.npwpDoc, u?.aktaPendirianDoc, u?.siupDoc, u?.ktpPhoto, u?.skckDoc, u?.experience, u?.avatar]);
+  }, [u?.id, u?.verificationEntityType, u?.picName, u?.picPhone, u?.picKtpPhoto, u?.nibDoc, u?.npwpDoc, u?.aktaPendirianDoc, u?.siupDoc, u?.ktpPhoto, u?.skckDoc, u?.experience, u?.avatar]);
 
   const userCityId = (user as { cityId?: string | null; city?: { id: string } | null })?.cityId ?? (user as { city?: { id: string } | null })?.city?.id ?? null;
   const citiesByProvince = selectedProvinceId ? cities.filter((c) => c.provinceId === selectedProvinceId) : cities;
@@ -187,10 +190,54 @@ export default function SettingsPage() {
   };
 
   const onSaveVerification = async () => {
+    // Validasi wajib sebelum simpan
+    if (user?.role === 'VENDOR') {
+      if (verificationEntityType === 'PERORANGAN') {
+        if (!verifKtpPhoto?.trim()) {
+          toast.error('Untuk verifikasi perorangan, upload KTP wajib diisi.');
+          return;
+        }
+      } else {
+        const hasBadanDoc = !!(verifNibDoc || verifNpwpDoc || verifAktaDoc || verifSiupDoc);
+        if (!hasBadanDoc) {
+          toast.error('Untuk badan usaha, upload minimal salah satu: NIB, NPWP, Akta Pendirian, atau SIUP.');
+          return;
+        }
+      }
+    }
+    if (user?.role === 'SUPPLIER') {
+      if (!verifPicName?.trim()) {
+        toast.error('Nama PIC wajib diisi.');
+        return;
+      }
+      if (!verifPicPhone?.trim()) {
+        toast.error('Nomor WhatsApp PIC wajib diisi.');
+        return;
+      }
+      if (!verifPicKtpPhoto?.trim()) {
+        toast.error('KTP PIC wajib diupload.');
+        return;
+      }
+    }
     setSavingVerif(true);
     try {
       const payload: Record<string, unknown> = {};
-      if (user?.role === 'VENDOR' || user?.role === 'SUPPLIER') {
+      if (user?.role === 'VENDOR') {
+        payload.verificationEntityType = verificationEntityType;
+        if (verificationEntityType === 'PERORANGAN') {
+          payload.ktpPhoto = verifKtpPhoto || null;
+          payload.nibDoc = verifNibDoc || null;
+          payload.npwpDoc = verifNpwpDoc || null;
+        } else {
+          payload.picName = verifPicName || null;
+          payload.picPhone = verifPicPhone || null;
+          payload.picKtpPhoto = verifPicKtpPhoto || null;
+          payload.nibDoc = verifNibDoc || null;
+          payload.npwpDoc = verifNpwpDoc || null;
+          payload.aktaPendirianDoc = verifAktaDoc || null;
+          payload.siupDoc = verifSiupDoc || null;
+        }
+      } else if (user?.role === 'SUPPLIER') {
         payload.picName = verifPicName || null;
         payload.picPhone = verifPicPhone || null;
         payload.picKtpPhoto = verifPicKtpPhoto || null;
@@ -417,24 +464,120 @@ export default function SettingsPage() {
                 <CardDescription>
                   {user?.role === 'TUKANG'
                     ? 'Lengkapi data berikut agar admin dapat memverifikasi akun Anda. Foto KTP, selfie (foto profil), pengalaman kerja, dan SKCK wajib.'
-                    : 'Isi data PIC (kosongkan jika perorangan). Jika berbadan usaha, upload minimal salah satu: NIB, NPWP, Akta Pendirian, atau SIUP.'}
+                    : user?.role === 'VENDOR'
+                    ? 'Pilih tipe: Perorangan (KTP wajib) atau Badan Usaha (minimal salah satu dokumen NIB/NPWP/Akta/SIUP).'
+                    : 'Nama PIC, nomor WhatsApp PIC, dan KTP PIC wajib diisi.'}
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
-                {(user?.role === 'VENDOR' || user?.role === 'SUPPLIER') && (
+                {user?.role === 'VENDOR' && (
+                  <>
+                    <div className="space-y-2">
+                      <Label>Tipe verifikasi</Label>
+                      <div className="flex gap-4">
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="radio"
+                            name="vendorType"
+                            checked={verificationEntityType === 'BADAN_USAHA'}
+                            onChange={() => setVerificationEntityType('BADAN_USAHA')}
+                            className="rounded-full"
+                          />
+                          <span>Badan Usaha</span>
+                        </label>
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="radio"
+                            name="vendorType"
+                            checked={verificationEntityType === 'PERORANGAN'}
+                            onChange={() => setVerificationEntityType('PERORANGAN')}
+                            className="rounded-full"
+                          />
+                          <span>Perorangan</span>
+                        </label>
+                      </div>
+                    </div>
+                    {verificationEntityType === 'BADAN_USAHA' && (
+                      <>
+                        <div className="grid md:grid-cols-2 gap-4">
+                          <div className="space-y-2">
+                            <Label>Nama PIC (opsional)</Label>
+                            <Input value={verifPicName} onChange={(e) => setVerifPicName(e.target.value)} placeholder="Nama penanggung jawab" />
+                          </div>
+                          <div className="space-y-2">
+                            <Label>WhatsApp PIC (opsional)</Label>
+                            <Input value={verifPicPhone} onChange={(e) => setVerifPicPhone(e.target.value)} placeholder="08xxxxxxxxxx" />
+                          </div>
+                        </div>
+                        <div className="space-y-2">
+                          <Label>KTP PIC (opsional)</Label>
+                          <div className="flex gap-2 items-center">
+                            <Input type="file" accept="image/*,.pdf" className="max-w-xs" onChange={(e) => e.target.files?.[0] && uploadVerifFile('picKtpPhoto', e.target.files[0])} />
+                            {uploadingField === 'picKtpPhoto' && <Loader2 className="h-4 w-4 animate-spin" />}
+                            {verifPicKtpPhoto && <span className="text-sm text-green-600">Terupload</span>}
+                          </div>
+                        </div>
+                        <Separator />
+                        <p className="text-sm font-medium">Dokumen badan usaha (wajib minimal salah satu)</p>
+                        <div className="grid md:grid-cols-2 gap-4">
+                          {(['nibDoc', 'npwpDoc', 'aktaDoc', 'siupDoc'] as const).map((f) => (
+                            <div key={f} className="space-y-2">
+                              <Label>{f === 'nibDoc' ? 'NIB' : f === 'npwpDoc' ? 'NPWP (file)' : f === 'aktaDoc' ? 'Akta Pendirian' : 'SIUP'}</Label>
+                              <div className="flex gap-2 items-center">
+                                <Input type="file" accept="image/*,.pdf" className="max-w-xs" onChange={(e) => e.target.files?.[0] && uploadVerifFile(f, e.target.files[0])} />
+                                {uploadingField === f && <Loader2 className="h-4 w-4 animate-spin" />}
+                                {(f === 'nibDoc' ? verifNibDoc : f === 'npwpDoc' ? verifNpwpDoc : f === 'aktaDoc' ? verifAktaDoc : verifSiupDoc) && <span className="text-sm text-green-600">Terupload</span>}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </>
+                    )}
+                    {verificationEntityType === 'PERORANGAN' && (
+                      <>
+                        <p className="text-sm text-muted-foreground">Perorangan: KTP wajib; NPWP dan NIB opsional.</p>
+                        <div className="space-y-2">
+                          <Label>Foto KTP * (wajib)</Label>
+                          <div className="flex gap-2 items-center">
+                            <Input type="file" accept="image/*,.pdf" className="max-w-xs" onChange={(e) => e.target.files?.[0] && uploadVerifFile('ktpPhoto', e.target.files[0])} />
+                            {uploadingField === 'ktpPhoto' && <Loader2 className="h-4 w-4 animate-spin" />}
+                            {verifKtpPhoto && <span className="text-sm text-green-600">Terupload</span>}
+                          </div>
+                        </div>
+                        <div className="space-y-2">
+                          <Label>NPWP (opsional)</Label>
+                          <div className="flex gap-2 items-center">
+                            <Input type="file" accept="image/*,.pdf" className="max-w-xs" onChange={(e) => e.target.files?.[0] && uploadVerifFile('npwpDoc', e.target.files[0])} />
+                            {uploadingField === 'npwpDoc' && <Loader2 className="h-4 w-4 animate-spin" />}
+                            {verifNpwpDoc && <span className="text-sm text-green-600">Terupload</span>}
+                          </div>
+                        </div>
+                        <div className="space-y-2">
+                          <Label>NIB (opsional)</Label>
+                          <div className="flex gap-2 items-center">
+                            <Input type="file" accept="image/*,.pdf" className="max-w-xs" onChange={(e) => e.target.files?.[0] && uploadVerifFile('nibDoc', e.target.files[0])} />
+                            {uploadingField === 'nibDoc' && <Loader2 className="h-4 w-4 animate-spin" />}
+                            {verifNibDoc && <span className="text-sm text-green-600">Terupload</span>}
+                          </div>
+                        </div>
+                      </>
+                    )}
+                  </>
+                )}
+                {user?.role === 'SUPPLIER' && (
                   <>
                     <div className="grid md:grid-cols-2 gap-4">
                       <div className="space-y-2">
-                        <Label>Nama PIC (kosongkan jika perorangan)</Label>
+                        <Label>Nama PIC * (wajib)</Label>
                         <Input value={verifPicName} onChange={(e) => setVerifPicName(e.target.value)} placeholder="Nama penanggung jawab" />
                       </div>
                       <div className="space-y-2">
-                        <Label>WhatsApp PIC</Label>
+                        <Label>Nomor WhatsApp PIC * (wajib)</Label>
                         <Input value={verifPicPhone} onChange={(e) => setVerifPicPhone(e.target.value)} placeholder="08xxxxxxxxxx" />
                       </div>
                     </div>
                     <div className="space-y-2">
-                      <Label>KTP PIC (opsional)</Label>
+                      <Label>KTP PIC * (wajib)</Label>
                       <div className="flex gap-2 items-center">
                         <Input type="file" accept="image/*,.pdf" className="max-w-xs" onChange={(e) => e.target.files?.[0] && uploadVerifFile('picKtpPhoto', e.target.files[0])} />
                         {uploadingField === 'picKtpPhoto' && <Loader2 className="h-4 w-4 animate-spin" />}
@@ -442,7 +585,7 @@ export default function SettingsPage() {
                       </div>
                     </div>
                     <Separator />
-                    <p className="text-sm font-medium">Dokumen badan usaha (wajib salah satu jika berbadan usaha)</p>
+                    <p className="text-sm font-medium">Dokumen tambahan (opsional)</p>
                     <div className="grid md:grid-cols-2 gap-4">
                       {(['nibDoc', 'npwpDoc', 'aktaDoc', 'siupDoc'] as const).map((f) => (
                         <div key={f} className="space-y-2">

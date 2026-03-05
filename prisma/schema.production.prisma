@@ -78,11 +78,13 @@ model User {
   ktpNumber         String? // Nomor KTP
   ktpPhoto          String? // Foto KTP
   npwpNumber        String? // Nomor NPWP
+  // Verifikasi Vendor: PERORANGAN = KTP wajib; BADAN_USAHA = minimal satu dokumen
+  verificationEntityType String? // VENDOR only: "PERORANGAN" | "BADAN_USAHA", default BADAN_USAHA
   // Verifikasi Vendor/Supplier: PIC & dokumen badan usaha
-  picName           String? // Nama PIC (kosong jika perorangan)
-  picPhone          String? // WhatsApp PIC
-  picKtpPhoto       String? // KTP PIC
-  nibDoc            String? // NIB (badan usaha)
+  picName           String? // Nama PIC (wajib untuk Supplier)
+  picPhone          String? // WhatsApp PIC (wajib untuk Supplier)
+  picKtpPhoto       String? // KTP PIC (wajib untuk Supplier)
+  nibDoc            String? // NIB (badan usaha / opsional perorangan)
   npwpDoc           String? // File NPWP (badan usaha)
   aktaPendirianDoc  String? // Akta pendirian (badan usaha)
   siupDoc           String? // SIUP (badan usaha)

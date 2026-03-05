@@ -78,6 +78,7 @@ model User {
   ktpNumber         String? // Nomor KTP
   ktpPhoto          String? // Foto KTP
   npwpNumber        String? // Nomor NPWP
+  verificationEntityType String? // VENDOR: "PERORANGAN" | "BADAN_USAHA"
   picName           String?
   picPhone          String?
   picKtpPhoto       String?

@@ -107,13 +107,16 @@ interface PendingUser {
   isVerified: boolean;
   ktpPhoto: string | null;
   experience: number | null;
+  verificationEntityType: string | null;
   picName: string | null;
   picPhone: string | null;
+  picKtpPhoto: string | null;
   nibDoc: string | null;
   npwpDoc: string | null;
   aktaPendirianDoc: string | null;
   siupDoc: string | null;
   skckDoc: string | null;
+  address: string | null;
   createdAt: string;
 }
 
@@ -142,6 +145,8 @@ export default function VerificationPage() {
   const [detailDialogOpen, setDetailDialogOpen] = useState(false);
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const [selectedMaterial, setSelectedMaterial] = useState<Material | null>(null);
+  const [reviewUserOpen, setReviewUserOpen] = useState(false);
+  const [selectedReviewUser, setSelectedReviewUser] = useState<PendingUser | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Redirect if not admin
@@ -445,10 +450,18 @@ export default function VerificationPage() {
             <div className="space-y-4">
               {pendingUsers.map((u) => {
                 const roleLabels: Record<string, string> = { CLIENT: 'Klien', VENDOR: 'Vendor', TUKANG: 'Tukang', SUPPLIER: 'Supplier' };
-                const isBadanUsaha = !!(u.nibDoc || u.npwpDoc || u.aktaPendirianDoc || u.siupDoc);
-                const hasVendorSupplierDocs = u.role === 'CLIENT' || (u.role === 'VENDOR' || u.role === 'SUPPLIER' ? (isBadanUsaha ? isBadanUsaha : true) : true);
-                const hasTukangDocs = u.role !== 'TUKANG' || (!!u.ktpPhoto && !!u.skckDoc && u.experience != null);
-                const dataLengkap = hasVendorSupplierDocs && hasTukangDocs;
+                let dataLengkap = true;
+                if (u.role === 'VENDOR') {
+                  if (u.verificationEntityType === 'PERORANGAN') {
+                    dataLengkap = !!u.ktpPhoto;
+                  } else {
+                    dataLengkap = !!(u.nibDoc || u.npwpDoc || u.aktaPendirianDoc || u.siupDoc);
+                  }
+                } else if (u.role === 'SUPPLIER') {
+                  dataLengkap = !!(u.picName?.trim() && u.picPhone?.trim() && u.picKtpPhoto);
+                } else if (u.role === 'TUKANG') {
+                  dataLengkap = !!(u.ktpPhoto && u.skckDoc && u.experience != null);
+                }
                 return (
                   <Card key={u.id} className="glass-card hover:shadow-lg transition-shadow">
                     <CardContent className="p-4">
@@ -474,9 +487,17 @@ export default function VerificationPage() {
                         <div className="flex items-center gap-2">
                           <Button
                             size="sm"
+                            variant="outline"
+                            onClick={() => { setSelectedReviewUser(u); setReviewUserOpen(true); }}
+                          >
+                            <Eye className="h-4 w-4 mr-1" />
+                            Review
+                          </Button>
+                          <Button
+                            size="sm"
                             className="bg-green-600 hover:bg-green-700"
                             onClick={() => handleVerifyUser(u.id)}
-                            disabled={isSubmitting}
+                            disabled={isSubmitting || !dataLengkap}
                           >
                             <CheckCircle className="h-4 w-4 mr-1" />
                             Verifikasi
@@ -890,6 +911,119 @@ export default function VerificationPage() {
                   <p className="font-medium">{selectedProject._count.applications}</p>
                 </div>
               </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Review User Verifikasi */}
+      <Dialog open={reviewUserOpen} onOpenChange={(open) => { if (!open) setSelectedReviewUser(null); setReviewUserOpen(open); }}>
+        <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Review Data Verifikasi</DialogTitle>
+            <DialogDescription>Data yang akan diverifikasi. Periksa kelengkapan sebelum menyetujui.</DialogDescription>
+          </DialogHeader>
+          {selectedReviewUser && (
+            <div className="space-y-4">
+              <div className="flex items-center gap-3 pb-3 border-b">
+                <Avatar className="h-14 w-14">
+                  <AvatarImage src={selectedReviewUser.avatar || undefined} />
+                  <AvatarFallback className="bg-gradient-to-br from-[#fd904c] to-[#e57835] text-white text-lg">
+                    {selectedReviewUser.name.charAt(0)}
+                  </AvatarFallback>
+                </Avatar>
+                <div>
+                  <p className="font-semibold text-lg">{selectedReviewUser.name}</p>
+                  <p className="text-sm text-muted-foreground">{selectedReviewUser.email}</p>
+                  <p className="text-sm text-muted-foreground">{selectedReviewUser.phone || '-'}</p>
+                  <Badge variant="secondary" className="mt-1">
+                    {selectedReviewUser.role === 'VENDOR' ? 'Vendor' : selectedReviewUser.role === 'SUPPLIER' ? 'Supplier' : selectedReviewUser.role === 'TUKANG' ? 'Tukang' : 'Klien'}
+                  </Badge>
+                </div>
+              </div>
+
+              {selectedReviewUser.role === 'VENDOR' && (
+                <div className="space-y-3">
+                  <p className="font-medium text-sm text-muted-foreground">Tipe: {(selectedReviewUser.verificationEntityType === 'PERORANGAN' ? 'Perorangan' : 'Badan Usaha')}</p>
+                  {selectedReviewUser.verificationEntityType === 'PERORANGAN' ? (
+                    <>
+                      <div className="grid gap-2">
+                        <p className="text-sm font-medium">Foto KTP (wajib)</p>
+                        {selectedReviewUser.ktpPhoto ? (
+                          <a href={selectedReviewUser.ktpPhoto} target="_blank" rel="noopener noreferrer" className="text-primary underline text-sm">Lihat dokumen</a>
+                        ) : <span className="text-sm text-amber-600">Belum diupload</span>}
+                      </div>
+                      {(selectedReviewUser.nibDoc || selectedReviewUser.npwpDoc) && (
+                        <div className="flex gap-4 flex-wrap">
+                          {selectedReviewUser.nibDoc && <a href={selectedReviewUser.nibDoc} target="_blank" rel="noopener noreferrer" className="text-primary underline text-sm">NIB</a>}
+                          {selectedReviewUser.npwpDoc && <a href={selectedReviewUser.npwpDoc} target="_blank" rel="noopener noreferrer" className="text-primary underline text-sm">NPWP</a>}
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    <>
+                      {(selectedReviewUser.picName || selectedReviewUser.picPhone) && (
+                        <div className="grid grid-cols-2 gap-2 text-sm">
+                          {selectedReviewUser.picName && <><span className="text-muted-foreground">Nama PIC:</span><span>{selectedReviewUser.picName}</span></>}
+                          {selectedReviewUser.picPhone && <><span className="text-muted-foreground">WA PIC:</span><span>{selectedReviewUser.picPhone}</span></>}
+                        </div>
+                      )}
+                      <div className="flex flex-wrap gap-2">
+                        {selectedReviewUser.picKtpPhoto && <a href={selectedReviewUser.picKtpPhoto} target="_blank" rel="noopener noreferrer" className="text-primary underline text-sm">KTP PIC</a>}
+                        {selectedReviewUser.nibDoc && <a href={selectedReviewUser.nibDoc} target="_blank" rel="noopener noreferrer" className="text-primary underline text-sm">NIB</a>}
+                        {selectedReviewUser.npwpDoc && <a href={selectedReviewUser.npwpDoc} target="_blank" rel="noopener noreferrer" className="text-primary underline text-sm">NPWP</a>}
+                        {selectedReviewUser.aktaPendirianDoc && <a href={selectedReviewUser.aktaPendirianDoc} target="_blank" rel="noopener noreferrer" className="text-primary underline text-sm">Akta Pendirian</a>}
+                        {selectedReviewUser.siupDoc && <a href={selectedReviewUser.siupDoc} target="_blank" rel="noopener noreferrer" className="text-primary underline text-sm">SIUP</a>}
+                      </div>
+                    </>
+                  )}
+                </div>
+              )}
+
+              {selectedReviewUser.role === 'SUPPLIER' && (
+                <div className="space-y-3">
+                  <div className="grid grid-cols-2 gap-2 text-sm">
+                    <span className="text-muted-foreground">Nama PIC:</span>
+                    <span>{selectedReviewUser.picName || '-'}</span>
+                    <span className="text-muted-foreground">WhatsApp PIC:</span>
+                    <span>{selectedReviewUser.picPhone || '-'}</span>
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground mb-1">KTP PIC</p>
+                    {selectedReviewUser.picKtpPhoto ? (
+                      <a href={selectedReviewUser.picKtpPhoto} target="_blank" rel="noopener noreferrer" className="text-primary underline text-sm">Lihat dokumen</a>
+                    ) : <span className="text-sm text-amber-600">Belum diupload</span>}
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {selectedReviewUser.nibDoc && <a href={selectedReviewUser.nibDoc} target="_blank" rel="noopener noreferrer" className="text-primary underline text-sm">NIB</a>}
+                    {selectedReviewUser.npwpDoc && <a href={selectedReviewUser.npwpDoc} target="_blank" rel="noopener noreferrer" className="text-primary underline text-sm">NPWP</a>}
+                    {selectedReviewUser.aktaPendirianDoc && <a href={selectedReviewUser.aktaPendirianDoc} target="_blank" rel="noopener noreferrer" className="text-primary underline text-sm">Akta</a>}
+                    {selectedReviewUser.siupDoc && <a href={selectedReviewUser.siupDoc} target="_blank" rel="noopener noreferrer" className="text-primary underline text-sm">SIUP</a>}
+                  </div>
+                </div>
+              )}
+
+              {selectedReviewUser.role === 'TUKANG' && (
+                <div className="space-y-3">
+                  <div className="grid gap-2 text-sm">
+                    <div><span className="text-muted-foreground">Pengalaman: </span>{selectedReviewUser.experience != null ? `${selectedReviewUser.experience} tahun` : '-'}</div>
+                    {selectedReviewUser.ktpPhoto && <a href={selectedReviewUser.ktpPhoto} target="_blank" rel="noopener noreferrer" className="text-primary underline">Foto KTP</a>}
+                    {selectedReviewUser.skckDoc && <a href={selectedReviewUser.skckDoc} target="_blank" rel="noopener noreferrer" className="text-primary underline">SKCK</a>}
+                  </div>
+                </div>
+              )}
+
+              {selectedReviewUser.role === 'CLIENT' && (
+                <p className="text-sm text-muted-foreground">Verifikasi manual oleh admin (mis. via WhatsApp).</p>
+              )}
+
+              <DialogFooter className="pt-4 border-t">
+                <Button variant="outline" onClick={() => { setReviewUserOpen(false); setSelectedReviewUser(null); }}>Tutup</Button>
+                <Button className="bg-green-600 hover:bg-green-700" onClick={() => { if (selectedReviewUser) { handleVerifyUser(selectedReviewUser.id); setReviewUserOpen(false); setSelectedReviewUser(null); } }} disabled={isSubmitting}>
+                  <CheckCircle className="h-4 w-4 mr-1" />
+                  Verifikasi
+                </Button>
+              </DialogFooter>
             </div>
           )}
         </DialogContent>

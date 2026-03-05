@@ -15,7 +15,7 @@ const updateProfileSchema = z.object({
   specialty: z.string().optional(),
   experience: z.number().optional(),
   materialCategoryIds: z.array(z.string()).optional(),
-  // Verifikasi Vendor/Supplier
+  verificationEntityType: z.enum(['PERORANGAN', 'BADAN_USAHA']).optional().nullable(),
   picName: z.string().optional().nullable(),
   picPhone: z.string().optional().nullable(),
   picKtpPhoto: z.string().optional().nullable(),
