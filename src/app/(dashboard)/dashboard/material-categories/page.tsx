@@ -22,7 +22,17 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Package, Plus, AlertCircle } from 'lucide-react';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import { Package, Plus, AlertCircle, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface MaterialCategoryItem {
@@ -44,6 +54,8 @@ export default function MaterialCategoriesPage() {
   const [formName, setFormName] = useState('');
   const [formDescription, setFormDescription] = useState('');
   const [saving, setSaving] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string; isParent: boolean } | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   const fetchCategories = async () => {
     try {
@@ -78,6 +90,26 @@ export default function MaterialCategoriesPage() {
     setFormName('');
     setFormDescription('');
     setDialogOpen(true);
+  };
+
+  const handleDelete = async () => {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    try {
+      const res = await fetch(`/api/material-categories/${deleteTarget.id}`, { method: 'DELETE' });
+      const data = await res.json();
+      if (!res.ok) {
+        toast.error(data.error || 'Gagal menghapus');
+        return;
+      }
+      toast.success('Kategori berhasil dihapus');
+      setDeleteTarget(null);
+      await fetchCategories();
+    } catch {
+      toast.error('Gagal menghapus');
+    } finally {
+      setDeleting(false);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -163,10 +195,20 @@ export default function MaterialCategoriesPage() {
               <CardHeader className="pb-2">
                 <div className="flex items-center justify-between">
                   <CardTitle className="text-lg">{parent.name}</CardTitle>
-                  <Button variant="outline" size="sm" onClick={() => openCreateSub(parent.id)} className="gap-1">
-                    <Plus className="h-4 w-4" />
-                    Subkategori
-                  </Button>
+                  <div className="flex items-center gap-2">
+                    <Button variant="outline" size="sm" onClick={() => openCreateSub(parent.id)} className="gap-1">
+                      <Plus className="h-4 w-4" />
+                      Subkategori
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                      onClick={() => setDeleteTarget({ id: parent.id, name: parent.name, isParent: true })}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </div>
                 {parent.description && (
                   <CardDescription>{parent.description}</CardDescription>
@@ -176,7 +218,17 @@ export default function MaterialCategoriesPage() {
                 {parent.children?.length > 0 ? (
                   <ul className="list-disc list-inside space-y-1 text-muted-foreground">
                     {parent.children.map((child) => (
-                      <li key={child.id}>{child.name}</li>
+                      <li key={child.id} className="flex items-center justify-between gap-2">
+                        <span>{child.name}</span>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 px-2 text-red-600 hover:text-red-700 hover:bg-red-50 shrink-0"
+                          onClick={() => setDeleteTarget({ id: child.id, name: child.name, isParent: false })}
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </li>
                     ))}
                   </ul>
                 ) : (
@@ -240,6 +292,29 @@ export default function MaterialCategoriesPage() {
           </form>
         </DialogContent>
       </Dialog>
+
+      <AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Hapus kategori?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {deleteTarget?.isParent && categories.find((c) => c.id === deleteTarget?.id)?.children?.length
+                ? `Kategori "${deleteTarget.name}" dan semua subkategorinya akan dihapus. Tindakan ini tidak dapat dibatalkan.`
+                : `Kategori "${deleteTarget?.name}" akan dihapus. Tindakan ini tidak dapat dibatalkan.`}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>Batal</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => { e.preventDefault(); handleDelete(); }}
+              className="bg-red-600 hover:bg-red-700"
+              disabled={deleting}
+            >
+              {deleting ? 'Menghapus...' : 'Hapus'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

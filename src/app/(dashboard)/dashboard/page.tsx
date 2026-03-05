@@ -180,10 +180,16 @@ function ClientDashboard() {
           </CardContent>
         </Card>
 
-        {/* Notifications - dari API, kosong jika belum ada */}
+        {/* Notifications - live dari API */}
         <Card className="glass-card">
-          <CardHeader>
+          <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle>Notifikasi Terbaru</CardTitle>
+            <Link href="/dashboard/notifications">
+              <Button variant="ghost" size="sm" className="gap-1 text-[#fd904c]">
+                Lihat semua notifikasi
+                <ArrowRight className="h-4 w-4" />
+              </Button>
+            </Link>
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
@@ -193,14 +199,16 @@ function ClientDashboard() {
                   <p className="text-sm">Belum ada notifikasi</p>
                 </div>
               ) : (
-                notifications.map((notif, index) => (
-                  <div key={index} className="flex items-start gap-3 p-2 rounded-lg hover:bg-muted/50 transition-colors">
-                    <AlertCircle className="h-4 w-4 text-orange-500 shrink-0 mt-0.5" />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm">{notif.title}</p>
-                      <p className="text-xs text-muted-foreground">{notif.createdAt ? new Date(notif.createdAt).toLocaleString('id-ID') : ''}</p>
+                notifications.map((notif: { id?: string; title: string; createdAt?: string }) => (
+                  <Link key={notif.id ?? notif.title} href="/dashboard/notifications">
+                    <div className="flex items-start gap-3 p-2 rounded-lg hover:bg-muted/50 transition-colors">
+                      <AlertCircle className="h-4 w-4 text-orange-500 shrink-0 mt-0.5" />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm">{notif.title}</p>
+                        <p className="text-xs text-muted-foreground">{notif.createdAt ? new Date(notif.createdAt).toLocaleString('id-ID') : ''}</p>
+                      </div>
                     </div>
-                  </div>
+                  </Link>
                 ))
               )}
             </div>
@@ -508,12 +516,33 @@ function AdminDashboard() {
       }>;
     },
   });
+  const { data: verificationData } = useQuery({
+    queryKey: ['admin', 'verification', 'pending-users'],
+    queryFn: async () => {
+      const res = await fetch('/api/admin/verification?status=PENDING_VERIFICATION');
+      if (!res.ok) throw new Error('Failed to load verification');
+      const json = await res.json();
+      return json?.data?.pendingUsers ?? [];
+    },
+  });
 
   const totalUsers = stats?.totalUsers ?? 0;
   const activeProjects = stats?.activeProjects ?? 0;
   const totalRevenue = stats?.totalRevenue ?? 0;
   const pendingVerification = stats?.pendingVerification ?? 0;
   const countsByRole = stats?.countsByRole ?? {};
+  const pendingUsers = Array.isArray(verificationData) ? verificationData : [];
+  const roleLabel: Record<string, string> = { CLIENT: 'Klien', VENDOR: 'Vendor', TUKANG: 'Tukang', SUPPLIER: 'Supplier' };
+
+  function formatPendingDate(createdAt: string) {
+    const d = new Date(createdAt);
+    const now = new Date();
+    const diff = now.getTime() - d.getTime();
+    if (diff < 86400000) return 'Hari ini';
+    if (diff < 172800000) return 'Kemarin';
+    if (diff < 604800000) return `${Math.floor(diff / 86400000)} hari lalu`;
+    return d.toLocaleDateString('id-ID');
+  }
 
   return (
     <>
@@ -544,32 +573,42 @@ function AdminDashboard() {
 
       <div className="grid lg:grid-cols-2 gap-6">
         <Card className="glass-card">
-          <CardHeader>
+          <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle>User Baru Menunggu Verifikasi</CardTitle>
+            <Link href="/dashboard/verification">
+              <Button variant="ghost" size="sm" className="gap-1 text-[#fd904c]">
+                Ke halaman Verifikasi
+                <ArrowRight className="h-4 w-4" />
+              </Button>
+            </Link>
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
-              {[
-                { name: 'PT Konstruksi Jaya', role: 'Vendor', date: 'Hari ini' },
-                { name: 'Budi Tukang Kayu', role: 'Tukang', date: 'Kemarin' },
-                { name: 'CV Material Prima', role: 'Supplier', date: '2 hari lalu' },
-              ].map((user, index) => (
-                <div key={index} className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
-                  <div className="flex items-center gap-3">
-                    <div className="h-10 w-10 rounded-full bg-gradient-to-br from-[#fd904c] to-[#e57835] flex items-center justify-center text-white">
-                      {user.name.charAt(0)}
+              {pendingUsers.length === 0 ? (
+                <p className="text-sm text-muted-foreground py-4 text-center">Tidak ada user menunggu verifikasi.</p>
+              ) : (
+                pendingUsers.slice(0, 5).map((u: { id: string; name: string; role: string; createdAt: string }) => (
+                  <Link key={u.id} href="/dashboard/verification">
+                    <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors">
+                      <div className="flex items-center gap-3">
+                        <div className="h-10 w-10 rounded-full bg-gradient-to-br from-[#fd904c] to-[#e57835] flex items-center justify-center text-white">
+                          {u.name?.charAt(0) ?? '?'}
+                        </div>
+                        <div>
+                          <p className="font-medium">{u.name}</p>
+                          <p className="text-sm text-muted-foreground">{roleLabel[u.role] ?? u.role} • {formatPendingDate(u.createdAt)}</p>
+                        </div>
+                      </div>
+                      <ArrowRight className="h-4 w-4 text-muted-foreground" />
                     </div>
-                    <div>
-                      <p className="font-medium">{user.name}</p>
-                      <p className="text-sm text-muted-foreground">{user.role} • {user.date}</p>
-                    </div>
-                  </div>
-                  <div className="flex gap-2">
-                    <Button size="sm" variant="outline">Review</Button>
-                    <Button size="sm">Verifikasi</Button>
-                  </div>
-                </div>
-              ))}
+                  </Link>
+                ))
+              )}
+              {pendingUsers.length > 5 && (
+                <Link href="/dashboard/verification">
+                  <Button variant="outline" size="sm" className="w-full mt-2">Lihat semua ({pendingUsers.length})</Button>
+                </Link>
+              )}
             </div>
           </CardContent>
         </Card>

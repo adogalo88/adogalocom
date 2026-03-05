@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { db } from '@/lib/db';
 import { getCurrentUser } from '@/lib/auth';
+import { createNotification } from '@/lib/api-utils';
 
 const updateUserSchema = z.object({
   name: z.string().min(2).optional(),
@@ -141,6 +142,16 @@ export async function PATCH(
       where: { id },
       data: updateData,
     });
+
+    if (currentUser.role === 'ADMIN' && updateData.isVerified === true && id !== currentUser.id) {
+      await createNotification(
+        id,
+        'SYSTEM',
+        'Akun Anda telah diverifikasi',
+        'Selamat! Admin telah memverifikasi akun Anda. Anda sekarang dapat menggunakan fitur lengkap sesuai peran.',
+        { verifiedBy: currentUser.id }
+      );
+    }
 
     const { password: _, ...safeUser } = user;
     

@@ -4,7 +4,6 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { useAuth } from '@/providers/AuthProvider';
 import {
   ArrowRight,
   Building2,
@@ -20,10 +19,6 @@ import {
   Layers,
   MessageSquare,
   TrendingUp,
-  LayoutDashboard,
-  FolderPlus,
-  Package,
-  Search,
 } from 'lucide-react';
 
 const features = [
@@ -119,13 +114,6 @@ const roles = [
 ];
 
 export default function HomePage() {
-  const { user } = useAuth();
-  const role = user?.role;
-  const showBuatProyek = role === 'VENDOR' || role === 'CLIENT';
-  const showPermintaanMaterial = role === 'VENDOR' || role === 'CLIENT';
-  const showDirektoriFull = role === 'ADMIN' || role === 'VENDOR' || role === 'CLIENT' || role === 'TUKANG';
-  const showDirektoriVendorTukang = role === 'SUPPLIER';
-
   return (
     <div className="min-h-screen flex flex-col">
       {/* Navigation */}
@@ -155,59 +143,17 @@ export default function HomePage() {
               <Link href="#testimonials" className="text-muted-foreground hover:text-foreground transition-colors">
                 Testimoni
               </Link>
-              {user && (
-                <>
-                  {showBuatProyek && (
-                    <Link href="/dashboard/projects/create">
-                      <Button variant="ghost" size="sm" className="gap-1.5 text-muted-foreground hover:text-foreground">
-                        <FolderPlus className="h-4 w-4" />
-                        Buat Proyek
-                      </Button>
-                    </Link>
-                  )}
-                  {showPermintaanMaterial && (
-                    <Link href="/dashboard/materials/create">
-                      <Button variant="ghost" size="sm" className="gap-1.5 text-muted-foreground hover:text-foreground">
-                        <Package className="h-4 w-4" />
-                        Permintaan Material
-                        <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
-                          Beta
-                        </span>
-                      </Button>
-                    </Link>
-                  )}
-                  {(showDirektoriFull || showDirektoriVendorTukang) && (
-                    <Link href="/directory/vendors">
-                      <Button variant="ghost" size="sm" className="gap-1.5 text-muted-foreground hover:text-foreground">
-                        <Search className="h-4 w-4" />
-                        Direktori
-                      </Button>
-                    </Link>
-                  )}
-                </>
-              )}
             </nav>
 
             <div className="flex items-center gap-3">
-              {user ? (
-                <Link href="/dashboard">
-                  <Button className="gap-2 bg-gradient-to-r from-[#fd904c] to-[#e57835] hover:opacity-90">
-                    <LayoutDashboard className="h-4 w-4" />
-                    Dashboard
-                  </Button>
-                </Link>
-              ) : (
-                <>
-                  <Link href="/login">
-                    <Button variant="ghost">Masuk</Button>
-                  </Link>
-                  <Link href="/register">
-                    <Button className="bg-gradient-to-r from-[#fd904c] to-[#e57835] hover:opacity-90">
-                      Daftar Gratis
-                    </Button>
-                  </Link>
-                </>
-              )}
+              <Link href="/login">
+                <Button variant="ghost">Masuk</Button>
+              </Link>
+              <Link href="/register">
+                <Button className="bg-gradient-to-r from-[#fd904c] to-[#e57835] hover:opacity-90">
+                  Daftar Gratis
+                </Button>
+              </Link>
             </div>
           </div>
         </div>
