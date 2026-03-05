@@ -7,8 +7,8 @@ builder = "nixpacks"
 buildCommand = "prisma generate --schema=prisma/schema.production.prisma && next build && cp -r .next/static .next/standalone/.next/ && cp -r public .next/standalone/"
 
 [deploy]
-# Pastikan migrate jalan dari app root (/app) pakai schema production, lalu jalankan server dari standalone
-startCommand = "cd /app && prisma migrate deploy --schema=prisma/schema.production.prisma && cd .next/standalone && HOSTNAME=0.0.0.0 node server.js"
+# Sync schema ke DB (db push) lalu jalankan server. Pakai db push agar kolom baru otomatis ditambah tanpa file migrasi.
+startCommand = "cd /app && prisma db push --schema=prisma/schema.production.prisma && cd .next/standalone && HOSTNAME=0.0.0.0 node server.js"
 # Endpoint dedikasi: cepat, tanpa DB, selalu 200. Path "/" bisa lambat/error karena SSR.
 healthcheckPath = "/api/health"
 healthcheckTimeout = 300
