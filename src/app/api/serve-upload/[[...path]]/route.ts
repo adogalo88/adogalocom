@@ -19,24 +19,28 @@ const MIME: Record<string, string> = {
 
 /**
  * Serve uploaded files from public/uploads.
- * Used so that /uploads/* works in dev and production (standalone may not serve dynamic files).
- * Rewrite: /uploads/photos/xxx.jpg -> /api/serve-upload?path=photos/xxx.jpg
+ * Rewrite: /uploads/photos/xxx.png -> /api/serve-upload/photos/xxx.png
+ * Path comes from URL segments, so no query encoding issues.
  */
-export async function GET(request: NextRequest) {
+export async function GET(
+  request: NextRequest,
+  context: { params: Promise<{ path?: string[] }> }
+) {
   try {
-    let pathParam = request.nextUrl.searchParams.get('path');
-    if (!pathParam) {
+    const { path: pathSegments } = await context.params;
+    const parts = pathSegments ?? [];
+    if (parts.length === 0) {
       return NextResponse.json({ error: 'Invalid path' }, { status: 400 });
     }
-    pathParam = decodeURIComponent(pathParam).replace(/\\/g, '/');
-    if (pathParam.includes('..') || pathParam.startsWith('/')) {
+    const normalized = parts.join('/');
+    if (normalized.includes('..')) {
       return NextResponse.json({ error: 'Invalid path' }, { status: 400 });
     }
-    const normalized = pathParam;
     const base = path.join(process.cwd(), 'public', 'uploads');
     const filePath = path.join(base, normalized);
     const resolved = path.resolve(filePath);
-    if (!resolved.startsWith(path.resolve(base))) {
+    const baseResolved = path.resolve(base);
+    if (!resolved.startsWith(baseResolved)) {
       return NextResponse.json({ error: 'Invalid path' }, { status: 400 });
     }
     if (!existsSync(resolved)) {

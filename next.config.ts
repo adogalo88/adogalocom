@@ -10,7 +10,7 @@ const nextConfig: NextConfig = {
     return [
       {
         source: "/uploads/:path*",
-        destination: "/api/serve-upload?path=:path*",
+        destination: "/api/serve-upload/:path*",
       },
     ];
   },
