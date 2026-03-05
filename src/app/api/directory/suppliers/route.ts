@@ -8,8 +8,10 @@ export async function GET(request: NextRequest) {
     const search = searchParams.get('search') || '';
     const cityId = searchParams.get('cityId') || '';
     const provinceId = searchParams.get('provinceId') || '';
+    const categoryIdsParam = searchParams.get('categoryIds') || '';
+    const categoryIds = categoryIdsParam ? categoryIdsParam.split(',').filter(Boolean) : [];
     const minRating = searchParams.get('minRating') || '';
-    const sortBy = searchParams.get('sortBy') || 'rating'; // rating, totalProjects, name
+    const sortBy = searchParams.get('sortBy') || 'rating';
     const sortOrder = searchParams.get('sortOrder') || 'desc';
     const page = parseInt(searchParams.get('page') || '1');
     const limit = parseInt(searchParams.get('limit') || '12');
@@ -37,8 +39,15 @@ export async function GET(request: NextRequest) {
       where.city = { provinceId };
     }
 
+    if (categoryIds.length > 0) {
+      where.materialCategories = {
+        some: { id: { in: categoryIds } },
+      };
+    }
+
     if (minRating) {
-      where.rating = { gte: parseFloat(minRating) };
+      const r = parseFloat(minRating);
+      if (!isNaN(r)) where.rating = { gte: r };
     }
 
     // Build orderBy
@@ -68,9 +77,10 @@ export async function GET(request: NextRequest) {
           id: true,
           name: true,
           avatar: true,
+          phone: true,
+          picPhone: true,
           rating: true,
           totalReviews: true,
-          totalProjects: true,
           description: true,
           city: {
             select: {
@@ -80,6 +90,9 @@ export async function GET(request: NextRequest) {
                 select: { id: true, name: true }
               }
             }
+          },
+          materialCategories: {
+            select: { id: true, name: true }
           },
           createdAt: true,
         },

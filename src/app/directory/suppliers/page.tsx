@@ -1,28 +1,22 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Search, MapPin, Star, ChevronLeft, ChevronRight, Loader2, Truck, Package } from 'lucide-react';
+import { Search, MapPin, ChevronLeft, ChevronRight, Loader2, Truck, MessageSquare, Phone } from 'lucide-react';
 
 interface Supplier {
   id: string;
   name: string;
   avatar: string | null;
+  phone: string | null;
+  picPhone: string | null;
   rating: number;
   totalReviews: number;
-  totalProjects: number;
   description: string | null;
   city: { id: string; name: string; province: { id: string; name: string } } | null;
+  materialCategories: { id: string; name: string }[];
   createdAt: string;
 }
 
@@ -32,34 +26,43 @@ interface City {
   province: { id: string; name: string };
 }
 
-interface Province {
+interface MaterialCat {
   id: string;
   name: string;
+  children?: { id: string; name: string }[];
 }
 
 export default function DirectorySuppliersPage() {
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
+  const [provinces, setProvinces] = useState<{ id: string; name: string }[]>([]);
   const [cities, setCities] = useState<City[]>([]);
-  const [provinces, setProvinces] = useState<Province[]>([]);
+  const [materialCategories, setMaterialCategories] = useState<MaterialCat[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [pagination, setPagination] = useState({ page: 1, limit: 12, total: 0, totalPages: 0 });
   const [search, setSearch] = useState('');
   const [cityId, setCityId] = useState('');
   const [provinceId, setProvinceId] = useState('');
-  const [minRating, setMinRating] = useState('');
+  const [categoryIds, setCategoryIds] = useState<string[]>([]);
   const [sortBy, setSortBy] = useState('rating');
 
   useEffect(() => {
     Promise.all([
       fetch('/api/provinces?activeOnly=true').then((r) => r.json().catch(() => ({}))),
       fetch('/api/cities?activeOnly=true').then((r) => r.json().catch(() => ({}))),
-    ]).then(([provincesData, citiesData]) => {
+      fetch('/api/material-categories').then((r) => r.json().catch(() => ({}))),
+    ]    ).then(([provincesData, citiesData, catData]) => {
       if (provincesData?.success && Array.isArray(provincesData.data)) setProvinces(provincesData.data);
       if (citiesData?.success && Array.isArray(citiesData.data)) setCities(citiesData.data);
+      const cats = Array.isArray(catData?.categories) ? catData.categories : [];
+      setMaterialCategories(cats);
     });
   }, []);
 
-  const filteredCities = provinceId ? cities.filter((c) => c.province?.id === provinceId) : cities;
+  const filteredCities = provinceId ? cities.filter((c: City) => c.province?.id === provinceId) : cities;
+
+  const toggleCategory = (id: string) => {
+    setCategoryIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+  };
 
   const fetchSuppliers = async (page = 1) => {
     setIsLoading(true);
@@ -68,7 +71,7 @@ export default function DirectorySuppliersPage() {
       if (search) params.set('search', search);
       if (cityId) params.set('cityId', cityId);
       if (provinceId) params.set('provinceId', provinceId);
-      if (minRating) params.set('minRating', minRating);
+      if (categoryIds.length) params.set('categoryIds', categoryIds.join(','));
       params.set('sortBy', sortBy);
       params.set('page', String(page));
       params.set('limit', '12');
@@ -87,10 +90,17 @@ export default function DirectorySuppliersPage() {
 
   useEffect(() => {
     fetchSuppliers(1);
-  }, [cityId, provinceId, minRating, sortBy]);
+  }, [cityId, provinceId, categoryIds.join(','), sortBy]);
+
+  const waNumber = (s: Supplier) => {
+    const num = s.picPhone || s.phone || '';
+    const clean = num.replace(/\D/g, '');
+    return clean.startsWith('0') ? '62' + clean.slice(1) : clean.startsWith('62') ? clean : '62' + clean;
+  };
 
   return (
-    <div className="flex flex-col">
+    <div className="flex flex-col min-h-screen">
+      {/* Hero */}
       <section className="relative py-12 md:py-16 overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-br from-teal-500/10 via-background to-cyan-500/10" />
         <div className="container mx-auto px-4 relative z-10">
@@ -120,58 +130,77 @@ export default function DirectorySuppliersPage() {
         </div>
       </section>
 
+      {/* Filters - centered */}
       <section className="border-b border-border/50 bg-muted/20">
         <div className="container mx-auto px-4 py-4">
-          <div className="flex flex-wrap items-center gap-3">
-            <Select value={provinceId || 'all'} onValueChange={(v) => { setProvinceId(v === 'all' ? '' : v); setCityId(''); }}>
-              <SelectTrigger className="w-[180px]">
-                <SelectValue placeholder="Provinsi" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Semua Provinsi</SelectItem>
-                {provinces.map((p) => (
-                  <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Select value={cityId || 'all'} onValueChange={(v) => setCityId(v === 'all' ? '' : v)}>
-              <SelectTrigger className="w-[180px]">
-                <SelectValue placeholder="Kota/Kab." />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Semua Kota</SelectItem>
-                {filteredCities.map((c) => (
-                  <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Select value={minRating || 'all'} onValueChange={(v) => setMinRating(v === 'all' ? '' : v)}>
-              <SelectTrigger className="w-[160px]">
-                <SelectValue placeholder="Rating" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Semua Rating</SelectItem>
-                <SelectItem value="4.5">4.5+ Bintang</SelectItem>
-                <SelectItem value="4">4+ Bintang</SelectItem>
-                <SelectItem value="3.5">3.5+ Bintang</SelectItem>
-              </SelectContent>
-            </Select>
-            <Select value={sortBy} onValueChange={setSortBy}>
-              <SelectTrigger className="w-[180px]">
-                <SelectValue placeholder="Urutkan" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="rating">Rating Tertinggi</SelectItem>
-                <SelectItem value="totalProjects">Proyek Terbanyak</SelectItem>
-                <SelectItem value="reviews">Ulasan Terbanyak</SelectItem>
-                <SelectItem value="name">Nama A-Z</SelectItem>
-              </SelectContent>
-            </Select>
+          <div className="flex flex-wrap items-center justify-center gap-3">
+            <select
+              value={provinceId || 'all'}
+              onChange={(e) => { setProvinceId(e.target.value === 'all' ? '' : e.target.value); setCityId(''); }}
+              className="h-10 rounded-md border border-input bg-background px-3 py-2 text-sm w-[180px]"
+            >
+              <option value="all">Semua Provinsi</option>
+              {provinces.map((p) => (
+                <option key={p.id} value={p.id}>{p.name}</option>
+              ))}
+            </select>
+            <select
+              value={cityId || 'all'}
+              onChange={(e) => setCityId(e.target.value === 'all' ? '' : e.target.value)}
+              className="h-10 rounded-md border border-input bg-background px-3 py-2 text-sm w-[180px]"
+            >
+              <option value="all">Semua Kota</option>
+              {filteredCities.map((c: City) => (
+                <option key={c.id} value={c.id}>{c.name}</option>
+              ))}
+            </select>
+            <div className="relative group">
+              <details className="dropdown">
+                <summary className="h-10 rounded-md border border-input bg-background px-3 py-2 text-sm w-[200px] cursor-pointer list-none flex items-center justify-between">
+                  Kategori Material {categoryIds.length > 0 && `(${categoryIds.length})`}
+                </summary>
+                <div className="absolute left-0 mt-1 p-3 rounded-lg border bg-background shadow-lg z-10 max-h-64 overflow-y-auto w-64">
+                  {materialCategories.map((p) => (
+                    <div key={p.id} className="space-y-1">
+                      <label className="flex items-center gap-2 cursor-pointer text-sm">
+                        <input
+                          type="checkbox"
+                          checked={categoryIds.includes(p.id)}
+                          onChange={() => toggleCategory(p.id)}
+                          className="rounded"
+                        />
+                        {p.name}
+                      </label>
+                      {p.children?.map((ch) => (
+                        <label key={ch.id} className="flex items-center gap-2 cursor-pointer text-sm pl-4">
+                          <input
+                            type="checkbox"
+                            checked={categoryIds.includes(ch.id)}
+                            onChange={() => toggleCategory(ch.id)}
+                            className="rounded"
+                          />
+                          {ch.name}
+                        </label>
+                      ))}
+                    </div>
+                  ))}
+                </div>
+              </details>
+            </div>
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value)}
+              className="h-10 rounded-md border border-input bg-background px-3 py-2 text-sm w-[180px]"
+            >
+              <option value="rating">Rating Tertinggi</option>
+              <option value="name">Nama A-Z</option>
+            </select>
           </div>
         </div>
       </section>
 
-      <section className="container mx-auto px-4 py-8 md:py-12">
+      {/* List */}
+      <section className="container mx-auto px-4 py-8 flex-1">
         {isLoading ? (
           <div className="flex justify-center py-20">
             <Loader2 className="h-10 w-10 animate-spin text-teal-500" />
@@ -184,51 +213,59 @@ export default function DirectorySuppliersPage() {
           </div>
         ) : (
           <>
-            <p className="text-sm text-muted-foreground mb-6">
+            <p className="text-sm text-muted-foreground mb-6 text-center">
               Menampilkan {suppliers.length} dari {pagination.total} supplier
             </p>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            <div className="max-w-4xl mx-auto space-y-3">
               {suppliers.map((s) => (
-                <Link key={s.id} href={`/dashboard/profile/${s.id}`}>
-                  <article className="group rounded-2xl border border-border bg-card overflow-hidden hover:shadow-lg hover:border-teal-500/30 transition-all duration-200 h-full flex flex-col">
-                    <div className="aspect-[4/3] bg-muted/50 relative flex items-center justify-center p-6">
-                      <Avatar className="h-24 w-24 ring-4 ring-background">
-                        <AvatarImage src={s.avatar ?? undefined} />
-                        <AvatarFallback className="bg-gradient-to-br from-teal-500 to-cyan-600 text-white text-2xl">
-                          {s.name.charAt(0).toUpperCase()}
-                        </AvatarFallback>
-                      </Avatar>
+                <div
+                  key={s.id}
+                  className="flex flex-col sm:flex-row items-start sm:items-center gap-4 p-4 rounded-xl border border-border bg-card/50 backdrop-blur-sm hover:bg-muted/30 transition-colors"
+                >
+                  <Avatar className="h-14 w-14 shrink-0 ring-2 ring-border">
+                    <AvatarImage src={s.avatar ?? undefined} />
+                    <AvatarFallback className="bg-gradient-to-br from-teal-500 to-cyan-600 text-white text-lg">
+                      {s.name?.charAt(0)?.toUpperCase() ?? 'S'}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="flex-1 min-w-0">
+                    <h3 className="font-semibold text-lg">{s.name}</h3>
+                    <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground mt-1">
+                      {s.city?.province && <span>{s.city.province.name}</span>}
+                      {s.city && <span>{s.city.name}</span>}
                     </div>
-                    <div className="p-4 flex-1 flex flex-col">
-                      <h3 className="font-semibold text-lg truncate group-hover:text-teal-600 transition-colors">{s.name}</h3>
-                      <span className="text-xs font-medium text-teal-600 bg-teal-50 dark:bg-teal-950/30 px-2 py-0.5 rounded mt-1 w-fit">
-                        Supplier
-                      </span>
-                      {s.city && (
-                        <p className="text-sm text-muted-foreground flex items-center gap-1 mt-2">
-                          <MapPin className="h-3.5 w-3.5 shrink-0" />
-                          {s.city.name}
-                        </p>
-                      )}
-                      <div className="flex items-center gap-4 mt-3 text-sm">
-                        <span className="flex items-center gap-1">
-                          <Star className="h-4 w-4 fill-amber-400 text-amber-400" />
-                          {s.rating.toFixed(1)}
-                        </span>
-                        <span className="flex items-center gap-1 text-muted-foreground">
-                          <Package className="h-3.5 w-3.5" />
-                          {s.totalProjects} proyek
-                        </span>
+                    {s.materialCategories?.length > 0 && (
+                      <div className="flex flex-wrap gap-1.5 mt-2">
+                        {s.materialCategories.map((c) => (
+                          <span key={c.id} className="text-xs px-2 py-0.5 rounded-full bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-400">
+                            {c.name}
+                          </span>
+                        ))}
                       </div>
-                      {s.description && (
-                        <p className="text-sm text-muted-foreground mt-2 line-clamp-2">{s.description}</p>
-                      )}
-                      <Button variant="outline" size="sm" className="mt-4 w-full group-hover:bg-teal-500/10 group-hover:border-teal-500/30">
-                        Lihat Profil
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0 w-full sm:w-auto justify-end">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="gap-1.5"
+                      onClick={() => window.open('/dashboard/messages', '_blank')}
+                    >
+                      <MessageSquare className="h-4 w-4" />
+                      Chat
+                    </Button>
+                    {(s.picPhone || s.phone) && (
+                      <Button
+                        size="sm"
+                        className="gap-1.5 bg-green-600 hover:bg-green-700"
+                        onClick={() => window.open(`https://wa.me/${waNumber(s)}`, '_blank')}
+                      >
+                        <Phone className="h-4 w-4" />
+                        WhatsApp
                       </Button>
-                    </div>
-                  </article>
-                </Link>
+                    )}
+                  </div>
+                </div>
               ))}
             </div>
             {pagination.totalPages > 1 && (

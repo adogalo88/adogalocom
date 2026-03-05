@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -34,13 +33,20 @@ interface City {
   province: { id: string; name: string };
 }
 
+interface ProjectCategory {
+  id: string;
+  name: string;
+}
+
 export default function DirectoryVendorsPage() {
   const [vendors, setVendors] = useState<Vendor[]>([]);
   const [cities, setCities] = useState<City[]>([]);
+  const [categories, setCategories] = useState<ProjectCategory[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [pagination, setPagination] = useState({ page: 1, limit: 12, total: 0, totalPages: 0 });
   const [search, setSearch] = useState('');
   const [cityId, setCityId] = useState('');
+  const [categoryIds, setCategoryIds] = useState<string[]>([]);
   const [minRating, setMinRating] = useState('');
   const [sortBy, setSortBy] = useState('rating');
 
@@ -50,7 +56,16 @@ export default function DirectoryVendorsPage() {
       .then((data) => {
         if (data?.success && Array.isArray(data.data)) setCities(data.data);
       });
+    fetch('/api/categories')
+      .then((res) => res.json().catch(() => ({})))
+      .then((data) => {
+        setCategories(Array.isArray(data?.categories) ? data.categories : []);
+      });
   }, []);
+
+  const toggleCategory = (id: string) => {
+    setCategoryIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+  };
 
   const fetchVendors = async (page = 1) => {
     setIsLoading(true);
@@ -58,6 +73,7 @@ export default function DirectoryVendorsPage() {
       const params = new URLSearchParams();
       if (search) params.set('search', search);
       if (cityId) params.set('cityId', cityId);
+      if (categoryIds.length) params.set('categoryIds', categoryIds.join(','));
       if (minRating) params.set('minRating', minRating);
       params.set('sortBy', sortBy);
       params.set('page', String(page));
@@ -77,11 +93,10 @@ export default function DirectoryVendorsPage() {
 
   useEffect(() => {
     fetchVendors(1);
-  }, [cityId, minRating, sortBy]);
+  }, [cityId, categoryIds.join(','), minRating, sortBy]);
 
   return (
-    <div className="flex flex-col">
-      {/* Hero */}
+    <div className="flex flex-col min-h-screen">
       <section className="relative py-12 md:py-16 overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-br from-[#fd904c]/10 via-background to-[#e57835]/10" />
         <div className="container mx-auto px-4 relative z-10">
@@ -111,10 +126,10 @@ export default function DirectoryVendorsPage() {
         </div>
       </section>
 
-      {/* Filters */}
+      {/* Filters - centered */}
       <section className="border-b border-border/50 bg-muted/20">
         <div className="container mx-auto px-4 py-4">
-          <div className="flex flex-wrap items-center gap-3">
+          <div className="flex flex-wrap items-center justify-center gap-3">
             <Select value={cityId || 'all'} onValueChange={(v) => setCityId(v === 'all' ? '' : v)}>
               <SelectTrigger className="w-[180px]">
                 <SelectValue placeholder="Lokasi" />
@@ -126,6 +141,26 @@ export default function DirectoryVendorsPage() {
                 ))}
               </SelectContent>
             </Select>
+            <div className="relative">
+              <details className="dropdown">
+                <summary className="h-10 rounded-md border border-input bg-background px-3 py-2 text-sm min-w-[180px] cursor-pointer list-none flex items-center justify-between gap-2">
+                  Kategori Proyek {categoryIds.length > 0 && `(${categoryIds.length})`}
+                </summary>
+                <div className="absolute left-0 mt-1 p-3 rounded-lg border bg-background shadow-lg z-10 max-h-64 overflow-y-auto w-56">
+                  {categories.map((c) => (
+                    <label key={c.id} className="flex items-center gap-2 cursor-pointer text-sm py-1">
+                      <input
+                        type="checkbox"
+                        checked={categoryIds.includes(c.id)}
+                        onChange={() => toggleCategory(c.id)}
+                        className="rounded"
+                      />
+                      {c.name}
+                    </label>
+                  ))}
+                </div>
+              </details>
+            </div>
             <Select value={minRating || 'all'} onValueChange={(v) => setMinRating(v === 'all' ? '' : v)}>
               <SelectTrigger className="w-[160px]">
                 <SelectValue placeholder="Rating" />
@@ -152,8 +187,7 @@ export default function DirectoryVendorsPage() {
         </div>
       </section>
 
-      {/* Listing */}
-      <section className="container mx-auto px-4 py-8 md:py-12">
+      <section className="container mx-auto px-4 py-8 md:py-12 flex-1">
         {isLoading ? (
           <div className="flex justify-center py-20">
             <Loader2 className="h-10 w-10 animate-spin text-[#fd904c]" />
@@ -166,15 +200,15 @@ export default function DirectoryVendorsPage() {
           </div>
         ) : (
           <>
-            <p className="text-sm text-muted-foreground mb-6">
+            <p className="text-sm text-muted-foreground mb-6 text-center">
               Menampilkan {vendors.length} dari {pagination.total} vendor
             </p>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
               {vendors.map((v) => (
-                <Link key={v.id} href={`/dashboard/profile/${v.id}`}>
-                  <article className="group rounded-2xl border border-border bg-card overflow-hidden hover:shadow-lg hover:border-[#fd904c]/30 transition-all duration-200 h-full flex flex-col">
+                <Link key={v.id} href={`/directory/vendors/${v.id}`}>
+                  <article className="group rounded-2xl border border-border bg-card/80 backdrop-blur-sm overflow-hidden hover:shadow-xl hover:shadow-[#fd904c]/10 hover:border-[#fd904c]/30 transition-all duration-200 h-full flex flex-col">
                     <div className="aspect-[4/3] bg-muted/50 relative flex items-center justify-center p-6">
-                      <Avatar className="h-24 w-24 ring-4 ring-background">
+                      <Avatar className="h-24 w-24 ring-4 ring-background/80">
                         <AvatarImage src={v.avatar ?? undefined} />
                         <AvatarFallback className="bg-gradient-to-br from-[#fd904c] to-[#e57835] text-white text-2xl">
                           {v.name.charAt(0).toUpperCase()}
@@ -212,23 +246,11 @@ export default function DirectoryVendorsPage() {
             </div>
             {pagination.totalPages > 1 && (
               <div className="flex justify-center items-center gap-2 mt-10">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => fetchVendors(pagination.page - 1)}
-                  disabled={pagination.page <= 1}
-                >
+                <Button variant="outline" size="sm" onClick={() => fetchVendors(pagination.page - 1)} disabled={pagination.page <= 1}>
                   <ChevronLeft className="h-4 w-4" />
                 </Button>
-                <span className="text-sm text-muted-foreground px-4">
-                  Halaman {pagination.page} dari {pagination.totalPages}
-                </span>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => fetchVendors(pagination.page + 1)}
-                  disabled={pagination.page >= pagination.totalPages}
-                >
+                <span className="text-sm text-muted-foreground px-4">Halaman {pagination.page} dari {pagination.totalPages}</span>
+                <Button variant="outline" size="sm" onClick={() => fetchVendors(pagination.page + 1)} disabled={pagination.page >= pagination.totalPages}>
                   <ChevronRight className="h-4 w-4" />
                 </Button>
               </div>

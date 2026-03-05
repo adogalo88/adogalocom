@@ -9,6 +9,8 @@ export async function GET(request: NextRequest) {
     const cityId = searchParams.get('cityId') || '';
     const specialty = searchParams.get('specialty') || '';
     const minRating = searchParams.get('minRating') || '';
+    const categoryIdsParam = searchParams.get('categoryIds') || ''; // comma-separated
+    const categoryIds = categoryIdsParam ? categoryIdsParam.split(',').filter(Boolean) : [];
     const sortBy = searchParams.get('sortBy') || 'rating'; // rating, totalProjects, name
     const sortOrder = searchParams.get('sortOrder') || 'desc';
     const page = parseInt(searchParams.get('page') || '1');
@@ -31,6 +33,12 @@ export async function GET(request: NextRequest) {
 
     if (cityId) {
       where.cityId = cityId;
+    }
+
+    if (categoryIds.length > 0) {
+      where.projectsAsVendor = {
+        some: { categoryId: { in: categoryIds } },
+      };
     }
 
     if (minRating) {

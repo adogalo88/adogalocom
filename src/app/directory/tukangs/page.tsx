@@ -51,7 +51,7 @@ export default function DirectoryTukangsPage() {
   const [pagination, setPagination] = useState({ page: 1, limit: 12, total: 0, totalPages: 0 });
   const [search, setSearch] = useState('');
   const [cityId, setCityId] = useState('');
-  const [specialty, setSpecialty] = useState('');
+  const [specialties, setSpecialties] = useState<string[]>([]);
   const [minRating, setMinRating] = useState('');
   const [sortBy, setSortBy] = useState('rating');
 
@@ -63,13 +63,17 @@ export default function DirectoryTukangsPage() {
       });
   }, []);
 
+  const toggleSpecialty = (value: string) => {
+    setSpecialties((prev) => (prev.includes(value) ? prev.filter((x) => x !== value) : [...prev, value]));
+  };
+
   const fetchTukangs = async (page = 1) => {
     setIsLoading(true);
     try {
       const params = new URLSearchParams();
       if (search) params.set('search', search);
       if (cityId) params.set('cityId', cityId);
-      if (specialty) params.set('specialty', specialty);
+      if (specialties.length) params.set('specialties', specialties.join(','));
       if (minRating) params.set('minRating', minRating);
       params.set('sortBy', sortBy);
       params.set('page', String(page));
@@ -89,10 +93,10 @@ export default function DirectoryTukangsPage() {
 
   useEffect(() => {
     fetchTukangs(1);
-  }, [cityId, specialty, minRating, sortBy]);
+  }, [cityId, specialties.join(','), minRating, sortBy]);
 
   return (
-    <div className="flex flex-col">
+    <div className="flex flex-col min-h-screen">
       <section className="relative py-12 md:py-16 overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-br from-orange-500/10 via-background to-amber-500/10" />
         <div className="container mx-auto px-4 relative z-10">
@@ -122,9 +126,10 @@ export default function DirectoryTukangsPage() {
         </div>
       </section>
 
+      {/* Filters - centered, keahlian multi-select */}
       <section className="border-b border-border/50 bg-muted/20">
         <div className="container mx-auto px-4 py-4">
-          <div className="flex flex-wrap items-center gap-3">
+          <div className="flex flex-wrap items-center justify-center gap-3">
             <Select value={cityId || 'all'} onValueChange={(v) => setCityId(v === 'all' ? '' : v)}>
               <SelectTrigger className="w-[180px]">
                 <SelectValue placeholder="Lokasi" />
@@ -136,17 +141,26 @@ export default function DirectoryTukangsPage() {
                 ))}
               </SelectContent>
             </Select>
-            <Select value={specialty || 'all'} onValueChange={(v) => setSpecialty(v === 'all' ? '' : v)}>
-              <SelectTrigger className="w-[180px]">
-                <SelectValue placeholder="Keahlian" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Semua Keahlian</SelectItem>
-                {TUKANG_SPECIALTIES.map((s) => (
-                  <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <div className="relative">
+              <details className="dropdown">
+                <summary className="h-10 rounded-md border border-input bg-background px-3 py-2 text-sm min-w-[180px] cursor-pointer list-none flex items-center justify-between gap-2">
+                  Keahlian {specialties.length > 0 && `(${specialties.length})`}
+                </summary>
+                <div className="absolute left-0 mt-1 p-3 rounded-lg border bg-background shadow-lg z-10 w-56">
+                  {TUKANG_SPECIALTIES.map((s) => (
+                    <label key={s.value} className="flex items-center gap-2 cursor-pointer text-sm py-1">
+                      <input
+                        type="checkbox"
+                        checked={specialties.includes(s.value)}
+                        onChange={() => toggleSpecialty(s.value)}
+                        className="rounded"
+                      />
+                      {s.label}
+                    </label>
+                  ))}
+                </div>
+              </details>
+            </div>
             <Select value={minRating || 'all'} onValueChange={(v) => setMinRating(v === 'all' ? '' : v)}>
               <SelectTrigger className="w-[160px]">
                 <SelectValue placeholder="Rating" />
@@ -173,7 +187,7 @@ export default function DirectoryTukangsPage() {
         </div>
       </section>
 
-      <section className="container mx-auto px-4 py-8 md:py-12">
+      <section className="container mx-auto px-4 py-8 md:py-12 flex-1">
         {isLoading ? (
           <div className="flex justify-center py-20">
             <Loader2 className="h-10 w-10 animate-spin text-orange-500" />
@@ -186,15 +200,15 @@ export default function DirectoryTukangsPage() {
           </div>
         ) : (
           <>
-            <p className="text-sm text-muted-foreground mb-6">
+            <p className="text-sm text-muted-foreground mb-6 text-center">
               Menampilkan {tukangs.length} dari {pagination.total} tukang
             </p>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
               {tukangs.map((t) => (
-                <Link key={t.id} href={`/dashboard/profile/${t.id}`}>
-                  <article className="group rounded-2xl border border-border bg-card overflow-hidden hover:shadow-lg hover:border-orange-500/30 transition-all duration-200 h-full flex flex-col">
+                <Link key={t.id} href={`/directory/tukangs/${t.id}`}>
+                  <article className="group rounded-2xl border border-border bg-card/80 backdrop-blur-sm overflow-hidden hover:shadow-xl hover:shadow-orange-500/10 hover:border-orange-500/30 transition-all duration-200 h-full flex flex-col">
                     <div className="aspect-[4/3] bg-muted/50 relative flex items-center justify-center p-6">
-                      <Avatar className="h-24 w-24 ring-4 ring-background">
+                      <Avatar className="h-24 w-24 ring-4 ring-background/80">
                         <AvatarImage src={t.avatar ?? undefined} />
                         <AvatarFallback className="bg-gradient-to-br from-orange-500 to-amber-600 text-white text-2xl">
                           {t.name.charAt(0).toUpperCase()}
