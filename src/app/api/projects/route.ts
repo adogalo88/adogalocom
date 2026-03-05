@@ -18,9 +18,10 @@ const projectFilterSchema = z.object({
   categoryId: z.string().optional(),
   clientId: z.string().optional(),
   vendorId: z.string().optional(),
-  cityId: z.string().optional(), // Filter by city
-  provinceId: z.string().optional(), // Filter by province
+  cityId: z.string().optional(),
+  provinceId: z.string().optional(),
   search: z.string().optional(),
+  skillIds: z.string().optional(), // comma-separated for proyek harian
 });
 
 const createProjectSchema = z.object({
@@ -76,7 +77,8 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const { page, limit, status, type, categoryId, clientId, vendorId, cityId, provinceId, search } = validationResult.data;
+    const { page, limit, status, type, categoryId, clientId, vendorId, cityId, provinceId, search, skillIds: skillIdsParam } = validationResult.data;
+    const skillIds = skillIdsParam ? skillIdsParam.split(',').map((s) => s.trim()).filter(Boolean) : [];
     const skip = (page - 1) * limit;
 
     // Build filter based on role
@@ -122,6 +124,9 @@ export async function GET(request: NextRequest) {
       where.OR = where.OR 
         ? [...where.OR, { title: { contains: search } }, { description: { contains: search } }]
         : [{ title: { contains: search } }, { description: { contains: search } }];
+    }
+    if (skillIds.length > 0) {
+      where.skills = { some: { id: { in: skillIds } } };
     }
 
     // Get projects with relations
@@ -171,6 +176,9 @@ export async function GET(request: NextRequest) {
               name: true,
               icon: true,
             },
+          },
+          skills: {
+            select: { id: true, name: true },
           },
           _count: {
             select: {

@@ -323,7 +323,7 @@ export default function CreateProjectPage() {
               </Select>
             </div>
 
-            {/* Budget & Workers */}
+            {/* Budget (dan Jumlah Pekerja hanya untuk Harian) */}
             <div className="grid md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="budget">Estimasi Budget (Rp)</Label>
@@ -334,15 +334,17 @@ export default function CreateProjectPage() {
                   {...register('budget', { valueAsNumber: true })}
                 />
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="workerNeeded">Jumlah Pekerja Dibutuhkan</Label>
-                <Input
-                  id="workerNeeded"
-                  type="number"
-                  placeholder="Contoh: 3"
-                  {...register('workerNeeded', { valueAsNumber: true })}
-                />
-              </div>
+              {projectType === 'HARIAN' && (
+                <div className="space-y-2">
+                  <Label htmlFor="workerNeeded">Jumlah Pekerja Dibutuhkan</Label>
+                  <Input
+                    id="workerNeeded"
+                    type="number"
+                    placeholder="Contoh: 3"
+                    {...register('workerNeeded', { valueAsNumber: true })}
+                  />
+                </div>
+              )}
             </div>
 
             {projectType === 'HARIAN' && (

@@ -28,8 +28,11 @@ export default function LoginPage() {
     setIsLoading(true);
 
     try {
-      await login(email, password);
-      router.push('/dashboard');
+      const user = await login(email, password);
+      if (user?.role === 'TUKANG') router.push('/proyek-harian');
+      else if (user?.role === 'VENDOR') router.push('/proyek-tender');
+      else if (user?.role === 'SUPPLIER') router.push('/permintaan-material');
+      else router.push('/dashboard');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Login gagal');
     } finally {

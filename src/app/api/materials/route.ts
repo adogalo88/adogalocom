@@ -71,6 +71,7 @@ export async function GET(request: NextRequest) {
     const clientId = searchParams.get('clientId');
     const cityId = searchParams.get('cityId');
     const provinceId = searchParams.get('provinceId');
+    const search = searchParams.get('search')?.trim() || undefined;
 
     // Build where clause based on role
     let where: Prisma.MaterialWhereInput = {};
@@ -107,6 +108,12 @@ export async function GET(request: NextRequest) {
     }
     if (provinceId) {
       where.city = { provinceId };
+    }
+    if (search) {
+      where.OR = [
+        { title: { contains: search, mode: 'insensitive' } },
+        { description: { contains: search, mode: 'insensitive' } },
+      ];
     }
 
     // Get total count

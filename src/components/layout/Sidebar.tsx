@@ -60,7 +60,7 @@ const roleNavigation: Record<string, NavItem[]> = {
   ],
   VENDOR: [
     { title: 'Dashboard', href: '/dashboard', icon: <Home className="h-5 w-5" /> },
-    { title: 'Proyek Tersedia', href: '/dashboard/projects', icon: <FolderKanban className="h-5 w-5" /> },
+    { title: 'Proyek Tender', href: '/proyek-tender', icon: <FolderKanban className="h-5 w-5" /> },
     { title: 'Proyek Saya', href: '/dashboard/my-projects', icon: <Briefcase className="h-5 w-5" /> },
     { title: 'Material', href: '/dashboard/materials', icon: <Package className="h-5 w-5" /> },
     { title: 'RAB/BOQ', href: '/dashboard/boq', icon: <FileText className="h-5 w-5" /> },
@@ -74,7 +74,7 @@ const roleNavigation: Record<string, NavItem[]> = {
   ],
   TUKANG: [
     { title: 'Dashboard', href: '/dashboard', icon: <Home className="h-5 w-5" /> },
-    { title: 'Cari Pekerjaan', href: '/dashboard/jobs', icon: <Briefcase className="h-5 w-5" /> },
+    { title: 'Proyek Harian', href: '/proyek-harian', icon: <Briefcase className="h-5 w-5" /> },
     { title: 'Proyek Saya', href: '/dashboard/my-projects', icon: <FolderKanban className="h-5 w-5" /> },
     { title: 'Portofolio', href: '/dashboard/portfolio', icon: <Layers className="h-5 w-5" /> },
     { title: 'Langganan', href: '/dashboard/subscription', icon: <CreditCard className="h-5 w-5" /> },
@@ -87,7 +87,7 @@ const roleNavigation: Record<string, NavItem[]> = {
   ],
   SUPPLIER: [
     { title: 'Dashboard', href: '/dashboard', icon: <Home className="h-5 w-5" /> },
-    { title: 'Permintaan Material', href: '/dashboard/requests', icon: <Package className="h-5 w-5" /> },
+    { title: 'Permintaan Material', href: '/permintaan-material', icon: <Package className="h-5 w-5" /> },
     { title: 'Penawaran Saya', href: '/dashboard/offers', icon: <ClipboardList className="h-5 w-5" /> },
     { title: 'Direktori Vendor', href: '/directory/vendors', icon: <Building2 className="h-5 w-5" /> },
     { title: 'Direktori Tukang', href: '/directory/tukangs', icon: <Wrench className="h-5 w-5" /> },
