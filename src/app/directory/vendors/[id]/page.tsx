@@ -8,6 +8,12 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import {
   ArrowLeft,
   MapPin,
   Star,
@@ -25,6 +31,7 @@ export default function DirectoryVendorProfilePage() {
   const router = useRouter();
   const [profile, setProfile] = useState<Record<string, unknown> | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [enlargedImage, setEnlargedImage] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -85,12 +92,18 @@ export default function DirectoryVendorProfilePage() {
         <Card className="border border-white/20 bg-white/70 dark:bg-gray-900/70 backdrop-blur-xl shadow-xl mb-8 overflow-hidden">
           <CardContent className="p-8">
             <div className="flex flex-col md:flex-row gap-8">
-              <Avatar className="h-28 w-28 md:h-36 md:w-36 ring-4 ring-white/50 shadow-lg">
-                <AvatarImage src={(profile.avatar as string) ?? undefined} />
-                <AvatarFallback className="bg-gradient-to-br from-[#fd904c] to-[#e57835] text-white text-4xl">
-                  {(profile.name as string)?.charAt(0)?.toUpperCase() ?? 'V'}
-                </AvatarFallback>
-              </Avatar>
+              <button
+                type="button"
+                onClick={() => profile.avatar && setEnlargedImage(profile.avatar as string)}
+                className="rounded-full focus:outline-none focus:ring-2 focus:ring-[#fd904c] focus:ring-offset-2 shrink-0"
+              >
+                <Avatar className="h-28 w-28 md:h-36 md:w-36 ring-4 ring-white/50 shadow-lg cursor-pointer hover:ring-[#fd904c]/50 transition-all">
+                  <AvatarImage src={(profile.avatar as string) ?? undefined} />
+                  <AvatarFallback className="bg-gradient-to-br from-[#fd904c] to-[#e57835] text-white text-4xl">
+                    {(profile.name as string)?.charAt(0)?.toUpperCase() ?? 'V'}
+                  </AvatarFallback>
+                </Avatar>
+              </button>
               <div className="flex-1">
                 <div className="flex flex-wrap items-center gap-2">
                   <h1 className="text-2xl md:text-3xl font-bold">{profile.name as string}</h1>
@@ -231,6 +244,21 @@ export default function DirectoryVendorProfilePage() {
           </TabsContent>
         </Tabs>
       </div>
+
+      <Dialog open={!!enlargedImage} onOpenChange={() => setEnlargedImage(null)}>
+        <DialogContent className="max-w-2xl p-0 overflow-hidden bg-transparent border-0 shadow-none">
+          <DialogHeader className="sr-only">
+            <DialogTitle>Foto profil</DialogTitle>
+          </DialogHeader>
+          {enlargedImage && (
+            <img
+              src={enlargedImage}
+              alt="Foto profil"
+              className="w-full h-auto max-h-[85vh] object-contain rounded-lg"
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

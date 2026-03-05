@@ -12,6 +12,12 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { Search, MapPin, Star, Briefcase, ChevronLeft, ChevronRight, Loader2, Building2 } from 'lucide-react';
 
 interface Vendor {
@@ -49,6 +55,7 @@ export default function DirectoryVendorsPage() {
   const [categoryIds, setCategoryIds] = useState<string[]>([]);
   const [minRating, setMinRating] = useState('');
   const [sortBy, setSortBy] = useState('rating');
+  const [enlargedImage, setEnlargedImage] = useState<string | null>(null);
 
   useEffect(() => {
     fetch('/api/cities?activeOnly=true')
@@ -208,12 +215,18 @@ export default function DirectoryVendorsPage() {
                 <Link key={v.id} href={`/directory/vendors/${v.id}`}>
                   <article className="group rounded-2xl border border-border bg-card/80 backdrop-blur-sm overflow-hidden hover:shadow-xl hover:shadow-[#fd904c]/10 hover:border-[#fd904c]/30 transition-all duration-200 h-full flex flex-col">
                     <div className="aspect-[4/3] bg-muted/50 relative flex items-center justify-center p-6">
-                      <Avatar className="h-24 w-24 ring-4 ring-background/80">
-                        <AvatarImage src={v.avatar ?? undefined} />
-                        <AvatarFallback className="bg-gradient-to-br from-[#fd904c] to-[#e57835] text-white text-2xl">
-                          {v.name.charAt(0).toUpperCase()}
-                        </AvatarFallback>
-                      </Avatar>
+                      <button
+                        type="button"
+                        onClick={(e) => { e.preventDefault(); e.stopPropagation(); if (v.avatar) setEnlargedImage(v.avatar); }}
+                        className="rounded-full focus:outline-none focus:ring-2 focus:ring-[#fd904c] focus:ring-offset-2"
+                      >
+                        <Avatar className="h-24 w-24 ring-4 ring-background/80 cursor-pointer hover:ring-[#fd904c]/50 transition-all">
+                          <AvatarImage src={v.avatar ?? undefined} />
+                          <AvatarFallback className="bg-gradient-to-br from-[#fd904c] to-[#e57835] text-white text-2xl">
+                            {v.name.charAt(0).toUpperCase()}
+                          </AvatarFallback>
+                        </Avatar>
+                      </button>
                     </div>
                     <div className="p-4 flex-1 flex flex-col">
                       <h3 className="font-semibold text-lg truncate group-hover:text-[#fd904c] transition-colors">{v.name}</h3>
@@ -258,6 +271,21 @@ export default function DirectoryVendorsPage() {
           </>
         )}
       </section>
+
+      <Dialog open={!!enlargedImage} onOpenChange={() => setEnlargedImage(null)}>
+        <DialogContent className="max-w-2xl p-0 overflow-hidden bg-transparent border-0 shadow-none">
+          <DialogHeader className="sr-only">
+            <DialogTitle>Foto profil</DialogTitle>
+          </DialogHeader>
+          {enlargedImage && (
+            <img
+              src={enlargedImage}
+              alt="Foto profil"
+              className="w-full h-auto max-h-[85vh] object-contain rounded-lg"
+            />
+          }
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

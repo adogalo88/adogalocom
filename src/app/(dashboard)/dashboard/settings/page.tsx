@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/providers/AuthProvider';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -63,6 +63,8 @@ export default function SettingsPage() {
   const [verifAvatar, setVerifAvatar] = useState('');
   const [savingVerif, setSavingVerif] = useState(false);
   const [uploadingField, setUploadingField] = useState<string | null>(null);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const avatarInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     fetch('/api/provinces?activeOnly=true').then((r) => r.json()).then((d) => d.success && d.data && setProvinces(d.data));
@@ -164,6 +166,39 @@ export default function SettingsPage() {
     );
   };
 
+  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !file.type.startsWith('image/')) {
+      toast.error('Pilih file gambar (JPG, PNG, dll.)');
+      return;
+    }
+    setUploadingAvatar(true);
+    try {
+      const fd = new FormData();
+      fd.append('files', file);
+      const res = await fetch('/api/upload', { method: 'POST', body: fd });
+      const data = await res.json();
+      if (!data.success || !data.data?.files?.[0]) throw new Error(data.error || 'Upload gagal');
+      const url = data.data.files[0];
+      const patchRes = await fetch('/api/users/me', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ avatar: url }),
+      });
+      if (!patchRes.ok) {
+        const err = await patchRes.json();
+        throw new Error(err.error || 'Gagal menyimpan foto');
+      }
+      await refreshUser();
+      toast.success('Foto profil berhasil diubah');
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Upload gagal');
+    } finally {
+      setUploadingAvatar(false);
+      e.target.value = '';
+    }
+  };
+
   const uploadVerifFile = async (field: string, file: File) => {
     setUploadingField(field);
     try {
@@ -216,6 +251,12 @@ export default function SettingsPage() {
       }
       if (!verifPicKtpPhoto?.trim()) {
         toast.error('KTP PIC wajib diupload.');
+        return;
+      }
+    }
+    if (user?.role === 'TUKANG') {
+      if (!verifAvatar?.trim()) {
+        toast.error('Foto selfie (foto profil) wajib diupload untuk Tukang.');
         return;
       }
     }
@@ -378,24 +419,41 @@ export default function SettingsPage() {
             </CardHeader>
             <CardContent>
               <form onSubmit={profileForm.handleSubmit(onProfileSubmit)} className="space-y-6">
-                {/* Avatar */}
+                {/* Avatar - klik untuk upload (semua role). Tukang: wajib foto selfie. */}
                 <div className="flex items-center gap-4">
-                  <div className="relative">
-                    <Avatar className="h-20 w-20">
+                  <input
+                    ref={avatarInputRef}
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={handleAvatarUpload}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => avatarInputRef.current?.click()}
+                    disabled={uploadingAvatar}
+                    className="relative rounded-full focus:outline-none focus:ring-2 focus:ring-[#fd904c] focus:ring-offset-2"
+                  >
+                    <Avatar className="h-20 w-20 ring-2 ring-transparent hover:ring-[#fd904c]/50 transition-all">
                       <AvatarImage src={user?.avatar || undefined} />
                       <AvatarFallback className="bg-gradient-to-br from-[#fd904c] to-[#e57835] text-white text-xl">
                         {user?.name?.charAt(0).toUpperCase()}
                       </AvatarFallback>
                     </Avatar>
-                    <button
-                      type="button"
-                      className="absolute -bottom-1 -right-1 h-7 w-7 rounded-full bg-[#fd904c] text-white flex items-center justify-center hover:bg-[#fd904c]/90"
-                    >
-                      <Camera className="h-4 w-4" />
-                    </button>
-                  </div>
+                    <span className="absolute inset-0 flex items-center justify-center rounded-full bg-black/40 opacity-0 hover:opacity-100 transition-opacity">
+                      {uploadingAvatar ? (
+                        <Loader2 className="h-8 w-8 animate-spin text-white" />
+                      ) : (
+                        <Camera className="h-8 w-8 text-white" />
+                      )}
+                    </span>
+                  </button>
                   <div>
                     <p className="font-medium text-lg">{user?.name}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">Klik foto untuk ganti foto profil</p>
+                    {user?.role === 'TUKANG' && (
+                      <p className="text-xs text-amber-600 dark:text-amber-500 mt-1">Untuk Tukang: foto selfie wajib sebagai foto profil</p>
+                    )}
                     <div className="flex items-center gap-2 mt-1">
                       <Badge className={roleColors[user?.role || 'CLIENT']}>
                         {roleLabels[user?.role || 'CLIENT']}

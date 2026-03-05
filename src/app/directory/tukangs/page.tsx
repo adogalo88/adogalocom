@@ -12,6 +12,12 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { Search, MapPin, Star, ChevronLeft, ChevronRight, Loader2, Wrench, Clock } from 'lucide-react';
 
 interface Tukang {
@@ -54,6 +60,7 @@ export default function DirectoryTukangsPage() {
   const [specialties, setSpecialties] = useState<string[]>([]);
   const [minRating, setMinRating] = useState('');
   const [sortBy, setSortBy] = useState('rating');
+  const [enlargedImage, setEnlargedImage] = useState<string | null>(null);
 
   useEffect(() => {
     fetch('/api/cities?activeOnly=true')
@@ -208,12 +215,18 @@ export default function DirectoryTukangsPage() {
                 <Link key={t.id} href={`/directory/tukangs/${t.id}`}>
                   <article className="group rounded-2xl border border-border bg-card/80 backdrop-blur-sm overflow-hidden hover:shadow-xl hover:shadow-orange-500/10 hover:border-orange-500/30 transition-all duration-200 h-full flex flex-col">
                     <div className="aspect-[4/3] bg-muted/50 relative flex items-center justify-center p-6">
-                      <Avatar className="h-24 w-24 ring-4 ring-background/80">
-                        <AvatarImage src={t.avatar ?? undefined} />
-                        <AvatarFallback className="bg-gradient-to-br from-orange-500 to-amber-600 text-white text-2xl">
-                          {t.name.charAt(0).toUpperCase()}
-                        </AvatarFallback>
-                      </Avatar>
+                      <button
+                        type="button"
+                        onClick={(e) => { e.preventDefault(); e.stopPropagation(); if (t.avatar) setEnlargedImage(t.avatar); }}
+                        className="rounded-full focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2"
+                      >
+                        <Avatar className="h-24 w-24 ring-4 ring-background/80 cursor-pointer hover:ring-orange-500/50 transition-all">
+                          <AvatarImage src={t.avatar ?? undefined} />
+                          <AvatarFallback className="bg-gradient-to-br from-orange-500 to-amber-600 text-white text-2xl">
+                            {t.name.charAt(0).toUpperCase()}
+                          </AvatarFallback>
+                        </Avatar>
+                      </button>
                     </div>
                     <div className="p-4 flex-1 flex flex-col">
                       <h3 className="font-semibold text-lg truncate group-hover:text-orange-600 transition-colors">{t.name}</h3>
@@ -265,6 +278,21 @@ export default function DirectoryTukangsPage() {
           </>
         )}
       </section>
+
+      <Dialog open={!!enlargedImage} onOpenChange={() => setEnlargedImage(null)}>
+        <DialogContent className="max-w-2xl p-0 overflow-hidden bg-transparent border-0 shadow-none">
+          <DialogHeader className="sr-only">
+            <DialogTitle>Foto profil</DialogTitle>
+          </DialogHeader>
+          {enlargedImage && (
+            <img
+              src={enlargedImage}
+              alt="Foto profil"
+              className="w-full h-auto max-h-[85vh] object-contain rounded-lg"
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

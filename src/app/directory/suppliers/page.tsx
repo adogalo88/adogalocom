@@ -4,6 +4,12 @@ import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { Search, MapPin, ChevronLeft, ChevronRight, Loader2, Truck, MessageSquare, Phone } from 'lucide-react';
 
 interface Supplier {
@@ -44,6 +50,7 @@ export default function DirectorySuppliersPage() {
   const [provinceId, setProvinceId] = useState('');
   const [categoryIds, setCategoryIds] = useState<string[]>([]);
   const [sortBy, setSortBy] = useState('rating');
+  const [enlargedImage, setEnlargedImage] = useState<string | null>(null);
 
   useEffect(() => {
     Promise.all([
@@ -222,12 +229,18 @@ export default function DirectorySuppliersPage() {
                   key={s.id}
                   className="flex flex-col sm:flex-row items-start sm:items-center gap-4 p-4 rounded-xl border border-border bg-card/50 backdrop-blur-sm hover:bg-muted/30 transition-colors"
                 >
-                  <Avatar className="h-14 w-14 shrink-0 ring-2 ring-border">
-                    <AvatarImage src={s.avatar ?? undefined} />
-                    <AvatarFallback className="bg-gradient-to-br from-teal-500 to-cyan-600 text-white text-lg">
-                      {s.name?.charAt(0)?.toUpperCase() ?? 'S'}
-                    </AvatarFallback>
-                  </Avatar>
+                  <button
+                    type="button"
+                    onClick={() => s.avatar && setEnlargedImage(s.avatar)}
+                    className="shrink-0 rounded-full focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2"
+                  >
+                    <Avatar className="h-14 w-14 ring-2 ring-border cursor-pointer hover:ring-teal-500/50 transition-all">
+                      <AvatarImage src={s.avatar ?? undefined} />
+                      <AvatarFallback className="bg-gradient-to-br from-teal-500 to-cyan-600 text-white text-lg">
+                        {s.name?.charAt(0)?.toUpperCase() ?? 'S'}
+                      </AvatarFallback>
+                    </Avatar>
+                  </button>
                   <div className="flex-1 min-w-0">
                     <h3 className="font-semibold text-lg">{s.name}</h3>
                     <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground mt-1">
@@ -282,6 +295,21 @@ export default function DirectorySuppliersPage() {
           </>
         )}
       </section>
+
+      <Dialog open={!!enlargedImage} onOpenChange={() => setEnlargedImage(null)}>
+        <DialogContent className="max-w-2xl p-0 overflow-hidden bg-transparent border-0 shadow-none">
+          <DialogHeader className="sr-only">
+            <DialogTitle>Foto profil</DialogTitle>
+          </DialogHeader>
+          {enlargedImage && (
+            <img
+              src={enlargedImage}
+              alt="Foto profil"
+              className="w-full h-auto max-h-[85vh] object-contain rounded-lg"
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
