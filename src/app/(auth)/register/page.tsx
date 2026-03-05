@@ -12,6 +12,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Loader2, Eye, EyeOff, Mail, Lock, User, Phone, Building2, Wrench, Truck, UserCircle, ArrowLeft, ShieldCheck, RefreshCw } from 'lucide-react';
 import Image from 'next/image';
 import { cn } from '@/lib/utils';
+import { validatePasswordStrength, PASSWORD_REQUIREMENTS_TEXT } from '@/lib/password-validation';
 
 const roles = [
   {
@@ -121,12 +122,13 @@ export default function RegisterPage() {
     setError('');
 
     if (password !== confirmPassword) {
-      setError('Password tidak cocok');
+      setError('Password dan konfirmasi tidak cocok');
       return;
     }
 
-    if (password.length < 8) {
-      setError('Password minimal 8 karakter');
+    const pwdValidation = validatePasswordStrength(password);
+    if (!pwdValidation.valid) {
+      setError('Password tidak memenuhi persyaratan keamanan: ' + pwdValidation.errors.join(', '));
       return;
     }
 
@@ -493,13 +495,16 @@ export default function RegisterPage() {
                   <Input
                     id="password"
                     type={showPassword ? 'text' : 'password'}
-                    placeholder="Min. 8 karakter"
+                    placeholder="Min. 8 karakter, huruf besar+kecil, angka"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     className="pl-10 pr-10"
                     required
                   />
                 </div>
+                <p className="text-xs text-muted-foreground">
+                  {PASSWORD_REQUIREMENTS_TEXT}
+                </p>
               </div>
 
               <div className="space-y-2">

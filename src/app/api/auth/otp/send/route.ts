@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { db } from '@/lib/db';
-import { validateEmail } from '@/lib/auth';
+import { validateEmail, validatePasswordStrength } from '@/lib/auth';
 import { isBrevoConfigured, sendOTPEmail } from '@/lib/email';
 
 const sendOTPSchema = z.object({
@@ -70,6 +70,17 @@ export async function POST(request: NextRequest) {
         { error: `Terlalu banyak permintaan. Coba lagi dalam ${rateCheck.remainingTime} detik.` },
         { status: 429 }
       );
+    }
+
+    // For EMAIL_VERIFICATION (registration), validasi password sebelum kirim OTP
+    if (type === 'EMAIL_VERIFICATION' && password) {
+      const pwdCheck = validatePasswordStrength(password);
+      if (!pwdCheck.valid) {
+        return NextResponse.json(
+          { error: 'Password tidak memenuhi persyaratan keamanan. ' + pwdCheck.errors.join(', ') },
+          { status: 400 }
+        );
+      }
     }
 
     // For EMAIL_VERIFICATION (registration), check if email already registered and verified
