@@ -283,7 +283,7 @@ export default function DirectoryVendorsPage() {
               alt="Foto profil"
               className="w-full h-auto max-h-[85vh] object-contain rounded-lg"
             />
-          }
+          )}
         </DialogContent>
       </Dialog>
     </div>
