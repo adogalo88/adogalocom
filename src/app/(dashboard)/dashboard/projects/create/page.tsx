@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
+import { useAuth } from '@/providers/AuthProvider';
 import { useCreateProject, useCategories } from '@/hooks/api';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -50,6 +51,7 @@ interface UploadedFile {
 
 export default function CreateProjectPage() {
   const router = useRouter();
+  const { user, isLoading: authLoading } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [photos, setPhotos] = useState<UploadedFile[]>([]);
   const [files, setFiles] = useState<UploadedFile[]>([]);
@@ -64,6 +66,14 @@ export default function CreateProjectPage() {
   const [selectedProvinceId, setSelectedProvinceId] = useState<string>('');
   const [skills, setSkills] = useState<{ id: string; name: string }[]>([]);
   const [selectedSkillIds, setSelectedSkillIds] = useState<string[]>([]);
+
+  useEffect(() => {
+    if (authLoading) return;
+    if (user && user.role !== 'CLIENT' && user.role !== 'ADMIN') {
+      router.replace('/dashboard');
+      return;
+    }
+  }, [user, authLoading, router]);
 
   useEffect(() => {
     fetch('/api/provinces?activeOnly=true').then((r) => r.json()).then((d) => d.success && d.data && setProvinces(d.data));

@@ -243,6 +243,26 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Tukang applying to HARIAN: require active subscription if tukang subscription feature is enabled
+    if (project.type === 'HARIAN' && currentUser.role === UserRole.TUKANG) {
+      const platformSettings = await db.platformSettings.findUnique({ where: { id: 'default' } });
+      if (platformSettings?.tukangSubscriptionEnabled) {
+        const activeSub = await db.subscription.findFirst({
+          where: {
+            userId: currentUser.id,
+            status: 'ACTIVE',
+            OR: [{ endDate: null }, { endDate: { gt: new Date() } }],
+          },
+        });
+        if (!activeSub) {
+          return NextResponse.json(
+            { error: 'Anda harus berlangganan untuk ikut apply proyek harian. Silakan beli langganan di menu Langganan.' },
+            { status: 403 }
+          );
+        }
+      }
+    }
+
     // Check for existing application (duplicate prevention)
     const existingApplication = await db.application.findUnique({
       where: {

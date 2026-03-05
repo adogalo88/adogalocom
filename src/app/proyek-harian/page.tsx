@@ -51,7 +51,7 @@ export default function ProyekHarianPage() {
       router.replace('/login');
       return;
     }
-    if (user.role !== 'TUKANG') {
+    if (user.role !== 'TUKANG' && user.role !== 'ADMIN') {
       router.replace('/dashboard');
       return;
     }
@@ -64,7 +64,7 @@ export default function ProyekHarianPage() {
   }, []);
 
   const fetchProjects = async (page = 1) => {
-    if (!user || user.role !== 'TUKANG') return;
+    if (!user || (user.role !== 'TUKANG' && user.role !== 'ADMIN')) return;
     setLoading(true);
     try {
       const params = new URLSearchParams();
@@ -90,7 +90,7 @@ export default function ProyekHarianPage() {
   };
 
   useEffect(() => {
-    if (user?.role === 'TUKANG') fetchProjects(pagination.page);
+    if (user?.role === 'TUKANG' || user?.role === 'ADMIN') fetchProjects(pagination.page);
   }, [user?.role, pagination.page, search, cityId, categoryId, skillIds.join(',')]);
 
   const toggleSkill = (id: string) => {
@@ -105,7 +105,7 @@ export default function ProyekHarianPage() {
     );
   }
 
-  if (user?.role !== 'TUKANG') return null;
+  if (user?.role !== 'TUKANG' && user?.role !== 'ADMIN') return null;
 
   return (
     <div className="min-h-screen flex flex-col bg-gradient-to-br from-emerald-500/5 via-background to-teal-500/5">

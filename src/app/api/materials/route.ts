@@ -207,9 +207,9 @@ export async function POST(request: NextRequest) {
       return apiUnauthorized('Anda harus login untuk membuat permintaan material');
     }
 
-    // Only CLIENT and ADMIN can create materials
-    if (user.role !== 'CLIENT' && user.role !== 'ADMIN') {
-      return apiForbidden('Hanya klien yang dapat membuat permintaan material');
+    // Only CLIENT, VENDOR and ADMIN can create materials
+    if (user.role !== 'CLIENT' && user.role !== 'VENDOR' && user.role !== 'ADMIN') {
+      return apiForbidden('Hanya klien, vendor, atau admin yang dapat membuat permintaan material');
     }
 
     const body = await request.json();

@@ -30,6 +30,7 @@ import {
   Star,
   MapPin,
   Search,
+  Layout,
 } from 'lucide-react';
 import { useState } from 'react';
 import Image from 'next/image';
@@ -100,6 +101,12 @@ const roleNavigation: Record<string, NavItem[]> = {
   ],
   ADMIN: [
     { title: 'Dashboard', href: '/dashboard', icon: <Home className="h-5 w-5" /> },
+    { title: 'Halaman', href: '#', icon: <Layout className="h-5 w-5" />, children: [
+      { title: 'Direktori', href: '/directory/vendors', icon: <Building2 className="h-4 w-4" /> },
+      { title: 'Proyek Harian', href: '/proyek-harian', icon: <Briefcase className="h-4 w-4" /> },
+      { title: 'Proyek Tender', href: '/proyek-tender', icon: <FolderKanban className="h-4 w-4" /> },
+      { title: 'Permintaan Material', href: '/permintaan-material', icon: <Package className="h-4 w-4" /> },
+    ]},
     { title: 'Verifikasi', href: '/dashboard/verification', icon: <Shield className="h-5 w-5" /> },
     { title: 'Manajemen User', href: '/dashboard/users', icon: <Users className="h-5 w-5" /> },
     { title: 'Semua Proyek', href: '/dashboard/projects', icon: <FolderKanban className="h-5 w-5" /> },

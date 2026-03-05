@@ -47,6 +47,8 @@ interface SubscriptionPlan {
 
 interface PlatformSettings {
   subscriptionEnabled: boolean;
+  tukangSubscriptionEnabled: boolean;
+  supplierSubscriptionEnabled: boolean;
   tukangSubscriptionPrice: number;
   supplierSubscriptionPrice: number;
 }
@@ -346,15 +348,43 @@ export default function AdminSubscriptionsPage() {
               {/* Subscription Toggle */}
               <div className="flex items-center justify-between">
                 <div>
-                  <Label>Aktifkan Langganan</Label>
+                  <Label>Aktifkan Langganan (Global)</Label>
                   <p className="text-sm text-muted-foreground">
-                    Izinkan pengguna untuk berlangganan
+                    Master switch: harus aktif agar fitur per-role di bawah bisa dipakai
                   </p>
                 </div>
                 <Switch
                   checked={settings?.subscriptionEnabled || false}
                   onCheckedChange={(checked) => handleUpdateSettings({ subscriptionEnabled: checked })}
                   disabled={isSaving}
+                />
+              </div>
+
+              {/* Per-role toggles */}
+              <div className="flex items-center justify-between rounded-lg border p-4">
+                <div>
+                  <Label>Fitur Langganan Tukang</Label>
+                  <p className="text-sm text-muted-foreground">
+                    Jika aktif: tukang harus berlangganan untuk ikut apply proyek harian
+                  </p>
+                </div>
+                <Switch
+                  checked={settings?.tukangSubscriptionEnabled ?? false}
+                  onCheckedChange={(checked) => handleUpdateSettings({ tukangSubscriptionEnabled: checked })}
+                  disabled={isSaving || !settings?.subscriptionEnabled}
+                />
+              </div>
+              <div className="flex items-center justify-between rounded-lg border p-4">
+                <div>
+                  <Label>Fitur Langganan Supplier</Label>
+                  <p className="text-sm text-muted-foreground">
+                    Jika aktif: supplier harus berlangganan untuk tampil di direktori & buat penawaran material
+                  </p>
+                </div>
+                <Switch
+                  checked={settings?.supplierSubscriptionEnabled ?? false}
+                  onCheckedChange={(checked) => handleUpdateSettings({ supplierSubscriptionEnabled: checked })}
+                  disabled={isSaving || !settings?.subscriptionEnabled}
                 />
               </div>
 

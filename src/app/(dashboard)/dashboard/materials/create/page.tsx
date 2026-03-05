@@ -56,7 +56,7 @@ const unitOptions = [
 
 export default function CreateMaterialPage() {
   const router = useRouter();
-  const { user } = useAuth();
+  const { user, isLoading: authLoading } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [photos, setPhotos] = useState<UploadedFile[]>([]);
   const [pdfFile, setPdfFile] = useState<UploadedFile | null>(null);
@@ -75,6 +75,14 @@ export default function CreateMaterialPage() {
 
   type MaterialCategoryItem = { id: string; name: string; description: string | null; parentId: string | null; children: { id: string; name: string; description: string | null }[] };
   const [materialCategories, setMaterialCategories] = useState<MaterialCategoryItem[]>([]);
+
+  useEffect(() => {
+    if (authLoading) return;
+    if (user && user.role !== 'CLIENT' && user.role !== 'VENDOR' && user.role !== 'ADMIN') {
+      router.replace('/dashboard');
+      return;
+    }
+  }, [user, authLoading, router]);
 
   useEffect(() => {
     fetch('/api/provinces?activeOnly=true').then((r) => r.json()).then((d) => d.success && d.data && setProvinces(d.data));

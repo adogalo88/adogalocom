@@ -5,6 +5,8 @@ import { apiSuccess, apiError, withRole, SafeUser } from '@/lib/api-utils';
 
 const updateSettingsSchema = z.object({
   subscriptionEnabled: z.boolean().optional(),
+  tukangSubscriptionEnabled: z.boolean().optional(),
+  supplierSubscriptionEnabled: z.boolean().optional(),
   tukangSubscriptionPrice: z.number().min(0).optional(),
   supplierSubscriptionPrice: z.number().min(0).optional(),
   maintenanceMode: z.boolean().optional(),
@@ -23,6 +25,8 @@ export async function GET() {
         data: {
           id: 'default',
           subscriptionEnabled: false,
+          tukangSubscriptionEnabled: false,
+          supplierSubscriptionEnabled: false,
           tukangSubscriptionPrice: 25000,
           supplierSubscriptionPrice: 49000,
           maintenanceMode: false,

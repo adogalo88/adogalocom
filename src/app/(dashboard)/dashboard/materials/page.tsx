@@ -49,7 +49,7 @@ export default function MaterialsPage() {
               : 'Semua permintaan material'}
           </p>
         </div>
-        {(user?.role === 'CLIENT' || user?.role === 'ADMIN') && (
+        {(user?.role === 'CLIENT' || user?.role === 'VENDOR' || user?.role === 'ADMIN') && (
           <Link href="/dashboard/materials/create">
             <Button className="bg-gradient-to-r from-[#fd904c] to-[#e57835] gap-2">
               <Plus className="h-4 w-4" />

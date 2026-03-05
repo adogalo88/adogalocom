@@ -184,6 +184,23 @@ export async function POST(
       return apiForbidden('Hanya supplier yang dapat membuat penawaran');
     }
 
+    // If supplier subscription feature is enabled, require active subscription
+    const platformSettings = await db.platformSettings.findUnique({ where: { id: 'default' } });
+    if (platformSettings?.supplierSubscriptionEnabled) {
+      const activeSub = await db.subscription.findFirst({
+        where: {
+          userId: user.id,
+          status: 'ACTIVE',
+          OR: [{ endDate: null }, { endDate: { gt: new Date() } }],
+        },
+      });
+      if (!activeSub) {
+        return apiForbidden(
+          'Anda harus berlangganan untuk membuat penawaran material. Silakan beli langganan di menu Langganan.'
+        );
+      }
+    }
+
     const { id } = await params;
 
     // Get material

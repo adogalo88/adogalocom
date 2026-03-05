@@ -31,6 +31,14 @@ export const POST = withRole(['TUKANG', 'SUPPLIER'], async (user: SafeUser, requ
       return apiError('Sistem langganan tidak aktif', 400);
     }
 
+    const userType = user.role as 'TUKANG' | 'SUPPLIER';
+    if (userType === 'TUKANG' && !settings.tukangSubscriptionEnabled) {
+      return apiError('Fitur langganan tukang belum diaktifkan oleh admin', 400);
+    }
+    if (userType === 'SUPPLIER' && !settings.supplierSubscriptionEnabled) {
+      return apiError('Fitur langganan supplier belum diaktifkan oleh admin', 400);
+    }
+
     // Check if user already has active subscription
     const existingSub = await db.subscription.findFirst({
       where: {
@@ -64,7 +72,6 @@ export const POST = withRole(['TUKANG', 'SUPPLIER'], async (user: SafeUser, requ
       planNameFinal = plan.name;
     } else {
       // Default plan
-      const userType = user.role as 'TUKANG' | 'SUPPLIER';
       price = userType === 'TUKANG'
         ? settings.tukangSubscriptionPrice
         : settings.supplierSubscriptionPrice;

@@ -47,7 +47,7 @@ export default function ProyekTenderPage() {
       router.replace('/login');
       return;
     }
-    if (user.role !== 'VENDOR') {
+    if (user.role !== 'VENDOR' && user.role !== 'ADMIN') {
       router.replace('/dashboard');
       return;
     }
@@ -59,7 +59,7 @@ export default function ProyekTenderPage() {
   }, []);
 
   const fetchProjects = async (page = 1) => {
-    if (!user || user.role !== 'VENDOR') return;
+    if (!user || (user.role !== 'VENDOR' && user.role !== 'ADMIN')) return;
     setLoading(true);
     try {
       const params = new URLSearchParams();
@@ -84,7 +84,7 @@ export default function ProyekTenderPage() {
   };
 
   useEffect(() => {
-    if (user?.role === 'VENDOR') fetchProjects(pagination.page);
+    if (user?.role === 'VENDOR' || user?.role === 'ADMIN') fetchProjects(pagination.page);
   }, [user?.role, pagination.page, search, cityId, categoryId]);
 
   if (authLoading || (!user && !authLoading)) {
@@ -95,7 +95,7 @@ export default function ProyekTenderPage() {
     );
   }
 
-  if (user?.role !== 'VENDOR') return null;
+  if (user?.role !== 'VENDOR' && user?.role !== 'ADMIN') return null;
 
   return (
     <div className="min-h-screen flex flex-col bg-gradient-to-br from-[#fd904c]/5 via-background to-[#e57835]/5">

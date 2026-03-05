@@ -24,6 +24,17 @@ export async function GET(request: NextRequest) {
       status: 'ACTIVE',
     };
 
+    // If supplier subscription is enabled, only list suppliers with active subscription
+    const platformSettings = await db.platformSettings.findUnique({ where: { id: 'default' } });
+    if (platformSettings?.supplierSubscriptionEnabled) {
+      where.subscriptions = {
+        some: {
+          status: 'ACTIVE',
+          OR: [{ endDate: null }, { endDate: { gt: new Date() } }],
+        },
+      };
+    }
+
     if (search) {
       where.OR = [
         { name: { contains: search, mode: 'insensitive' } },

@@ -174,7 +174,9 @@ model OTP {
 
 model PlatformSettings {
   id                        String   @id @default("default")
-  subscriptionEnabled       Boolean  @default(false) // Enable/disable subscription system
+  subscriptionEnabled       Boolean  @default(false) // Enable/disable subscription system (global)
+  tukangSubscriptionEnabled Boolean  @default(false) // Enable/disable Tukang subscription features
+  supplierSubscriptionEnabled Boolean @default(false) // Enable/disable Supplier subscription features
   tukangSubscriptionPrice   Float    @default(25000) // Default price for Tukang
   supplierSubscriptionPrice Float    @default(49000) // Default price for Supplier
   maintenanceMode           Boolean  @default(false)

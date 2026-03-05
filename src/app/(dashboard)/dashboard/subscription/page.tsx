@@ -42,6 +42,8 @@ interface SubscriptionPlan {
 
 interface PlatformSettings {
   subscriptionEnabled: boolean;
+  tukangSubscriptionEnabled: boolean;
+  supplierSubscriptionEnabled: boolean;
   tukangSubscriptionPrice: number;
   supplierSubscriptionPrice: number;
 }
@@ -149,7 +151,13 @@ export default function SubscriptionPage() {
     }).format(amount);
   };
 
-  if (!settings?.subscriptionEnabled) {
+  const roleEnabled =
+    user?.role === 'TUKANG'
+      ? (settings?.tukangSubscriptionEnabled ?? false)
+      : user?.role === 'SUPPLIER'
+        ? (settings?.supplierSubscriptionEnabled ?? false)
+        : false;
+  if (!settings?.subscriptionEnabled || !roleEnabled) {
     return (
       <div className="max-w-4xl mx-auto">
         <Card className="glass-card">
@@ -157,7 +165,9 @@ export default function SubscriptionPage() {
             <CreditCard className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
             <h2 className="text-xl font-semibold">Fitur Langganan Belum Tersedia</h2>
             <p className="text-muted-foreground mt-2">
-              Sistem langganan sedang tidak aktif saat ini.
+              {!settings?.subscriptionEnabled
+                ? 'Sistem langganan sedang tidak aktif saat ini.'
+                : 'Fitur langganan untuk role Anda belum diaktifkan oleh admin.'}
             </p>
           </CardContent>
         </Card>

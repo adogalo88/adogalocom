@@ -62,7 +62,7 @@ export default function PermintaanMaterialPage() {
       router.replace('/login');
       return;
     }
-    if (user.role !== 'SUPPLIER') {
+    if (user.role !== 'SUPPLIER' && user.role !== 'ADMIN') {
       router.replace('/dashboard');
       return;
     }
@@ -89,7 +89,7 @@ export default function PermintaanMaterialPage() {
   }, [provinceId]);
 
   const fetchMaterials = async (page = 1) => {
-    if (!user || user.role !== 'SUPPLIER') return;
+    if (!user || (user.role !== 'SUPPLIER' && user.role !== 'ADMIN')) return;
     setLoading(true);
     try {
       const params = new URLSearchParams();
@@ -113,7 +113,7 @@ export default function PermintaanMaterialPage() {
   };
 
   useEffect(() => {
-    if (user?.role === 'SUPPLIER') fetchMaterials(pagination.page);
+    if (user?.role === 'SUPPLIER' || user?.role === 'ADMIN') fetchMaterials(pagination.page);
   }, [user?.role, pagination.page, search, cityId, provinceId]);
 
   if (authLoading || (!user && !authLoading)) {
@@ -124,7 +124,7 @@ export default function PermintaanMaterialPage() {
     );
   }
 
-  if (user?.role !== 'SUPPLIER') return null;
+  if (user?.role !== 'SUPPLIER' && user?.role !== 'ADMIN') return null;
 
   return (
     <div className="min-h-screen flex flex-col bg-gradient-to-br from-violet-500/5 via-background to-fuchsia-500/5">
