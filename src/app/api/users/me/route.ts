@@ -27,6 +27,7 @@ const updateProfileSchema = z.object({
   ktpPhoto: z.string().optional().nullable(),
   skckDoc: z.string().optional().nullable(),
   avatar: z.string().optional().nullable(),
+  skillIds: z.array(z.string()).optional(),
 });
 
 export async function PATCH(request: NextRequest) {
@@ -52,7 +53,9 @@ export async function PATCH(request: NextRequest) {
 
     const updateData = { ...validationResult.data };
     const materialCategoryIds = updateData.materialCategoryIds;
+    const skillIds = updateData.skillIds;
     delete (updateData as Record<string, unknown>).materialCategoryIds;
+    delete (updateData as Record<string, unknown>).skillIds;
 
     // Remove undefined values
     Object.keys(updateData).forEach(key => {
@@ -64,6 +67,9 @@ export async function PATCH(request: NextRequest) {
     const data: Parameters<typeof db.user.update>[0]['data'] = { ...updateData };
     if (currentUser.role === 'SUPPLIER' && Array.isArray(materialCategoryIds)) {
       data.materialCategories = { set: materialCategoryIds.map((id) => ({ id })) };
+    }
+    if (currentUser.role === 'TUKANG' && Array.isArray(skillIds)) {
+      data.skills = { set: skillIds.map((id) => ({ id })) };
     }
 
     const user = await db.user.update({

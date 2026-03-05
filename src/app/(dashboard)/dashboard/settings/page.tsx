@@ -47,6 +47,11 @@ export default function SettingsPage() {
   const [supplierCategoryIds, setSupplierCategoryIds] = useState<string[]>([]);
   const [savingCategories, setSavingCategories] = useState(false);
 
+  // Keahlian untuk TUKANG
+  const [skills, setSkills] = useState<{ id: string; name: string }[]>([]);
+  const [tukangSkillIds, setTukangSkillIds] = useState<string[]>([]);
+  const [savingSkills, setSavingSkills] = useState(false);
+
   // Data verifikasi (Vendor/Supplier/Tukang)
   const u = user as Record<string, unknown> | null;
   const [verificationEntityType, setVerificationEntityType] = useState<'PERORANGAN' | 'BADAN_USAHA'>('BADAN_USAHA');
@@ -72,12 +77,17 @@ export default function SettingsPage() {
     fetch('/api/material-categories')
       .then((r) => r.json())
       .then((d) => setMaterialCategories(Array.isArray(d?.categories) ? d.categories : []));
+    fetch('/api/skills').then((r) => r.json()).then((d) => (d.success && Array.isArray(d.skills)) && setSkills(d.skills));
   }, []);
 
   const userMaterialCategories = (user as { materialCategories?: { id: string; name: string }[] } | null)?.materialCategories ?? [];
+  const userSkills = (user as { skills?: { id: string; name: string }[] } | null)?.skills ?? [];
   useEffect(() => {
     setSupplierCategoryIds(userMaterialCategories.map((c) => c.id));
   }, [user?.id, userMaterialCategories.length]);
+  useEffect(() => {
+    setTukangSkillIds(userSkills.map((s) => s.id));
+  }, [user?.id, userSkills.length]);
 
   useEffect(() => {
     if (!u) return;
@@ -525,6 +535,59 @@ export default function SettingsPage() {
                   Simpan Perubahan
                 </Button>
               </form>
+
+              {user?.role === 'TUKANG' && (
+                <>
+                  <Separator className="my-8" />
+                  <div className="space-y-2">
+                    <Label>Keahlian / Skill</Label>
+                    <p className="text-sm text-muted-foreground">Pilih keahlian yang Anda kuasai. Akan tampil di direktori tukang dan proyek harian.</p>
+                    {skills.length === 0 ? (
+                      <p className="text-sm text-muted-foreground rounded-lg border p-4">Belum ada keahlian. Admin dapat menambahkannya di Dashboard → Keahlian Tukang.</p>
+                    ) : (
+                      <div className="rounded-lg border p-4 space-y-2 max-h-48 overflow-y-auto">
+                        {skills.map((skill) => (
+                          <label key={skill.id} className="flex items-center gap-2 cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={tukangSkillIds.includes(skill.id)}
+                              onChange={() => setTukangSkillIds((prev) => prev.includes(skill.id) ? prev.filter((id) => id !== skill.id) : [...prev, skill.id])}
+                              className="rounded border-gray-300"
+                            />
+                            <span>{skill.name}</span>
+                          </label>
+                        ))}
+                      </div>
+                    )}
+                    <Button
+                      type="button"
+                      variant="outline"
+                      disabled={savingSkills || skills.length === 0}
+                      onClick={async () => {
+                        setSavingSkills(true);
+                        try {
+                          const res = await fetch('/api/users/me', {
+                            method: 'PATCH',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ skillIds: tukangSkillIds }),
+                            credentials: 'include',
+                          });
+                          if (!res.ok) throw new Error('Gagal menyimpan');
+                          await refreshUser();
+                          toast.success('Keahlian berhasil disimpan');
+                        } catch {
+                          toast.error('Gagal menyimpan keahlian');
+                        } finally {
+                          setSavingSkills(false);
+                        }
+                      }}
+                    >
+                      {savingSkills && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+                      Simpan Keahlian
+                    </Button>
+                  </div>
+                </>
+              )}
             </CardContent>
           </Card>
         </TabsContent>

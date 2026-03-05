@@ -110,9 +110,13 @@ export default function DirectoryTukangProfilePage() {
                     Terverifikasi
                   </Badge>
                   <Badge variant="secondary">Tukang</Badge>
-                  {profile.specialty && (
-                    <Badge className="bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30">{profile.specialty as string}</Badge>
-                  )}
+                  {(profile.skills as { id: string; name: string }[])?.length > 0
+                    ? (profile.skills as { id: string; name: string }[]).map((s) => (
+                        <Badge key={s.id} className="bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30">{s.name}</Badge>
+                      ))
+                    : profile.specialty && (
+                        <Badge className="bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30">{profile.specialty as string}</Badge>
+                      )}
                 </div>
                 {city && (
                   <p className="text-muted-foreground flex items-center gap-1 mt-2">

@@ -35,6 +35,7 @@ const projectSchema = z.object({
   address: z.string().max(500).optional(),
   workerNeeded: z.number().min(1).optional(),
   categoryId: z.string().optional(),
+  skillIds: z.array(z.string()).optional(),
   startDate: z.string().optional(),
   endDate: z.string().optional(),
   rfqItems: z.array(rfqItemSchema).optional(),
@@ -61,10 +62,13 @@ export default function CreateProjectPage() {
   const [provinces, setProvinces] = useState<{ id: string; name: string }[]>([]);
   const [cities, setCities] = useState<{ id: string; name: string; provinceId: string }[]>([]);
   const [selectedProvinceId, setSelectedProvinceId] = useState<string>('');
+  const [skills, setSkills] = useState<{ id: string; name: string }[]>([]);
+  const [selectedSkillIds, setSelectedSkillIds] = useState<string[]>([]);
 
   useEffect(() => {
     fetch('/api/provinces?activeOnly=true').then((r) => r.json()).then((d) => d.success && d.data && setProvinces(d.data));
     fetch('/api/cities?activeOnly=true').then((r) => r.json()).then((d) => d.success && d.data && setCities(d.data));
+    fetch('/api/skills').then((r) => r.json()).then((d) => (d.success && Array.isArray(d.skills)) && setSkills(d.skills));
   }, []);
   const citiesByProvince = selectedProvinceId ? cities.filter((c) => c.provinceId === selectedProvinceId) : cities;
 
@@ -170,6 +174,7 @@ export default function CreateProjectPage() {
         budget: data.budget || undefined,
         workerNeeded: data.workerNeeded || undefined,
         categoryId: data.categoryId || undefined,
+        skillIds: projectType === 'HARIAN' && selectedSkillIds.length > 0 ? selectedSkillIds : undefined,
         cityId: data.cityId || undefined,
         address: data.address || undefined,
         startDate: data.startDate ? new Date(data.startDate).toISOString() : undefined,
@@ -339,6 +344,30 @@ export default function CreateProjectPage() {
                 />
               </div>
             </div>
+
+            {projectType === 'HARIAN' && (
+              <div className="space-y-2">
+                <Label>Keahlian yang Dibutuhkan</Label>
+                <p className="text-sm text-muted-foreground">Pilih keahlian tukang yang Anda cari (bisa lebih dari satu)</p>
+                {skills.length === 0 ? (
+                  <p className="text-sm text-muted-foreground rounded-lg border p-4">Belum ada keahlian. Admin dapat menambahkannya di Dashboard → Keahlian Tukang.</p>
+                ) : (
+                  <div className="rounded-lg border p-4 space-y-2 max-h-48 overflow-y-auto">
+                    {skills.map((skill) => (
+                      <label key={skill.id} className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={selectedSkillIds.includes(skill.id)}
+                          onChange={() => setSelectedSkillIds((prev) => prev.includes(skill.id) ? prev.filter((id) => id !== skill.id) : [...prev, skill.id])}
+                          className="rounded border-gray-300"
+                        />
+                        <span>{skill.name}</span>
+                      </label>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Provinsi & Kota */}
             <div className="grid md:grid-cols-2 gap-4">

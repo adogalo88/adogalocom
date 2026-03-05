@@ -38,6 +38,7 @@ const createProjectSchema = z.object({
   startDate: z.string().datetime({ message: 'Format tanggal mulai tidak valid' }).optional(),
   endDate: z.string().datetime({ message: 'Format tanggal selesai tidak valid' }).optional(),
   categoryId: z.string().optional(),
+  skillIds: z.array(z.string()).optional(), // Keahlian yang dibutuhkan (proyek harian)
   status: z.nativeEnum(ProjectStatus).default('DRAFT'),
   // RFQ items for WITH_RFQ subtype
   rfqItems: z.array(z.object({
@@ -320,6 +321,9 @@ export async function POST(request: NextRequest) {
         endDate: projectData.endDate ? new Date(projectData.endDate) : undefined,
         categoryId: projectData.categoryId,
         clientId: currentUser.id,
+        ...(projectData.skillIds && projectData.skillIds.length > 0 ? {
+          skills: { connect: projectData.skillIds.map((id: string) => ({ id })) },
+        } : {}),
         // Create RFQ if subtype is WITH_RFQ
         ...(projectData.type === 'TENDER' && projectData.tenderSubtype === 'WITH_RFQ' && projectData.rfqItems ? {
           rfq: {

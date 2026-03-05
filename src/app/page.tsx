@@ -4,6 +4,8 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { useAuth } from '@/providers/AuthProvider';
 import {
   ArrowRight,
   Building2,
@@ -114,6 +116,8 @@ const roles = [
 ];
 
 export default function HomePage() {
+  const { user } = useAuth();
+
   return (
     <div className="min-h-screen flex flex-col">
       {/* Navigation */}
@@ -146,14 +150,28 @@ export default function HomePage() {
             </nav>
 
             <div className="flex items-center gap-3">
-              <Link href="/login">
-                <Button variant="ghost">Masuk</Button>
-              </Link>
-              <Link href="/register">
-                <Button className="bg-gradient-to-r from-[#fd904c] to-[#e57835] hover:opacity-90">
-                  Daftar Gratis
-                </Button>
-              </Link>
+              {user ? (
+                <Link href="/dashboard" className="flex items-center gap-2 rounded-lg hover:bg-muted/80 p-2 -m-2 transition-colors">
+                  <Avatar className="h-8 w-8 ring-2 ring-[#fd904c]/30">
+                    <AvatarImage src={user.avatar ?? undefined} />
+                    <AvatarFallback className="bg-gradient-to-r from-[#fd904c] to-[#e57835] text-white text-sm">
+                      {user.name?.charAt(0).toUpperCase() ?? 'U'}
+                    </AvatarFallback>
+                  </Avatar>
+                  <span className="hidden sm:inline font-medium text-sm max-w-[120px] truncate">{user.name}</span>
+                </Link>
+              ) : (
+                <>
+                  <Link href="/login">
+                    <Button variant="ghost">Masuk</Button>
+                  </Link>
+                  <Link href="/register">
+                    <Button className="bg-gradient-to-r from-[#fd904c] to-[#e57835] hover:opacity-90">
+                      Daftar Gratis
+                    </Button>
+                  </Link>
+                </>
+              )}
             </div>
           </div>
         </div>

@@ -56,6 +56,8 @@ export default function ProjectDetailPage() {
   const [showCompleteDialog, setShowCompleteDialog] = useState(false);
   const [showCancelDialog, setShowCancelDialog] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [skillRatings, setSkillRatings] = useState<Record<string, { rating: number; comment: string }>>({});
+  const [submittingSkillRatings, setSubmittingSkillRatings] = useState(false);
 
   const { data, isLoading, error, refetch } = useProject(projectId);
   const createApplication = useCreateApplication();
@@ -300,6 +302,74 @@ export default function ProjectDetailPage() {
                     </a>
                   ))}
                 </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Rating Keahlian (proyek harian selesai) */}
+          {isOwner && project.status === 'COMPLETED' && project.type === 'HARIAN' && project.vendorId && (project.skills?.length ?? 0) > 0 && (
+            <Card className="glass-card border-emerald-500/30">
+              <CardHeader>
+                <CardTitle>Beri Rating Keahlian</CardTitle>
+                <CardDescription>
+                  Beri rating untuk setiap keahlian yang dikerjakan tukang (1–5 bintang)
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {(project.skills as { id: string; name: string }[]).map((skill) => (
+                  <div key={skill.id} className="flex flex-col sm:flex-row sm:items-center gap-3 p-3 rounded-lg border">
+                    <span className="font-medium sm:w-40">{skill.name}</span>
+                    <div className="flex items-center gap-2">
+                      {[1, 2, 3, 4, 5].map((star) => (
+                        <button
+                          key={star}
+                          type="button"
+                          onClick={() => setSkillRatings((p) => ({ ...p, [skill.id]: { ...p[skill.id], rating: star } }))}
+                          className="text-lg text-muted-foreground hover:text-amber-500 focus:outline-none"
+                        >
+                          {(skillRatings[skill.id]?.rating ?? 0) >= star ? '★' : '☆'}
+                        </button>
+                      ))}
+                    </div>
+                    <Input
+                      placeholder="Komentar (opsional)"
+                      className="flex-1"
+                      value={skillRatings[skill.id]?.comment ?? ''}
+                      onChange={(e) => setSkillRatings((p) => ({ ...p, [skill.id]: { ...p[skill.id], comment: e.target.value } }))}
+                    />
+                  </div>
+                ))}
+                <Button
+                  disabled={submittingSkillRatings || (project.skills as { id: string }[]).some((s) => !skillRatings[s.id]?.rating)}
+                  onClick={async () => {
+                    setSubmittingSkillRatings(true);
+                    try {
+                      const res = await fetch(`/api/projects/${projectId}/skill-ratings`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                          ratings: (project.skills as { id: string }[]).map((s) => ({
+                            skillId: s.id,
+                            rating: skillRatings[s.id]?.rating ?? 0,
+                            comment: skillRatings[s.id]?.comment,
+                          })),
+                        }),
+                        credentials: 'include',
+                      });
+                      const data = await res.json().catch(() => ({}));
+                      if (!res.ok) throw new Error(data.error || 'Gagal menyimpan');
+                      toast.success('Rating keahlian berhasil disimpan');
+                      refetch();
+                    } catch (e) {
+                      toast.error(e instanceof Error ? e.message : 'Gagal menyimpan rating');
+                    } finally {
+                      setSubmittingSkillRatings(false);
+                    }
+                  }}
+                >
+                  {submittingSkillRatings && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+                  Simpan Rating Keahlian
+                </Button>
               </CardContent>
             </Card>
           )}

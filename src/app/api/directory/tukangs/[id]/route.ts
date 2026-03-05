@@ -27,6 +27,7 @@ export async function GET(
         description: true,
         specialty: true,
         experience: true,
+        skills: { select: { id: true, name: true } },
         phone: true,
         rating: true,
         totalReviews: true,

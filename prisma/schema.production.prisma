@@ -119,6 +119,8 @@ model User {
   portfolio         Portfolio[]
   reviewsGiven      Review[]           @relation("ReviewsGiven")
   reviewsReceived   Review[]           @relation("ReviewsReceived")
+  skillRatingsGiven SkillRating[]      @relation("SkillRatingsGiven")
+  skillRatingsReceived SkillRating[]   @relation("SkillRatingsReceived")
   sentMessages      Message[]          @relation("SentMessages")
   receivedMessages  Message[]          @relation("ReceivedMessages")
   notifications     Notification[]
@@ -130,6 +132,7 @@ model User {
   verifiedProjects  Project[]          @relation("ProjectVerifier") // Projects verified by this admin
   verifiedMaterials Material[]         @relation("MaterialVerifier") // Materials verified by this admin
   materialCategories MaterialCategory[] // Kategori material yang dipilih supplier (profil)
+  skills             Skill[] // Keahlian (untuk TUKANG)
 
   @@index([cityId])
   @@index([role])
@@ -244,6 +247,22 @@ model Category {
   @@map("categories")
 }
 
+// Keahlian/Skill untuk Tukang (admin CRUD). Dipakai di proyek harian & rating per keahlian.
+model Skill {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  description String?
+  sortOrder   Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  users        User[]
+  projects     Project[]
+  skillRatings SkillRating[]
+
+  @@map("skills")
+}
+
 // Kategori untuk material (bisa punya subkategori)
 model MaterialCategory {
   id          String    @id @default(cuid())
@@ -304,6 +323,8 @@ model Project {
   materials    Material[]
   transactions Transaction[]
   reviews      Review[]
+  skills       Skill[] // Keahlian yang dibutuhkan (proyek harian)
+  skillRatings SkillRating[]
 
   @@index([cityId])
   @@index([clientId])
@@ -791,6 +812,29 @@ model Review {
   @@index([reviewerId])
   @@index([revieweeId])
   @@map("reviews")
+}
+
+// Rating per keahlian (proyek harian selesai): client beri rating per skill ke tukang
+model SkillRating {
+  id         String   @id @default(cuid())
+  projectId  String
+  skillId    String
+  reviewerId String
+  revieweeId String
+  rating     Int // 1-5
+  comment    String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  project  Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  skill    Skill   @relation(fields: [skillId], references: [id], onDelete: Cascade)
+  reviewer User   @relation("SkillRatingsGiven", fields: [reviewerId], references: [id], onDelete: Cascade)
+  reviewee User   @relation("SkillRatingsReceived", fields: [revieweeId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, skillId, reviewerId, revieweeId])
+  @@index([projectId])
+  @@index([skillId])
+  @@map("skill_ratings")
 }
 
 // =====================

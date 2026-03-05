@@ -7,8 +7,10 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const search = searchParams.get('search') || '';
     const cityId = searchParams.get('cityId') || '';
-    const specialtyParam = searchParams.get('specialties') || searchParams.get('specialty') || ''; // multi: comma-separated
+    const specialtyParam = searchParams.get('specialties') || searchParams.get('specialty') || '';
     const specialties = specialtyParam ? specialtyParam.split(',').map((s) => s.trim()).filter(Boolean) : [];
+    const skillIdsParam = searchParams.get('skillIds') || '';
+    const skillIds = skillIdsParam ? skillIdsParam.split(',').map((s) => s.trim()).filter(Boolean) : [];
     const minRating = searchParams.get('minRating') || '';
     const minExperience = searchParams.get('minExperience') || '';
     const sortBy = searchParams.get('sortBy') || 'rating'; // rating, experience, name
@@ -31,6 +33,11 @@ export async function GET(request: NextRequest) {
     if (specialties.length > 0) {
       andConditions.push({
         OR: specialties.map((s) => ({ specialty: { contains: s, mode: 'insensitive' as const } })),
+      });
+    }
+    if (skillIds.length > 0) {
+      andConditions.push({
+        skills: { some: { id: { in: skillIds } } },
       });
     }
 
@@ -87,6 +94,7 @@ export async function GET(request: NextRequest) {
           description: true,
           specialty: true,
           experience: true,
+          skills: { select: { id: true, name: true } },
           city: {
             select: {
               id: true,

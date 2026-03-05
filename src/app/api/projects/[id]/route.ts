@@ -75,6 +75,7 @@ function formatProjectResponse(project: any, userApplication?: any) {
       description: project.category.description,
       icon: project.category.icon,
     } : null,
+    skills: project.skills?.map((s: { id: string; name: string }) => ({ id: s.id, name: s.name })) || [],
     applications: project.applications?.map((app: any) => ({
       id: app.id,
       coverLetter: app.coverLetter,
@@ -199,6 +200,9 @@ export const GET = withAuth(async (user, request: NextRequest, context) => {
             description: true,
             icon: true,
           },
+        },
+        skills: {
+          select: { id: true, name: true },
         },
         applications: {
           select: {

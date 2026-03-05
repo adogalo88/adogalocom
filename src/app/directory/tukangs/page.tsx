@@ -30,6 +30,7 @@ interface Tukang {
   description: string | null;
   specialty: string | null;
   experience: number | null;
+  skills: { id: string; name: string }[];
   city: { id: string; name: string; province: { id: string; name: string } } | null;
   createdAt: string;
 }
@@ -40,24 +41,15 @@ interface City {
   province: { id: string; name: string };
 }
 
-const TUKANG_SPECIALTIES = [
-  { value: 'batu', label: 'Tukang Batu' },
-  { value: 'kayu', label: 'Tukang Kayu' },
-  { value: 'besi', label: 'Tukang Besi' },
-  { value: 'listrik', label: 'Tukang Listrik' },
-  { value: 'plumbon', label: 'Tukang Plumbon' },
-  { value: 'cat', label: 'Tukang Cat' },
-  { value: 'mandor', label: 'Mandor' },
-];
-
 export default function DirectoryTukangsPage() {
   const [tukangs, setTukangs] = useState<Tukang[]>([]);
   const [cities, setCities] = useState<City[]>([]);
+  const [skills, setSkills] = useState<{ id: string; name: string }[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [pagination, setPagination] = useState({ page: 1, limit: 12, total: 0, totalPages: 0 });
   const [search, setSearch] = useState('');
   const [cityId, setCityId] = useState('');
-  const [specialties, setSpecialties] = useState<string[]>([]);
+  const [skillIds, setSkillIds] = useState<string[]>([]);
   const [minRating, setMinRating] = useState('');
   const [sortBy, setSortBy] = useState('rating');
   const [enlargedImage, setEnlargedImage] = useState<string | null>(null);
@@ -68,10 +60,11 @@ export default function DirectoryTukangsPage() {
       .then((data) => {
         if (data?.success && Array.isArray(data.data)) setCities(data.data);
       });
+    fetch('/api/skills').then((r) => r.json()).then((d) => (d.success && Array.isArray(d.skills)) && setSkills(d.skills));
   }, []);
 
-  const toggleSpecialty = (value: string) => {
-    setSpecialties((prev) => (prev.includes(value) ? prev.filter((x) => x !== value) : [...prev, value]));
+  const toggleSkill = (id: string) => {
+    setSkillIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
   };
 
   const fetchTukangs = async (page = 1) => {
@@ -80,7 +73,7 @@ export default function DirectoryTukangsPage() {
       const params = new URLSearchParams();
       if (search) params.set('search', search);
       if (cityId) params.set('cityId', cityId);
-      if (specialties.length) params.set('specialties', specialties.join(','));
+      if (skillIds.length) params.set('skillIds', skillIds.join(','));
       if (minRating) params.set('minRating', minRating);
       params.set('sortBy', sortBy);
       params.set('page', String(page));
@@ -100,7 +93,7 @@ export default function DirectoryTukangsPage() {
 
   useEffect(() => {
     fetchTukangs(1);
-  }, [cityId, specialties.join(','), minRating, sortBy]);
+  }, [cityId, skillIds.join(','), minRating, sortBy]);
 
   return (
     <div className="flex flex-col min-h-screen">
@@ -151,20 +144,24 @@ export default function DirectoryTukangsPage() {
             <div className="relative">
               <details className="dropdown">
                 <summary className="h-10 rounded-md border border-input bg-background px-3 py-2 text-sm min-w-[180px] cursor-pointer list-none flex items-center justify-between gap-2">
-                  Keahlian {specialties.length > 0 && `(${specialties.length})`}
+                  Keahlian {skillIds.length > 0 && `(${skillIds.length})`}
                 </summary>
-                <div className="absolute left-0 mt-1 p-3 rounded-lg border bg-background shadow-lg z-10 w-56">
-                  {TUKANG_SPECIALTIES.map((s) => (
-                    <label key={s.value} className="flex items-center gap-2 cursor-pointer text-sm py-1">
-                      <input
-                        type="checkbox"
-                        checked={specialties.includes(s.value)}
-                        onChange={() => toggleSpecialty(s.value)}
-                        className="rounded"
-                      />
-                      {s.label}
-                    </label>
-                  ))}
+                <div className="absolute left-0 mt-1 p-3 rounded-lg border bg-background shadow-lg z-10 w-56 max-h-64 overflow-y-auto">
+                  {skills.length === 0 ? (
+                    <p className="text-sm text-muted-foreground py-2">Belum ada keahlian</p>
+                  ) : (
+                    skills.map((s) => (
+                      <label key={s.id} className="flex items-center gap-2 cursor-pointer text-sm py-1">
+                        <input
+                          type="checkbox"
+                          checked={skillIds.includes(s.id)}
+                          onChange={() => toggleSkill(s.id)}
+                          className="rounded"
+                        />
+                        {s.name}
+                      </label>
+                    ))
+                  )}
                 </div>
               </details>
             </div>
@@ -230,11 +227,19 @@ export default function DirectoryTukangsPage() {
                     </div>
                     <div className="p-4 flex-1 flex flex-col">
                       <h3 className="font-semibold text-lg truncate group-hover:text-emerald-600 transition-colors">{t.name}</h3>
-                      {t.specialty && (
-                        <span className="text-xs font-medium text-emerald-600 bg-emerald-50 dark:bg-emerald-950/30 px-2 py-0.5 rounded mt-1 w-fit">
-                          {t.specialty}
-                        </span>
-                      )}
+                      <div className="flex flex-wrap gap-1 mt-1">
+                        {(t.skills ?? []).length > 0
+                          ? (t.skills as { id: string; name: string }[]).map((s) => (
+                              <span key={s.id} className="text-xs font-medium text-emerald-600 bg-emerald-50 dark:bg-emerald-950/30 px-2 py-0.5 rounded">
+                                {s.name}
+                              </span>
+                            ))
+                          : t.specialty && (
+                              <span className="text-xs font-medium text-emerald-600 bg-emerald-50 dark:bg-emerald-950/30 px-2 py-0.5 rounded">
+                                {t.specialty}
+                              </span>
+                            )}
+                      </div>
                       {t.city && (
                         <p className="text-sm text-muted-foreground flex items-center gap-1 mt-2">
                           <MapPin className="h-3.5 w-3.5 shrink-0" />
