@@ -93,12 +93,34 @@ interface Counts {
   pendingMaterials: number;
   rejectedProjects: number;
   rejectedMaterials: number;
+  pendingUsers?: number;
+}
+
+interface PendingUser {
+  id: string;
+  name: string;
+  email: string;
+  phone: string | null;
+  avatar: string | null;
+  role: string;
+  status: string;
+  isVerified: boolean;
+  ktpPhoto: string | null;
+  experience: number | null;
+  picName: string | null;
+  picPhone: string | null;
+  nibDoc: string | null;
+  npwpDoc: string | null;
+  aktaPendirianDoc: string | null;
+  siupDoc: string | null;
+  skckDoc: string | null;
+  createdAt: string;
 }
 
 export default function VerificationPage() {
   const { user } = useAuth();
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState('projects');
+  const [activeTab, setActiveTab] = useState('users');
   const [status, setStatus] = useState<'PENDING_VERIFICATION' | 'REJECTED'>('PENDING_VERIFICATION');
   const [projects, setProjects] = useState<Project[]>([]);
   const [materials, setMaterials] = useState<Material[]>([]);
@@ -107,7 +129,9 @@ export default function VerificationPage() {
     pendingMaterials: 0,
     rejectedProjects: 0,
     rejectedMaterials: 0,
+    pendingUsers: 0,
   });
+  const [pendingUsers, setPendingUsers] = useState<PendingUser[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [search, setSearch] = useState('');
 
@@ -136,10 +160,11 @@ export default function VerificationPage() {
     try {
       const response = await fetch(`/api/admin/verification?status=${status}`);
       const result = await response.json();
-      if (result.success) {
+      if (result.success && result.data) {
         setProjects(result.data.projects || []);
         setMaterials(result.data.materials || []);
-        setCounts(result.data.counts);
+        setCounts(result.data.counts || { pendingProjects: 0, pendingMaterials: 0, rejectedProjects: 0, rejectedMaterials: 0, pendingUsers: 0 });
+        setPendingUsers(result.data.pendingUsers || []);
       }
     } catch (error) {
       console.error('Error fetching verifications:', error);
@@ -171,6 +196,30 @@ export default function VerificationPage() {
       }
     } catch (error) {
       toast.error('Terjadi kesalahan');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleVerifyUser = async (userId: string) => {
+    setIsSubmitting(true);
+    try {
+      const response = await fetch(`/api/users/${userId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          isVerified: true,
+          status: 'ACTIVE',
+          verifiedAt: new Date().toISOString(),
+          verifiedBy: user?.id,
+        }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'Gagal memverifikasi');
+      toast.success('User berhasil diverifikasi');
+      fetchVerifications();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Gagal memverifikasi user');
     } finally {
       setIsSubmitting(false);
     }
@@ -281,7 +330,21 @@ export default function VerificationPage() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+        <Card className="glass-card cursor-pointer hover:border-[#fd904c] transition-colors"
+              onClick={() => setActiveTab('users')}>
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <div className="h-10 w-10 rounded-full bg-[#fd904c]/20 flex items-center justify-center">
+                <User className="h-5 w-5 text-[#fd904c]" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold">{counts.pendingUsers ?? 0}</p>
+                <p className="text-xs text-muted-foreground">User Belum Diverifikasi</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
         <Card className="glass-card cursor-pointer hover:border-yellow-400 transition-colors" 
               onClick={() => { setStatus('PENDING_VERIFICATION'); setActiveTab('projects'); }}>
           <CardContent className="p-4">
@@ -345,7 +408,11 @@ export default function VerificationPage() {
 
       {/* Main Content */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-2 max-w-md">
+        <TabsList className="grid w-full grid-cols-3 max-w-2xl">
+          <TabsTrigger value="users" className="gap-2">
+            <User className="h-4 w-4" />
+            User
+          </TabsTrigger>
           <TabsTrigger value="projects" className="gap-2">
             <FolderKanban className="h-4 w-4" />
             Proyek
@@ -355,6 +422,74 @@ export default function VerificationPage() {
             Material
           </TabsTrigger>
         </TabsList>
+
+        <TabsContent value="users" className="space-y-4 mt-4">
+          {isLoading ? (
+            <div className="space-y-4">
+              {[...Array(3)].map((_, i) => (
+                <Card key={i} className="glass-card">
+                  <CardContent className="p-4">
+                    <Skeleton className="h-20 w-full" />
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          ) : pendingUsers.length === 0 ? (
+            <Card className="glass-card">
+              <CardContent className="py-12 text-center">
+                <CheckCircle className="h-12 w-12 mx-auto text-green-500 mb-4" />
+                <p className="text-muted-foreground">Semua user sudah diverifikasi</p>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="space-y-4">
+              {pendingUsers.map((u) => {
+                const roleLabels: Record<string, string> = { CLIENT: 'Klien', VENDOR: 'Vendor', TUKANG: 'Tukang', SUPPLIER: 'Supplier' };
+                const isBadanUsaha = !!(u.nibDoc || u.npwpDoc || u.aktaPendirianDoc || u.siupDoc);
+                const hasVendorSupplierDocs = u.role === 'CLIENT' || (u.role === 'VENDOR' || u.role === 'SUPPLIER' ? (isBadanUsaha ? isBadanUsaha : true) : true);
+                const hasTukangDocs = u.role !== 'TUKANG' || (!!u.ktpPhoto && !!u.skckDoc && u.experience != null);
+                const dataLengkap = hasVendorSupplierDocs && hasTukangDocs;
+                return (
+                  <Card key={u.id} className="glass-card hover:shadow-lg transition-shadow">
+                    <CardContent className="p-4">
+                      <div className="flex flex-col md:flex-row justify-between gap-4">
+                        <div className="flex items-center gap-3 flex-1">
+                          <Avatar className="h-12 w-12">
+                            <AvatarImage src={u.avatar || undefined} />
+                            <AvatarFallback className="bg-gradient-to-br from-[#fd904c] to-[#e57835] text-white">
+                              {u.name.charAt(0)}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div>
+                            <p className="font-semibold">{u.name}</p>
+                            <p className="text-sm text-muted-foreground">{u.email}</p>
+                            <div className="flex gap-2 mt-1">
+                              <Badge variant="secondary">{roleLabels[u.role] || u.role}</Badge>
+                              {!dataLengkap && (u.role === 'VENDOR' || u.role === 'SUPPLIER' || u.role === 'TUKANG') && (
+                                <Badge variant="outline" className="text-amber-600">Data verifikasi belum lengkap</Badge>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Button
+                            size="sm"
+                            className="bg-green-600 hover:bg-green-700"
+                            onClick={() => handleVerifyUser(u.id)}
+                            disabled={isSubmitting}
+                          >
+                            <CheckCircle className="h-4 w-4 mr-1" />
+                            Verifikasi
+                          </Button>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
+          )}
+        </TabsContent>
 
         <TabsContent value="projects" className="space-y-4 mt-4">
           {/* Search and Filter */}

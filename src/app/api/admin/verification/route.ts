@@ -47,7 +47,32 @@ export const GET = withRole(['ADMIN'], async (user: SafeUser, request: NextReque
       });
     }
 
-    // Get counts
+    // Users menunggu verifikasi (isVerified = false)
+    const pendingUsers = await db.user.findMany({
+      where: { isVerified: false, role: { not: 'ADMIN' } },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        phone: true,
+        avatar: true,
+        role: true,
+        status: true,
+        isVerified: true,
+        ktpPhoto: true,
+        experience: true,
+        picName: true,
+        picPhone: true,
+        nibDoc: true,
+        npwpDoc: true,
+        aktaPendirianDoc: true,
+        siupDoc: true,
+        skckDoc: true,
+        createdAt: true,
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
     const counts = {
       pendingProjects: await db.project.count({
         where: { status: 'PENDING_VERIFICATION' },
@@ -61,9 +86,17 @@ export const GET = withRole(['ADMIN'], async (user: SafeUser, request: NextReque
       rejectedMaterials: await db.material.count({
         where: { status: 'REJECTED' },
       }),
+      pendingUsers: pendingUsers.length,
     };
 
-    return apiSuccess({ ...result, counts });
+    return apiSuccess({
+      success: true,
+      data: {
+        ...result,
+        counts,
+        pendingUsers,
+      },
+    });
   } catch (error) {
     console.error('Get verifications error:', error);
     return apiError('Terjadi kesalahan pada server', 500);

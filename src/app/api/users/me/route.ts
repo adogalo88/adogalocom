@@ -14,7 +14,19 @@ const updateProfileSchema = z.object({
   bankAccountName: z.string().optional(),
   specialty: z.string().optional(),
   experience: z.number().optional(),
-  materialCategoryIds: z.array(z.string()).optional(), // Supplier: kategori material (multi-select)
+  materialCategoryIds: z.array(z.string()).optional(),
+  // Verifikasi Vendor/Supplier
+  picName: z.string().optional().nullable(),
+  picPhone: z.string().optional().nullable(),
+  picKtpPhoto: z.string().optional().nullable(),
+  nibDoc: z.string().optional().nullable(),
+  npwpDoc: z.string().optional().nullable(),
+  aktaPendirianDoc: z.string().optional().nullable(),
+  siupDoc: z.string().optional().nullable(),
+  // Verifikasi Tukang
+  ktpPhoto: z.string().optional().nullable(),
+  skckDoc: z.string().optional().nullable(),
+  avatar: z.string().optional().nullable(),
 });
 
 export async function PATCH(request: NextRequest) {
@@ -40,7 +52,7 @@ export async function PATCH(request: NextRequest) {
 
     const updateData = { ...validationResult.data };
     const materialCategoryIds = updateData.materialCategoryIds;
-    delete (updateData as { materialCategoryIds?: unknown }).materialCategoryIds;
+    delete (updateData as Record<string, unknown>).materialCategoryIds;
 
     // Remove undefined values
     Object.keys(updateData).forEach(key => {

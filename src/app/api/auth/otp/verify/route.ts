@@ -96,8 +96,7 @@ export async function POST(request: NextRequest) {
             where: { id: existingUser.id },
             data: {
               status: 'ACTIVE',
-              isVerified: true,
-              verifiedAt: new Date(),
+              // isVerified tetap false; admin yang memverifikasi setelah user lengkapi data
             },
           });
 
@@ -132,7 +131,7 @@ export async function POST(request: NextRequest) {
       // Hash password
       const hashedPassword = await hashPassword(password);
 
-      // Create user
+      // Create user (status aktif setelah OTP; verifikasi oleh admin nanti)
       const user = await db.user.create({
         data: {
           name,
@@ -140,9 +139,8 @@ export async function POST(request: NextRequest) {
           password: hashedPassword,
           phone: phone || null,
           role,
-          status: 'ACTIVE', // Email verified, so active
-          isVerified: true,
-          verifiedAt: new Date(),
+          status: 'ACTIVE',
+          isVerified: false,
         },
       });
 

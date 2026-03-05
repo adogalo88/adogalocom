@@ -78,6 +78,14 @@ model User {
   ktpNumber         String? // Nomor KTP
   ktpPhoto          String? // Foto KTP
   npwpNumber        String? // Nomor NPWP
+  picName           String?
+  picPhone          String?
+  picKtpPhoto       String?
+  nibDoc            String?
+  npwpDoc           String?
+  aktaPendirianDoc  String?
+  siupDoc           String?
+  skckDoc           String?
   address           String?
   cityId            String? // Reference to City model
   postalCode        String?

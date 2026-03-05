@@ -78,6 +78,15 @@ model User {
   ktpNumber         String? // Nomor KTP
   ktpPhoto          String? // Foto KTP
   npwpNumber        String? // Nomor NPWP
+  // Verifikasi Vendor/Supplier: PIC & dokumen badan usaha
+  picName           String? // Nama PIC (kosong jika perorangan)
+  picPhone          String? // WhatsApp PIC
+  picKtpPhoto       String? // KTP PIC
+  nibDoc            String? // NIB (badan usaha)
+  npwpDoc           String? // File NPWP (badan usaha)
+  aktaPendirianDoc  String? // Akta pendirian (badan usaha)
+  siupDoc           String? // SIUP (badan usaha)
+  skckDoc           String? // SKCK (Tukang)
   address           String?
   cityId            String? // Reference to City model
   postalCode        String?

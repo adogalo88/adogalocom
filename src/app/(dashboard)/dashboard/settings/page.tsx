@@ -15,7 +15,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { Loader2, User, MapPin, Building, CreditCard, Shield, Camera, Package } from 'lucide-react';
+import { Loader2, User, MapPin, Building, CreditCard, Shield, Camera, Package, FileCheck } from 'lucide-react';
 import { toast } from 'sonner';
 
 const profileSchema = z.object({
@@ -47,6 +47,22 @@ export default function SettingsPage() {
   const [supplierCategoryIds, setSupplierCategoryIds] = useState<string[]>([]);
   const [savingCategories, setSavingCategories] = useState(false);
 
+  // Data verifikasi (Vendor/Supplier/Tukang)
+  const u = user as Record<string, unknown> | null;
+  const [verifPicName, setVerifPicName] = useState('');
+  const [verifPicPhone, setVerifPicPhone] = useState('');
+  const [verifPicKtpPhoto, setVerifPicKtpPhoto] = useState('');
+  const [verifNibDoc, setVerifNibDoc] = useState('');
+  const [verifNpwpDoc, setVerifNpwpDoc] = useState('');
+  const [verifAktaDoc, setVerifAktaDoc] = useState('');
+  const [verifSiupDoc, setVerifSiupDoc] = useState('');
+  const [verifKtpPhoto, setVerifKtpPhoto] = useState('');
+  const [verifSkckDoc, setVerifSkckDoc] = useState('');
+  const [verifExperience, setVerifExperience] = useState<number | ''>('');
+  const [verifAvatar, setVerifAvatar] = useState('');
+  const [savingVerif, setSavingVerif] = useState(false);
+  const [uploadingField, setUploadingField] = useState<string | null>(null);
+
   useEffect(() => {
     fetch('/api/provinces?activeOnly=true').then((r) => r.json()).then((d) => d.success && d.data && setProvinces(d.data));
     fetch('/api/cities?activeOnly=true').then((r) => r.json()).then((d) => d.success && d.data && setCities(d.data));
@@ -59,6 +75,21 @@ export default function SettingsPage() {
   useEffect(() => {
     setSupplierCategoryIds(userMaterialCategories.map((c) => c.id));
   }, [user?.id, userMaterialCategories.length]);
+
+  useEffect(() => {
+    if (!u) return;
+    setVerifPicName((u.picName as string) ?? '');
+    setVerifPicPhone((u.picPhone as string) ?? '');
+    setVerifPicKtpPhoto((u.picKtpPhoto as string) ?? '');
+    setVerifNibDoc((u.nibDoc as string) ?? '');
+    setVerifNpwpDoc((u.npwpDoc as string) ?? '');
+    setVerifAktaDoc((u.aktaPendirianDoc as string) ?? '');
+    setVerifSiupDoc((u.siupDoc as string) ?? '');
+    setVerifKtpPhoto((u.ktpPhoto as string) ?? '');
+    setVerifSkckDoc((u.skckDoc as string) ?? '');
+    setVerifExperience((u.experience as number) ?? '');
+    setVerifAvatar((u.avatar as string) ?? '');
+  }, [u?.id, u?.picName, u?.picPhone, u?.picKtpPhoto, u?.nibDoc, u?.npwpDoc, u?.aktaPendirianDoc, u?.siupDoc, u?.ktpPhoto, u?.skckDoc, u?.experience, u?.avatar]);
 
   const userCityId = (user as { cityId?: string | null; city?: { id: string } | null })?.cityId ?? (user as { city?: { id: string } | null })?.city?.id ?? null;
   const citiesByProvince = selectedProvinceId ? cities.filter((c) => c.provinceId === selectedProvinceId) : cities;
@@ -130,6 +161,67 @@ export default function SettingsPage() {
     );
   };
 
+  const uploadVerifFile = async (field: string, file: File) => {
+    setUploadingField(field);
+    try {
+      const fd = new FormData();
+      fd.append('files', file);
+      const res = await fetch('/api/upload', { method: 'POST', body: fd });
+      const data = await res.json();
+      if (!data.success || !data.data?.files?.[0]) throw new Error(data.error || 'Upload gagal');
+      const url = data.data.files[0];
+      if (field === 'picKtpPhoto') setVerifPicKtpPhoto(url);
+      else if (field === 'nibDoc') setVerifNibDoc(url);
+      else if (field === 'npwpDoc') setVerifNpwpDoc(url);
+      else if (field === 'aktaDoc') setVerifAktaDoc(url);
+      else if (field === 'siupDoc') setVerifSiupDoc(url);
+      else if (field === 'ktpPhoto') setVerifKtpPhoto(url);
+      else if (field === 'skckDoc') setVerifSkckDoc(url);
+      else if (field === 'avatar') setVerifAvatar(url);
+      toast.success('File berhasil diupload');
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Upload gagal');
+    } finally {
+      setUploadingField(null);
+    }
+  };
+
+  const onSaveVerification = async () => {
+    setSavingVerif(true);
+    try {
+      const payload: Record<string, unknown> = {};
+      if (user?.role === 'VENDOR' || user?.role === 'SUPPLIER') {
+        payload.picName = verifPicName || null;
+        payload.picPhone = verifPicPhone || null;
+        payload.picKtpPhoto = verifPicKtpPhoto || null;
+        payload.nibDoc = verifNibDoc || null;
+        payload.npwpDoc = verifNpwpDoc || null;
+        payload.aktaPendirianDoc = verifAktaDoc || null;
+        payload.siupDoc = verifSiupDoc || null;
+      } else if (user?.role === 'TUKANG') {
+        payload.ktpPhoto = verifKtpPhoto || null;
+        payload.skckDoc = verifSkckDoc || null;
+        payload.experience = verifExperience === '' ? null : Number(verifExperience);
+        payload.avatar = verifAvatar || null;
+      }
+      const res = await fetch('/api/users/me', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || 'Gagal menyimpan');
+      }
+      await refreshUser();
+      toast.success('Data verifikasi berhasil disimpan');
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Gagal menyimpan');
+    } finally {
+      setSavingVerif(false);
+    }
+  };
+
   const onSaveMaterialCategories = async () => {
     if (user?.role !== 'SUPPLIER') return;
     setSavingCategories(true);
@@ -199,7 +291,7 @@ export default function SettingsPage() {
       </div>
 
       <Tabs defaultValue="profile" className="space-y-6">
-        <TabsList className={`grid w-full md:w-auto ${user?.role === 'SUPPLIER' ? 'grid-cols-5' : 'grid-cols-4'}`}>
+        <TabsList className={`grid w-full md:w-auto ${user?.role === 'SUPPLIER' ? 'grid-cols-6' : (user?.role === 'VENDOR' || user?.role === 'TUKANG') ? 'grid-cols-5' : 'grid-cols-4'}`}>
           <TabsTrigger value="profile" className="gap-2">
             <User className="h-4 w-4" />
             <span className="hidden sm:inline">Profil</span>
@@ -208,6 +300,12 @@ export default function SettingsPage() {
             <MapPin className="h-4 w-4" />
             <span className="hidden sm:inline">Alamat</span>
           </TabsTrigger>
+          {(user?.role === 'VENDOR' || user?.role === 'SUPPLIER' || user?.role === 'TUKANG') && (
+            <TabsTrigger value="verification" className="gap-2">
+              <FileCheck className="h-4 w-4" />
+              <span className="hidden sm:inline">Verifikasi</span>
+            </TabsTrigger>
+          )}
           {user?.role === 'SUPPLIER' && (
             <TabsTrigger value="material-categories" className="gap-2">
               <Package className="h-4 w-4" />
@@ -309,6 +407,96 @@ export default function SettingsPage() {
             </CardContent>
           </Card>
         </TabsContent>
+
+        {/* Verifikasi (Vendor / Supplier / Tukang) */}
+        {(user?.role === 'VENDOR' || user?.role === 'SUPPLIER' || user?.role === 'TUKANG') && (
+          <TabsContent value="verification">
+            <Card className="glass-card">
+              <CardHeader>
+                <CardTitle>Data Verifikasi</CardTitle>
+                <CardDescription>
+                  {user?.role === 'TUKANG'
+                    ? 'Lengkapi data berikut agar admin dapat memverifikasi akun Anda. Foto KTP, selfie (foto profil), pengalaman kerja, dan SKCK wajib.'
+                    : 'Isi data PIC (kosongkan jika perorangan). Jika berbadan usaha, upload minimal salah satu: NIB, NPWP, Akta Pendirian, atau SIUP.'}
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                {(user?.role === 'VENDOR' || user?.role === 'SUPPLIER') && (
+                  <>
+                    <div className="grid md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label>Nama PIC (kosongkan jika perorangan)</Label>
+                        <Input value={verifPicName} onChange={(e) => setVerifPicName(e.target.value)} placeholder="Nama penanggung jawab" />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>WhatsApp PIC</Label>
+                        <Input value={verifPicPhone} onChange={(e) => setVerifPicPhone(e.target.value)} placeholder="08xxxxxxxxxx" />
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>KTP PIC (opsional)</Label>
+                      <div className="flex gap-2 items-center">
+                        <Input type="file" accept="image/*,.pdf" className="max-w-xs" onChange={(e) => e.target.files?.[0] && uploadVerifFile('picKtpPhoto', e.target.files[0])} />
+                        {uploadingField === 'picKtpPhoto' && <Loader2 className="h-4 w-4 animate-spin" />}
+                        {verifPicKtpPhoto && <span className="text-sm text-green-600">Terupload</span>}
+                      </div>
+                    </div>
+                    <Separator />
+                    <p className="text-sm font-medium">Dokumen badan usaha (wajib salah satu jika berbadan usaha)</p>
+                    <div className="grid md:grid-cols-2 gap-4">
+                      {(['nibDoc', 'npwpDoc', 'aktaDoc', 'siupDoc'] as const).map((f) => (
+                        <div key={f} className="space-y-2">
+                          <Label>{f === 'nibDoc' ? 'NIB' : f === 'npwpDoc' ? 'NPWP (file)' : f === 'aktaDoc' ? 'Akta Pendirian' : 'SIUP'}</Label>
+                          <div className="flex gap-2 items-center">
+                            <Input type="file" accept="image/*,.pdf" className="max-w-xs" onChange={(e) => e.target.files?.[0] && uploadVerifFile(f, e.target.files[0])} />
+                            {uploadingField === f && <Loader2 className="h-4 w-4 animate-spin" />}
+                            {(f === 'nibDoc' ? verifNibDoc : f === 'npwpDoc' ? verifNpwpDoc : f === 'aktaDoc' ? verifAktaDoc : verifSiupDoc) && <span className="text-sm text-green-600">Terupload</span>}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </>
+                )}
+                {user?.role === 'TUKANG' && (
+                  <>
+                    <div className="space-y-2">
+                      <Label>Foto KTP *</Label>
+                      <div className="flex gap-2 items-center">
+                        <Input type="file" accept="image/*" onChange={(e) => e.target.files?.[0] && uploadVerifFile('ktpPhoto', e.target.files[0])} className="max-w-xs" />
+                        {uploadingField === 'ktpPhoto' && <Loader2 className="h-4 w-4 animate-spin" />}
+                        {verifKtpPhoto && <span className="text-sm text-green-600">Terupload</span>}
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Selfie (untuk foto profil) *</Label>
+                      <div className="flex gap-2 items-center">
+                        <Input type="file" accept="image/*" onChange={(e) => e.target.files?.[0] && uploadVerifFile('avatar', e.target.files[0])} className="max-w-xs" />
+                        {uploadingField === 'avatar' && <Loader2 className="h-4 w-4 animate-spin" />}
+                        {verifAvatar && <span className="text-sm text-green-600">Terupload</span>}
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Pengalaman kerja (tahun)</Label>
+                      <Input type="number" min={0} value={verifExperience} onChange={(e) => setVerifExperience(e.target.value === '' ? '' : Number(e.target.value))} placeholder="Contoh: 5" />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>SKCK *</Label>
+                      <div className="flex gap-2 items-center">
+                        <Input type="file" accept="image/*,.pdf" onChange={(e) => e.target.files?.[0] && uploadVerifFile('skckDoc', e.target.files[0])} className="max-w-xs" />
+                        {uploadingField === 'skckDoc' && <Loader2 className="h-4 w-4 animate-spin" />}
+                        {verifSkckDoc && <span className="text-sm text-green-600">Terupload</span>}
+                      </div>
+                    </div>
+                  </>
+                )}
+                <Button type="button" className="bg-gradient-to-r from-[#fd904c] to-[#e57835]" disabled={savingVerif} onClick={onSaveVerification}>
+                  {savingVerif && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+                  Simpan Data Verifikasi
+                </Button>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        )}
 
         {/* Kategori Material (Supplier only) */}
         {user?.role === 'SUPPLIER' && (
