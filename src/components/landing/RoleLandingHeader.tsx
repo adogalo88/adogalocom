@@ -20,7 +20,7 @@ export function RoleLandingHeader({ title, subtitle }: RoleLandingHeaderProps) {
       <div className="container mx-auto px-4">
         <div className="flex items-center justify-between h-16">
           <Link href="/" className="flex items-center gap-3">
-            <Image src="/logo.svg" alt="Adogalo" width={36} height={36} className="h-9 w-auto" />
+            <Image src="/logo.png" alt="Adogalo" width={36} height={36} className="h-9 w-auto" />
             <div>
               <span className="text-lg font-bold bg-gradient-to-r from-[#fd904c] to-[#e57835] bg-clip-text text-transparent">
                 Adogalo

@@ -23,7 +23,7 @@ export const metadata: Metadata = {
   keywords: ["konstruksi", "renovasi", "tukang", "vendor", "supplier", "marketplace", "home improvement"],
   authors: [{ name: "Adogalo Team" }],
   icons: {
-    icon: "/logo.svg",
+    icon: "/logo.png",
   },
   openGraph: {
     title: "Adogalo - Marketplace Konstruksi Terpercaya",

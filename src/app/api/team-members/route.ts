@@ -105,6 +105,8 @@ export async function GET(request: NextRequest) {
               title: true,
               status: true,
               location: true,
+              startDate: true,
+              endDate: true,
               client: {
                 select: {
                   id: true,

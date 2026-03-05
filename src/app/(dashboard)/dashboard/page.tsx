@@ -59,14 +59,16 @@ export default function DashboardPage() {
             Kelola proyek dan aktivitas Anda dari dashboard ini
           </p>
         </div>
-        <div className="flex gap-2">
-          <Link href="/dashboard/projects/create">
-            <Button className="bg-gradient-to-r from-[#fd904c] to-[#e57835] gap-2">
-              <Plus className="h-4 w-4" />
-              Pasang Proyek
-            </Button>
-          </Link>
-        </div>
+        {(user?.role === 'CLIENT' || user?.role === 'ADMIN') && (
+          <div className="flex gap-2">
+            <Link href="/dashboard/projects/create">
+              <Button className="bg-gradient-to-r from-[#fd904c] to-[#e57835] gap-2">
+                <Plus className="h-4 w-4" />
+                Pasang Proyek
+              </Button>
+            </Link>
+          </div>
+        )}
       </div>
 
       {/* Role-based Dashboard Content */}
@@ -325,6 +327,21 @@ function VendorDashboard() {
   );
 }
 
+const DAY_NAMES = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+
+function getWeekRange() {
+  const now = new Date();
+  const day = now.getDay();
+  const diff = now.getDate() - day + (day === 0 ? -6 : 1);
+  const start = new Date(now);
+  start.setDate(diff);
+  start.setHours(0, 0, 0, 0);
+  const end = new Date(start);
+  end.setDate(start.getDate() + 6);
+  end.setHours(23, 59, 59, 999);
+  return { start, end };
+}
+
 function TukangDashboard() {
   const { data: stats, isLoading } = useQuery({
     queryKey: ['dashboard', 'stats'],
@@ -340,10 +357,55 @@ function TukangDashboard() {
     },
   });
 
+  const { data: jobsData } = useQuery({
+    queryKey: ['dashboard', 'tukang', 'lowongan'],
+    queryFn: async () => {
+      const res = await fetch('/api/projects?status=PUBLISHED&type=HARIAN&limit=5');
+      if (!res.ok) throw new Error('Failed to load lowongan');
+      return res.json() as Promise<{ data: Array<{ id: string; title: string; budget: number | null; workerNeeded: number | null; city?: { name: string } | null }> }>;
+    },
+  });
+
+  const { data: teamData } = useQuery({
+    queryKey: ['dashboard', 'tukang', 'team'],
+    queryFn: async () => {
+      const res = await fetch('/api/team-members?limit=50');
+      if (!res.ok) throw new Error('Failed to load jadwal');
+      return res.json() as Promise<{
+        data: Array<{
+          id: string;
+          project: { id: string; title: string; status: string; startDate: string | null; endDate: string | null };
+        }>;
+      }>;
+    },
+  });
+
   const projectsCompleted = stats?.projectsCompleted ?? 0;
   const projectsActive = stats?.projectsActive ?? 0;
   const rating = stats?.rating ?? 0;
   const totalReviews = stats?.totalReviews ?? 0;
+
+  const lowonganList = jobsData?.data ?? [];
+  const { start: weekStart, end: weekEnd } = getWeekRange();
+  const jadwalList = (teamData?.data ?? [])
+    .filter((tm: { project: { startDate: string | null; endDate: string | null } }) => {
+      const start = tm.project.startDate ? new Date(tm.project.startDate) : null;
+      const end = tm.project.endDate ? new Date(tm.project.endDate) : null;
+      if (!start) return false;
+      const rangeEnd = end ?? start;
+      return start <= weekEnd && rangeEnd >= weekStart;
+    })
+    .map((tm: { id: string; project: { id: string; title: string; startDate: string | null; endDate: string | null } }) => {
+      const d = tm.project.startDate ? new Date(tm.project.startDate) : null;
+      return {
+        id: tm.id,
+        projectId: tm.project.id,
+        day: d ? DAY_NAMES[d.getDay()] : '-',
+        date: d ? d.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' }) : '-',
+        project: tm.project.title,
+      };
+    })
+    .slice(0, 10);
 
   return (
     <>
@@ -380,19 +442,24 @@ function TukangDashboard() {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {[
-                { title: 'Tukang Batu - Proyek Renovasi', daily: 'Rp 250.000/hari', location: 'Jakarta' },
-                { title: 'Tukang Kayu - Pembuatan Furnitur', daily: 'Rp 300.000/hari', location: 'Tangerang' },
-              ].map((job, index) => (
-                <div key={index} className="p-3 rounded-lg bg-muted/50">
-                  <p className="font-medium">{job.title}</p>
-                  <div className="flex items-center justify-between mt-2">
-                    <span className="text-sm text-muted-foreground">{job.location}</span>
-                    <span className="font-semibold text-[#fd904c]">{job.daily}</span>
+              {lowonganList.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-4">Belum ada lowongan proyek harian. Cek halaman Proyek Harian untuk daftar lengkap.</p>
+              ) : (
+                lowonganList.map((job) => (
+                  <div key={job.id} className="p-3 rounded-lg bg-muted/50">
+                    <p className="font-medium">{job.title}</p>
+                    <div className="flex items-center justify-between mt-2">
+                      <span className="text-sm text-muted-foreground">{job.city?.name ?? '-'}</span>
+                      <span className="font-semibold text-[#fd904c]">
+                        {job.budget != null ? `Rp ${(job.budget / 1000).toFixed(0)} rb` : '-'}
+                      </span>
+                    </div>
+                    <Link href={`/dashboard/projects/${job.id}`}>
+                      <Button size="sm" className="w-full mt-2">Lamar</Button>
+                    </Link>
                   </div>
-                  <Button size="sm" className="w-full mt-2">Lamar</Button>
-                </div>
-              ))}
+                ))
+              )}
             </div>
           </CardContent>
         </Card>
@@ -400,24 +467,28 @@ function TukangDashboard() {
         <Card className="glass-card">
           <CardHeader>
             <CardTitle>Jadwal Minggu Ini</CardTitle>
+            <CardDescription>Proyek tempat Anda tergabung dalam tim</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
-              {[
-                { day: 'Senin', project: 'Renovasi Dapur Pak Budi', time: '08:00 - 17:00' },
-                { day: 'Selasa', project: 'Renovasi Dapur Pak Budi', time: '08:00 - 17:00' },
-                { day: 'Rabu', project: 'Perbaikan Atap', time: '08:00 - 15:00' },
-              ].map((schedule, index) => (
-                <div key={index} className="flex items-center gap-4 p-3 rounded-lg border border-border">
-                  <div className="text-center px-3 py-1 rounded-lg bg-[#fd904c]/10 text-[#fd904c] font-medium">
-                    {schedule.day}
-                  </div>
-                  <div>
-                    <p className="font-medium">{schedule.project}</p>
-                    <p className="text-sm text-muted-foreground">{schedule.time}</p>
-                  </div>
-                </div>
-              ))}
+              {jadwalList.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-4">Tidak ada jadwal proyek minggu ini.</p>
+              ) : (
+                jadwalList.map((item) => (
+                  <Link key={item.id} href={`/dashboard/projects/${item.projectId}`}>
+                    <div className="flex items-center gap-4 p-3 rounded-lg border border-border hover:bg-muted/50">
+                      <div className="text-center px-3 py-1 rounded-lg bg-[#fd904c]/10 text-[#fd904c] font-medium min-w-[4rem]">
+                        {item.day}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium truncate">{item.project}</p>
+                        <p className="text-sm text-muted-foreground">{item.date}</p>
+                      </div>
+                      <ArrowRight className="h-4 w-4 text-muted-foreground shrink-0" />
+                    </div>
+                  </Link>
+                ))
+              )}
             </div>
           </CardContent>
         </Card>

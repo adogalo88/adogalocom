@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -32,7 +32,7 @@ import {
   Plus, 
   X, 
   Image as ImageIcon, 
-  Link as LinkIcon,
+  Upload,
   ExternalLink
 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -47,12 +47,16 @@ const portfolioSchema = z.object({
 
 type PortfolioForm = z.infer<typeof portfolioSchema>;
 
+const ACCEPTED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+const MAX_IMAGES = 10;
+
 export default function CreatePortfolioPage() {
   const router = useRouter();
   const { user } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [newImageUrl, setNewImageUrl] = useState('');
+  const [uploadingImages, setUploadingImages] = useState(false);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   
   const createPortfolio = useCreatePortfolio();
   
@@ -86,17 +90,34 @@ export default function CreatePortfolioPage() {
 
   const images = watch('images');
 
-  const addImage = () => {
-    if (!newImageUrl.trim()) return;
-    
-    // Basic URL validation
+  const handleUploadImages = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+    if (images.length + files.length > MAX_IMAGES) {
+      toast.error(`Maksimal ${MAX_IMAGES} gambar`);
+      return;
+    }
+    setUploadingImages(true);
+    const formData = new FormData();
+    Array.from(files).forEach((file) => {
+      if (ACCEPTED_IMAGE_TYPES.includes(file.type)) formData.append('photos', file);
+    });
     try {
-      new URL(newImageUrl);
-      append(newImageUrl.trim());
-      setNewImageUrl('');
-      toast.success('Gambar berhasil ditambahkan');
+      const res = await fetch('/api/upload', { method: 'POST', body: formData, credentials: 'include' });
+      const result = await res.json();
+      const urls = result?.data?.urls ?? [...(result?.data?.photos ?? []), ...(result?.data?.files ?? [])];
+      if (result.success && urls.length > 0) {
+        urls.forEach((url: string) => append(url));
+        toast.success(`${urls.length} gambar berhasil diunggah`);
+      } else {
+        toast.error(result?.error || 'Gagal mengunggah gambar');
+      }
     } catch {
-      toast.error('URL tidak valid');
+      toast.error('Gagal mengunggah gambar');
+    } finally {
+      setUploadingImages(false);
+      e.target.value = '';
+      fileInputRef.current?.value && (fileInputRef.current.value = '');
     }
   };
 
@@ -181,40 +202,44 @@ export default function CreatePortfolioPage() {
               )}
             </div>
 
-            {/* Images */}
+            {/* Images - Upload */}
             <div className="space-y-2">
               <Label>Foto Karya *</Label>
               <p className="text-sm text-muted-foreground mb-3">
-                Tambahkan URL gambar karya Anda. Minimal 1 gambar, maksimal 10 gambar.
+                Unggah foto karya Anda (JPG, PNG, GIF, WebP). Minimal 1 gambar, maksimal 10 gambar.
               </p>
               
-              {/* Add Image Input */}
-              <div className="flex gap-2">
-                <div className="relative flex-1">
-                  <LinkIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    placeholder="https://example.com/image.jpg"
-                    value={newImageUrl}
-                    onChange={(e) => setNewImageUrl(e.target.value)}
-                    className="pl-10"
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') {
-                        e.preventDefault();
-                        addImage();
-                      }
-                    }}
-                  />
-                </div>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={addImage}
-                  disabled={images.length >= 10}
-                >
-                  <Plus className="h-4 w-4 mr-2" />
-                  Tambah
-                </Button>
-              </div>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept={ACCEPTED_IMAGE_TYPES.join(',')}
+                multiple
+                className="hidden"
+                onChange={handleUploadImages}
+              />
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={uploadingImages || images.length >= MAX_IMAGES}
+              >
+                {uploadingImages ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Mengunggah...
+                  </>
+                ) : (
+                  <>
+                    <Upload className="h-4 w-4 mr-2" />
+                    Unggah Foto
+                  </>
+                )}
+              </Button>
+              {images.length > 0 && (
+                <span className="ml-2 text-sm text-muted-foreground">
+                  {images.length} / {MAX_IMAGES} gambar
+                </span>
+              )}
               
               {errors.images && (
                 <p className="text-sm text-red-500">{errors.images.message}</p>
@@ -253,14 +278,17 @@ export default function CreatePortfolioPage() {
               )}
 
               {/* Empty state */}
-              {images.length === 0 && (
-                <div className="border-2 border-dashed rounded-lg p-8 text-center">
+              {images.length === 0 && !uploadingImages && (
+                <div
+                  className="border-2 border-dashed rounded-lg p-8 text-center cursor-pointer hover:bg-muted/30 transition-colors"
+                  onClick={() => fileInputRef.current?.click()}
+                >
                   <ImageIcon className="h-12 w-12 mx-auto text-muted-foreground/50 mb-3" />
                   <p className="text-sm text-muted-foreground">
-                    Belum ada gambar ditambahkan
+                    Belum ada gambar. Klik atau unggah foto
                   </p>
                   <p className="text-xs text-muted-foreground mt-1">
-                    Masukkan URL gambar dan klik &quot;Tambah&quot;
+                    JPG, PNG, GIF, WebP — maks. 10 gambar
                   </p>
                 </div>
               )}
