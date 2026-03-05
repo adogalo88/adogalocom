@@ -19,41 +19,41 @@ export async function POST(request: NextRequest) {
 
     const formData = await request.formData();
     
-    // Get files from form data
-    const photoFiles = formData.getAll('photos') as File[];
-    const docFiles = formData.getAll('files') as File[];
-
-    // Filter out empty files
-    const validPhotoFiles = photoFiles.filter(f => f && f.size > 0);
-    const validDocFiles = docFiles.filter(f => f && f.size > 0);
+    // Get files from form data (support 'photos', 'files', and 'file' for single file)
+    const photoFiles = (formData.getAll('photos') as File[]).filter(f => f && f.size > 0);
+    let docFiles = (formData.getAll('files') as File[]).filter(f => f && f.size > 0);
+    const singleFiles = (formData.getAll('file') as File[]).filter(f => f && f.size > 0);
+    docFiles = [...docFiles, ...singleFiles];
 
     const result = {
       photos: [] as string[],
       files: [] as string[],
+      urls: [] as string[],
       errors: [] as string[],
     };
 
-    // Upload photos
-    if (validPhotoFiles.length > 0) {
-      const photoResult = await saveFiles(validPhotoFiles, 'photos');
+    // Upload photos (images only, validated by saveFiles with folder 'photos')
+    if (photoFiles.length > 0) {
+      const photoResult = await saveFiles(photoFiles, 'photos');
       result.photos = photoResult.urls;
       result.errors.push(...photoResult.errors);
     }
 
-    // Upload documents
-    if (validDocFiles.length > 0) {
-      const docResult = await saveFiles(validDocFiles, 'files');
+    // Upload documents (images + PDF etc.)
+    if (docFiles.length > 0) {
+      const docResult = await saveFiles(docFiles, 'files');
       result.files = docResult.urls;
       result.errors.push(...docResult.errors);
     }
 
-    // If no files were uploaded
-    if (validPhotoFiles.length === 0 && validDocFiles.length === 0) {
+    if (photoFiles.length === 0 && docFiles.length === 0) {
       return NextResponse.json(
-        { error: 'Tidak ada file yang diupload' },
+        { success: false, error: 'Tidak ada file yang diupload' },
         { status: 400 }
       );
     }
+
+    result.urls = [...result.photos, ...result.files];
 
     return NextResponse.json({
       success: true,

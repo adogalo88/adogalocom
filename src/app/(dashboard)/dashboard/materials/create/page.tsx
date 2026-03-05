@@ -135,20 +135,22 @@ export default function CreateMaterialPage() {
       const response = await fetch('/api/upload', {
         method: 'POST',
         body: formData,
+        credentials: 'include',
       });
 
       const result = await response.json();
+      const urls = result?.data?.urls ?? [...(result?.data?.photos ?? []), ...(result?.data?.files ?? [])];
 
-      if (result.success) {
+      if (result.success && (result.data?.photos?.length > 0 || result.data?.files?.length > 0)) {
         if (type === 'photos') {
-          const newPhotos = result.data.photos.map((url: string) => ({
+          const photoUrls = result.data.photos ?? [];
+          const newPhotos = photoUrls.map((url: string) => ({
             url,
             name: url.split('/').pop() || 'photo',
           }));
           setPhotos((prev) => [...prev, ...newPhotos]);
         } else {
-          // For PDF, only take the first file
-          const newFile = result.data.files[0];
+          const newFile = result.data.files?.[0] ?? urls?.[0];
           if (newFile) {
             setPdfFile({
               url: newFile,
@@ -158,7 +160,7 @@ export default function CreateMaterialPage() {
           }
         }
 
-        if (result.data.errors.length > 0) {
+        if (result.data?.errors?.length > 0) {
           toast.warning(result.data.errors.join(', '));
         }
       } else {
@@ -183,18 +185,20 @@ export default function CreateMaterialPage() {
       const response = await fetch('/api/upload', {
         method: 'POST',
         body: formData,
+        credentials: 'include',
       });
 
       const result = await response.json();
+      const photoUrl = result?.data?.photos?.[0] ?? result?.data?.urls?.[0];
 
-      if (result.success && result.data.photos[0]) {
+      if (result.success && photoUrl) {
         const rfqItems = watch('rfqItems') || [];
         const updatedItems = [...rfqItems];
-        updatedItems[index] = { ...updatedItems[index], photo: result.data.photos[0] };
+        updatedItems[index] = { ...updatedItems[index], photo: photoUrl };
         setValue('rfqItems', updatedItems);
         toast.success('Foto berhasil diupload');
       } else {
-        toast.error(result.error || 'Gagal mengupload foto');
+        toast.error(result?.error || 'Gagal mengupload foto');
       }
     } catch (error) {
       toast.error('Gagal mengupload foto');

@@ -105,11 +105,11 @@ export default function DirectoryTukangsPage() {
   return (
     <div className="flex flex-col min-h-screen">
       <section className="relative py-12 md:py-16 overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-orange-500/10 via-background to-amber-500/10" />
+        <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/10 via-background to-teal-500/10" />
         <div className="container mx-auto px-4 relative z-10">
           <div className="max-w-3xl mx-auto text-center">
             <h1 className="text-3xl md:text-4xl font-bold mb-3">
-              Cari <span className="bg-gradient-to-r from-orange-500 to-amber-600 bg-clip-text text-transparent">Tukang</span> Profesional
+              Cari <span className="bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent">Tukang</span> Profesional
             </h1>
             <p className="text-muted-foreground mb-6">
               Temukan tukang terverifikasi sesuai keahlian dan lokasi Anda
@@ -125,7 +125,7 @@ export default function DirectoryTukangsPage() {
                   className="pl-10 h-11"
                 />
               </div>
-              <Button onClick={() => fetchTukangs(1)} className="bg-gradient-to-r from-orange-500 to-amber-600 hover:opacity-90 h-11">
+              <Button onClick={() => fetchTukangs(1)} className="bg-gradient-to-r from-emerald-600 to-teal-600 hover:opacity-90 h-11">
                 Cari
               </Button>
             </div>
@@ -197,7 +197,7 @@ export default function DirectoryTukangsPage() {
       <section className="container mx-auto px-4 py-8 md:py-12 flex-1">
         {isLoading ? (
           <div className="flex justify-center py-20">
-            <Loader2 className="h-10 w-10 animate-spin text-orange-500" />
+            <Loader2 className="h-10 w-10 animate-spin text-emerald-600" />
           </div>
         ) : tukangs.length === 0 ? (
           <div className="text-center py-20">
@@ -213,25 +213,25 @@ export default function DirectoryTukangsPage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
               {tukangs.map((t) => (
                 <Link key={t.id} href={`/directory/tukangs/${t.id}`}>
-                  <article className="group rounded-2xl border border-border bg-card/80 backdrop-blur-sm overflow-hidden hover:shadow-xl hover:shadow-orange-500/10 hover:border-orange-500/30 transition-all duration-200 h-full flex flex-col">
+                  <article className="group rounded-2xl border border-border bg-card/80 backdrop-blur-sm overflow-hidden hover:shadow-xl hover:shadow-emerald-500/10 hover:border-emerald-500/30 transition-all duration-200 h-full flex flex-col">
                     <div className="aspect-[4/3] bg-muted/50 relative flex items-center justify-center p-6">
                       <button
                         type="button"
                         onClick={(e) => { e.preventDefault(); e.stopPropagation(); if (t.avatar) setEnlargedImage(t.avatar); }}
-                        className="rounded-full focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2"
+                        className="rounded-full focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2"
                       >
-                        <Avatar className="h-24 w-24 ring-4 ring-background/80 cursor-pointer hover:ring-orange-500/50 transition-all">
-                          <AvatarImage src={t.avatar ?? undefined} />
-                          <AvatarFallback className="bg-gradient-to-br from-orange-500 to-amber-600 text-white text-2xl">
+<Avatar className="h-24 w-24 ring-4 ring-background/80 cursor-pointer hover:ring-emerald-500/50 transition-all">
+                        <AvatarImage src={t.avatar ?? undefined} />
+                        <AvatarFallback className="bg-gradient-to-br from-emerald-600 to-teal-600 text-white text-2xl">
                             {t.name.charAt(0).toUpperCase()}
                           </AvatarFallback>
                         </Avatar>
                       </button>
                     </div>
                     <div className="p-4 flex-1 flex flex-col">
-                      <h3 className="font-semibold text-lg truncate group-hover:text-orange-600 transition-colors">{t.name}</h3>
+                      <h3 className="font-semibold text-lg truncate group-hover:text-emerald-600 transition-colors">{t.name}</h3>
                       {t.specialty && (
-                        <span className="text-xs font-medium text-orange-600 bg-orange-50 dark:bg-orange-950/30 px-2 py-0.5 rounded mt-1 w-fit">
+                        <span className="text-xs font-medium text-emerald-600 bg-emerald-50 dark:bg-emerald-950/30 px-2 py-0.5 rounded mt-1 w-fit">
                           {t.specialty}
                         </span>
                       )}
@@ -256,7 +256,7 @@ export default function DirectoryTukangsPage() {
                       {t.description && (
                         <p className="text-sm text-muted-foreground mt-2 line-clamp-2">{t.description}</p>
                       )}
-                      <Button variant="outline" size="sm" className="mt-4 w-full group-hover:bg-orange-500/10 group-hover:border-orange-500/30">
+                      <Button variant="outline" size="sm" className="mt-4 w-full group-hover:bg-emerald-500/10 group-hover:border-emerald-500/30">
                         Lihat Profil
                       </Button>
                     </div>

@@ -54,8 +54,8 @@ export default function DirectoryTukangProfilePage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-orange-500/5 via-background to-amber-500/5">
-        <Loader2 className="h-12 w-12 animate-spin text-orange-500" />
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-emerald-500/5 via-background to-teal-500/5">
+        <Loader2 className="h-12 w-12 animate-spin text-emerald-600" />
       </div>
     );
   }
@@ -78,7 +78,7 @@ export default function DirectoryTukangProfilePage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-orange-500/10 via-background to-amber-500/10">
+    <div className="min-h-screen bg-gradient-to-br from-emerald-500/10 via-background to-teal-500/10">
       <div className="container mx-auto px-4 py-8 max-w-4xl">
         <Button variant="ghost" asChild className="mb-6">
           <Link href="/directory/tukangs" className="gap-2 text-muted-foreground hover:text-foreground">
@@ -93,11 +93,11 @@ export default function DirectoryTukangProfilePage() {
               <button
                 type="button"
                 onClick={() => profile.avatar && setEnlargedImage(profile.avatar as string)}
-                className="rounded-full focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 shrink-0"
+                className="rounded-full focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 shrink-0"
               >
-                <Avatar className="h-28 w-28 md:h-36 md:w-36 ring-4 ring-white/50 shadow-lg cursor-pointer hover:ring-orange-500/50 transition-all">
+                <Avatar className="h-28 w-28 md:h-36 md:w-36 ring-4 ring-white/50 shadow-lg cursor-pointer hover:ring-emerald-500/50 transition-all">
                   <AvatarImage src={(profile.avatar as string) ?? undefined} />
-                  <AvatarFallback className="bg-gradient-to-br from-orange-500 to-amber-600 text-white text-4xl">
+                  <AvatarFallback className="bg-gradient-to-br from-emerald-600 to-teal-600 text-white text-4xl">
                     {(profile.name as string)?.charAt(0)?.toUpperCase() ?? 'T'}
                   </AvatarFallback>
                 </Avatar>
@@ -111,7 +111,7 @@ export default function DirectoryTukangProfilePage() {
                   </Badge>
                   <Badge variant="secondary">Tukang</Badge>
                   {profile.specialty && (
-                    <Badge className="bg-orange-100 text-orange-700 dark:bg-orange-900/30">{profile.specialty as string}</Badge>
+                    <Badge className="bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30">{profile.specialty as string}</Badge>
                   )}
                 </div>
                 {city && (
@@ -140,7 +140,7 @@ export default function DirectoryTukangProfilePage() {
                   <p className="mt-4 text-muted-foreground">{profile.description as string}</p>
                 )}
                 <div className="flex gap-2 mt-6">
-                  <Button asChild className="bg-gradient-to-r from-orange-500 to-amber-600 hover:opacity-90">
+                  <Button asChild className="bg-gradient-to-r from-emerald-600 to-teal-600 hover:opacity-90">
                     <Link href={`/dashboard/messages?userId=${profile.id}`}>
                       <MessageSquare className="h-4 w-4 mr-2" />
                       Chat

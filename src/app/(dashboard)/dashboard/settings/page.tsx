@@ -168,26 +168,30 @@ export default function SettingsPage() {
 
   const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file || !file.type.startsWith('image/')) {
-      toast.error('Pilih file gambar (JPG, PNG, dll.)');
+    if (!file) return;
+    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+    if (!allowedTypes.includes(file.type)) {
+      toast.error('Hanya file gambar (JPG, PNG, GIF, WebP) yang diterima');
       return;
     }
     setUploadingAvatar(true);
     try {
       const fd = new FormData();
-      fd.append('files', file);
-      const res = await fetch('/api/upload', { method: 'POST', body: fd });
+      fd.append('photos', file);
+      const res = await fetch('/api/upload', { method: 'POST', body: fd, credentials: 'include' });
       const data = await res.json();
-      if (!data.success || !data.data?.files?.[0]) throw new Error(data.error || 'Upload gagal');
-      const url = data.data.files[0];
+      if (!res.ok) throw new Error(data?.error || 'Upload gagal');
+      const url = data?.data?.photos?.[0] ?? data?.data?.files?.[0] ?? data?.data?.urls?.[0];
+      if (!url || typeof url !== 'string') throw new Error(data?.error || 'URL foto tidak diterima');
       const patchRes = await fetch('/api/users/me', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ avatar: url }),
+        credentials: 'include',
       });
       if (!patchRes.ok) {
-        const err = await patchRes.json();
-        throw new Error(err.error || 'Gagal menyimpan foto');
+        const err = await patchRes.json().catch(() => ({}));
+        throw new Error(err?.error || 'Gagal menyimpan foto');
       }
       await refreshUser();
       toast.success('Foto profil berhasil diubah');
@@ -203,11 +207,23 @@ export default function SettingsPage() {
     setUploadingField(field);
     try {
       const fd = new FormData();
-      fd.append('files', file);
-      const res = await fetch('/api/upload', { method: 'POST', body: fd });
+      const isImageOnly = field === 'avatar' || field === 'ktpPhoto';
+      if (isImageOnly) {
+        const allowed = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+        if (!allowed.includes(file.type)) {
+          toast.error('Hanya file gambar (JPG, PNG, GIF, WebP) yang diterima');
+          setUploadingField(null);
+          return;
+        }
+        fd.append('photos', file);
+      } else {
+        fd.append('files', file);
+      }
+      const res = await fetch('/api/upload', { method: 'POST', body: fd, credentials: 'include' });
       const data = await res.json();
-      if (!data.success || !data.data?.files?.[0]) throw new Error(data.error || 'Upload gagal');
-      const url = data.data.files[0];
+      if (!res.ok) throw new Error(data?.error || 'Upload gagal');
+      const url = data?.data?.photos?.[0] ?? data?.data?.files?.[0] ?? data?.data?.urls?.[0];
+      if (!url || typeof url !== 'string') throw new Error(data?.error || 'URL file tidak diterima');
       if (field === 'picKtpPhoto') setVerifPicKtpPhoto(url);
       else if (field === 'nibDoc') setVerifNibDoc(url);
       else if (field === 'npwpDoc') setVerifNpwpDoc(url);

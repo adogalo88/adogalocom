@@ -107,30 +107,33 @@ export default function CreateProjectPage() {
       const response = await fetch('/api/upload', {
         method: 'POST',
         body: formData,
+        credentials: 'include',
       });
 
       const result = await response.json();
+      const data = result?.data ?? {};
 
-      if (result.success) {
+      if (result.success && (data.photos?.length > 0 || data.files?.length > 0)) {
         if (type === 'photos') {
-          const newPhotos = result.data.photos.map((url: string) => ({
+          const photoUrls = data.photos ?? [];
+          const newPhotos = photoUrls.map((url: string) => ({
             url,
             name: url.split('/').pop() || 'photo',
           }));
           setPhotos((prev) => [...prev, ...newPhotos]);
         } else {
-          const newFiles = result.data.files.map((url: string) => ({
+          const fileUrls = data.files ?? [];
+          const newFiles = fileUrls.map((url: string) => ({
             url,
             name: url.split('/').pop() || 'file',
           }));
           setFiles((prev) => [...prev, ...newFiles]);
         }
-        
-        if (result.data.errors.length > 0) {
-          toast.warning(result.data.errors.join(', '));
+        if (data.errors?.length > 0) {
+          toast.warning(data.errors.join(', '));
         }
       } else {
-        toast.error(result.error || 'Gagal mengupload file');
+        toast.error(result?.error || 'Gagal mengupload file');
       }
     } catch (error) {
       toast.error('Gagal mengupload file');
