@@ -78,7 +78,7 @@ export async function GET(request: NextRequest) {
       ];
     }
 
-    // Get RFQs with relations
+    // Get RFQs with relations (_count not supported inside include in Prisma, use submissions.length instead)
     const [rfqs, total] = await Promise.all([
       db.rFQ.findMany({
         where,
@@ -110,8 +110,8 @@ export async function GET(request: NextRequest) {
             orderBy: { sortOrder: 'asc' },
           },
           submissions: {
-            where: currentUser.role === 'VENDOR' 
-              ? { vendorId: currentUser.id } 
+            where: currentUser.role === 'VENDOR'
+              ? { vendorId: currentUser.id }
               : undefined,
             include: {
               vendor: {
@@ -125,11 +125,6 @@ export async function GET(request: NextRequest) {
               },
             },
           },
-          _count: {
-            select: {
-              submissions: true,
-            },
-          },
         },
       }),
       db.rFQ.count({ where }),
@@ -137,9 +132,15 @@ export async function GET(request: NextRequest) {
 
     const totalPages = Math.ceil(total / limit);
 
+    // Attach _count.submissions from array length for frontend compatibility
+    const data = rfqs.map((r) => ({
+      ...r,
+      _count: { submissions: r.submissions.length },
+    }));
+
     return NextResponse.json({
       success: true,
-      data: rfqs,
+      data,
       pagination: {
         page,
         limit,
@@ -151,8 +152,9 @@ export async function GET(request: NextRequest) {
 
   } catch (error) {
     console.error('Get RFQs error:', error);
+    const message = error instanceof Error ? error.message : 'Terjadi kesalahan pada server';
     return NextResponse.json(
-      { error: 'Terjadi kesalahan pada server' },
+      { error: message },
       { status: 500 }
     );
   }
