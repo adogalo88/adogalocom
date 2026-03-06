@@ -14,8 +14,10 @@ const portfolioFilterSchema = z.object({
 const createPortfolioSchema = z.object({
   title: z.string().min(3, 'Judul portofolio minimal 3 karakter').max(200, 'Judul portofolio maksimal 200 karakter'),
   description: z.string().min(10, 'Deskripsi minimal 10 karakter').max(2000, 'Deskripsi maksimal 2000 karakter'),
-  images: z.array(z.string().url('URL gambar tidak valid')).min(1, 'Minimal 1 gambar diperlukan').max(10, 'Maksimal 10 gambar'),
+  images: z.array(z.string().min(1)).min(1, 'Minimal 1 gambar diperlukan').max(10, 'Maksimal 10 gambar'),
   projectId: z.string().optional(),
+  completedYear: z.number().int().min(1990).max(2100).optional().nullable(),
+  cityId: z.string().optional().nullable(),
 });
 
 // =====================
@@ -177,7 +179,9 @@ export async function POST(request: NextRequest) {
         title: portfolioData.title,
         description: portfolioData.description,
         images: JSON.stringify(portfolioData.images),
-        projectId: portfolioData.projectId,
+        projectId: portfolioData.projectId ?? null,
+        completedYear: portfolioData.completedYear ?? null,
+        cityId: portfolioData.cityId ?? null,
         userId: currentUser.id,
       },
       include: {

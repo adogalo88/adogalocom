@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -38,11 +38,18 @@ import {
 import { toast } from 'sonner';
 import { getProjectStatusConfig } from '@/hooks/api';
 
+// Accept full URLs or paths (e.g. /uploads/...)
+const imageUrlSchema = z.string().min(1, 'URL/path gambar tidak valid').refine(
+  (s) => s.startsWith('/') || s.startsWith('http://') || s.startsWith('https://'),
+  { message: 'URL atau path gambar tidak valid' }
+);
 const portfolioSchema = z.object({
   title: z.string().min(3, 'Judul minimal 3 karakter').max(200, 'Judul maksimal 200 karakter'),
   description: z.string().min(10, 'Deskripsi minimal 10 karakter').max(2000, 'Deskripsi maksimal 2000 karakter'),
-  images: z.array(z.string().url('URL gambar tidak valid')).min(1, 'Minimal 1 gambar diperlukan'),
+  images: z.array(imageUrlSchema).min(1, 'Minimal 1 gambar diperlukan'),
   projectId: z.string().optional(),
+  completedYear: z.number().int().min(1990).max(new Date().getFullYear() + 1).optional().nullable(),
+  cityId: z.string().optional().nullable(),
 });
 
 type PortfolioForm = z.infer<typeof portfolioSchema>;
@@ -67,6 +74,16 @@ export default function CreatePortfolioPage() {
   
   const projects = projectsData?.data || [];
 
+  const [cities, setCities] = useState<{ id: string; name: string }[]>([]);
+  useEffect(() => {
+    fetch('/api/cities?activeOnly=true')
+      .then((r) => r.json())
+      .then((d) => (d?.success && d?.data && setCities(d.data)));
+  }, []);
+
+  const currentYear = new Date().getFullYear();
+  const yearOptions = Array.from({ length: 35 }, (_, i) => currentYear - i);
+
   const {
     register,
     handleSubmit,
@@ -80,6 +97,8 @@ export default function CreatePortfolioPage() {
       title: '',
       description: '',
       images: [],
+      completedYear: null,
+      cityId: null,
     },
   });
 
@@ -129,8 +148,12 @@ export default function CreatePortfolioPage() {
     setIsSubmitting(true);
     try {
       const result = await createPortfolio.mutateAsync({
-        ...data,
+        title: data.title,
+        description: data.description,
+        images: data.images,
         projectId: data.projectId || undefined,
+        completedYear: data.completedYear ?? undefined,
+        cityId: data.cityId || undefined,
       });
       
       toast.success('Portofolio berhasil dibuat!');
@@ -292,6 +315,44 @@ export default function CreatePortfolioPage() {
                   </p>
                 </div>
               )}
+            </div>
+
+            {/* Tahun Selesai & Kota */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Tahun Selesai (Opsional)</Label>
+                <Select
+                  value={watch('completedYear') != null ? String(watch('completedYear')) : ''}
+                  onValueChange={(v) => setValue('completedYear', v ? parseInt(v, 10) : null)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Pilih tahun" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">—</SelectItem>
+                    {yearOptions.map((y) => (
+                      <SelectItem key={y} value={String(y)}>{y}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Kota (Opsional)</Label>
+                <Select
+                  value={watch('cityId') ?? ''}
+                  onValueChange={(v) => setValue('cityId', v || null)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Pilih kota" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">—</SelectItem>
+                    {cities.map((c) => (
+                      <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
 
             {/* Link to Project (Optional) */}

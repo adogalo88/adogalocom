@@ -888,6 +888,8 @@ export function useCreatePortfolio() {
       description: string;
       images: string[];
       projectId?: string;
+      completedYear?: number | null;
+      cityId?: string | null;
     }) =>
       fetchApi<{ portfolio: Portfolio; message: string }>('/api/portfolio', {
         method: 'POST',
