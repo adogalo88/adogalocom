@@ -734,7 +734,6 @@ export default function ProjectDetailPage() {
           )}
         </div>
       </div>
-      </div>
 
       {/* Apply Dialog */}
       <AlertDialog open={showApplyDialog} onOpenChange={setShowApplyDialog}>
