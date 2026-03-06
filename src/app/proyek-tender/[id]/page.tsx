@@ -33,6 +33,8 @@ import {
   ChevronDown,
   Download,
 } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 
 interface Project {
@@ -97,6 +99,13 @@ export default function ProyekTenderDetailPage() {
   const [previewCaption, setPreviewCaption] = useState('');
   const [rfqOpen, setRfqOpen] = useState(false);
   const chatContainerRef = useRef<HTMLDivElement>(null);
+  // Pajak & diskon (default non-aktif)
+  const [taxEnabled, setTaxEnabled] = useState(false);
+  const [taxPercent, setTaxPercent] = useState(10);
+  const [taxLabel, setTaxLabel] = useState('PPn');
+  const [discountEnabled, setDiscountEnabled] = useState(false);
+  const [discountType, setDiscountType] = useState<'percent' | 'fixed'>('percent');
+  const [discountValue, setDiscountValue] = useState(0);
 
   const fetchProject = useCallback(async () => {
     if (!id) return;
@@ -230,6 +239,25 @@ export default function ProyekTenderDetailPage() {
           setOfferSubmitting(false);
           return;
         }
+        let notes = rfqNotes ?? '';
+        if ((taxEnabled || discountEnabled) && project.rfq?.items) {
+          const st = project.rfq.items.reduce((s, item) => s + (rfqPrices[item.id] ?? 0) * item.quantity, 0);
+          const disc = discountEnabled
+            ? discountType === 'percent'
+              ? (st * Math.min(100, Math.max(0, discountValue))) / 100
+              : Math.max(0, discountValue)
+            : 0;
+          const afterDisc = Math.max(0, st - disc);
+          const tax = taxEnabled ? (afterDisc * Math.min(100, Math.max(0, taxPercent))) / 100 : 0;
+          const total = afterDisc + tax;
+          const parts: string[] = [];
+          if (notes) parts.push(notes);
+          parts.push(`Subtotal: Rp ${st.toLocaleString('id-ID')}`);
+          if (discountEnabled) parts.push(`Diskon: -Rp ${disc.toLocaleString('id-ID')}`);
+          if (taxEnabled) parts.push(`${taxLabel} (${taxPercent}%): Rp ${tax.toLocaleString('id-ID')}`);
+          parts.push(`Total: Rp ${total.toLocaleString('id-ID')}`);
+          notes = parts.join(' | ');
+        }
         const res = await fetch('/api/rfq', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -237,7 +265,7 @@ export default function ProyekTenderDetailPage() {
           body: JSON.stringify({
             rfqId: project.rfq.id,
             itemPrices,
-            notes: rfqNotes || undefined,
+            notes: notes || undefined,
           }),
         });
         const data = await res.json();
@@ -323,6 +351,17 @@ export default function ProyekTenderDetailPage() {
     : null;
   const canOffer = !project.userApplication && !isExpired;
 
+  // Pajak & diskon (hitung dari subtotal)
+  const subtotal = grandTotal;
+  const discountAmount = discountEnabled
+    ? discountType === 'percent'
+      ? (subtotal * Math.min(100, Math.max(0, discountValue))) / 100
+      : Math.max(0, discountValue)
+    : 0;
+  const afterDiscount = Math.max(0, subtotal - discountAmount);
+  const taxAmount = taxEnabled ? (afterDiscount * Math.min(100, Math.max(0, taxPercent))) / 100 : 0;
+  const totalWithTaxDiscount = afterDiscount + taxAmount;
+
   return (
     <div className="min-h-screen flex flex-col bg-white dark:bg-gray-950 text-gray-800 dark:text-gray-100">
       <RoleLandingHeader title="Adogalo" subtitle="Proyek Tender / Kontrak" />
@@ -340,7 +379,11 @@ export default function ProyekTenderDetailPage() {
               <span className={`absolute inline-flex h-full w-full rounded-full opacity-75 ${isExpired ? 'bg-amber-400' : 'bg-emerald-400'} animate-ping`} />
               <span className={`relative inline-flex rounded-full h-2 w-2 ${isExpired ? 'bg-amber-500' : 'bg-emerald-500'}`} />
             </span>
-            {isExpired ? 'Kadaluarsa' : 'Dibuka'}
+            {isExpired
+              ? 'Kadaluarsa'
+              : project.offerDeadline
+                ? `Dibuka hingga ${new Date(project.offerDeadline).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}`
+                : 'Dibuka'}
           </div>
           <h1 className="text-2xl md:text-3xl lg:text-4xl font-bold text-[#c2652a] dark:text-[#fd904c] text-center mb-3 max-w-3xl">
             {project.title}
@@ -360,7 +403,10 @@ export default function ProyekTenderDetailPage() {
       </header>
 
       <main className="w-full max-w-[100%] px-4 sm:px-6 lg:px-10 xl:px-12 -mt-5 relative z-20 pb-12">
-        <Link href="/proyek-tender" className="inline-flex items-center gap-2 text-sm text-gray-500 hover:text-[#e57835] dark:hover:text-[#fd904c] mb-6 transition-colors">
+        <Link
+          href="/proyek-tender"
+          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold bg-[#fd904c] text-white hover:bg-[#e57835] shadow-lg shadow-[#fd904c]/30 border border-[#e57835]/50 mb-6 transition-all hover:shadow-xl"
+        >
           <ArrowLeft className="h-4 w-4" />
           Kembali ke daftar proyek
         </Link>
@@ -671,15 +717,104 @@ export default function ProyekTenderDetailPage() {
                         ))}
                       </tbody>
                       <tfoot>
+                        <tr className="border-b border-gray-200 dark:border-gray-700">
+                          <td colSpan={5} className="p-3 text-right text-gray-600 dark:text-gray-400">Subtotal</td>
+                          <td className="p-3 text-right font-medium whitespace-nowrap">Rp {subtotal.toLocaleString('id-ID')}</td>
+                        </tr>
+                        {discountEnabled && (
+                          <tr className="border-b border-gray-200 dark:border-gray-700">
+                            <td colSpan={5} className="p-3 text-right text-gray-600 dark:text-gray-400">
+                              Diskon {discountType === 'percent' ? `(${discountValue}%)` : '(Rp tetap)'}
+                            </td>
+                            <td className="p-3 text-right text-red-600 dark:text-red-400 whitespace-nowrap">
+                              - Rp {discountAmount.toLocaleString('id-ID')}
+                            </td>
+                          </tr>
+                        )}
+                        {taxEnabled && (
+                          <tr className="border-b border-gray-200 dark:border-gray-700">
+                            <td colSpan={5} className="p-3 text-right text-gray-600 dark:text-gray-400">
+                              {taxLabel} ({taxPercent}%)
+                            </td>
+                            <td className="p-3 text-right text-gray-700 dark:text-gray-300 whitespace-nowrap">
+                              Rp {taxAmount.toLocaleString('id-ID')}
+                            </td>
+                          </tr>
+                        )}
                         <tr className="bg-[#fd904c] text-white font-bold">
                           <td colSpan={5} className="p-3 rounded-bl-xl">Total Penawaran</td>
                           <td className="p-3 text-right rounded-br-xl whitespace-nowrap">
-                            Rp {grandTotal.toLocaleString('id-ID')}
+                            Rp {totalWithTaxDiscount.toLocaleString('id-ID')}
                           </td>
                         </tr>
                       </tfoot>
                     </table>
                   </div>
+
+                  {/* Pajak & Diskon (default non-aktif) */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6 p-4 rounded-xl bg-gray-50 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-700">
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between gap-4">
+                        <Label htmlFor="discount-toggle" className="text-sm font-medium">Aktifkan Diskon</Label>
+                        <Switch id="discount-toggle" checked={discountEnabled} onCheckedChange={setDiscountEnabled} />
+                      </div>
+                      {discountEnabled && (
+                        <div className="space-y-2 pl-1">
+                          <div className="flex gap-2 items-center">
+                            <select
+                              value={discountType}
+                              onChange={(e) => setDiscountType(e.target.value as 'percent' | 'fixed')}
+                              className="rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm px-3 py-2"
+                            >
+                              <option value="percent">Persentase (%)</option>
+                              <option value="fixed">Fixed (Rp)</option>
+                            </select>
+                            <Input
+                              type="number"
+                              min={0}
+                              step={discountType === 'percent' ? 1 : 1000}
+                              value={discountValue || ''}
+                              onChange={(e) => setDiscountValue(Number(e.target.value) || 0)}
+                              placeholder={discountType === 'percent' ? '0-100' : '0'}
+                              className="w-28 text-right"
+                            />
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between gap-4">
+                        <Label htmlFor="tax-toggle" className="text-sm font-medium">Aktifkan Pajak</Label>
+                        <Switch id="tax-toggle" checked={taxEnabled} onCheckedChange={setTaxEnabled} />
+                      </div>
+                      {taxEnabled && (
+                        <div className="space-y-2 pl-1 flex flex-wrap gap-3 items-end">
+                          <div>
+                            <Label className="text-xs text-muted-foreground">Jenis Pajak</Label>
+                            <Input
+                              value={taxLabel}
+                              onChange={(e) => setTaxLabel(e.target.value)}
+                              placeholder="PPn"
+                              className="mt-1 w-32"
+                            />
+                          </div>
+                          <div>
+                            <Label className="text-xs text-muted-foreground">Persen (%)</Label>
+                            <Input
+                              type="number"
+                              min={0}
+                              max={100}
+                              step={0.5}
+                              value={taxPercent}
+                              onChange={(e) => setTaxPercent(Math.min(100, Math.max(0, Number(e.target.value) || 0)))}
+                              className="mt-1 w-20 text-right"
+                            />
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 mt-4">Catatan Vendor</label>
                   <Textarea
                     placeholder="Tambahkan catatan atau keterangan tambahan..."

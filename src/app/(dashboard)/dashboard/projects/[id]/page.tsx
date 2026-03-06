@@ -40,6 +40,18 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 
+function parseJsonArray(val: unknown): string[] {
+  if (Array.isArray(val)) return val as string[];
+  if (val == null || val === '') return [];
+  if (typeof val !== 'string') return [];
+  try {
+    const p = JSON.parse(val);
+    return Array.isArray(p) ? p : [];
+  } catch {
+    return [];
+  }
+}
+
 export default function ProjectDetailPage() {
   const params = useParams();
   const router = useRouter();
@@ -65,13 +77,14 @@ export default function ProjectDetailPage() {
   const chatContainerRef = useRef<HTMLDivElement>(null);
 
   const { data, isLoading, error, refetch } = useProject(projectId);
+  const project = data?.project;
 
   const fetchComments = useCallback(async () => {
     if (!projectId) return;
     try {
       const res = await fetch(`/api/projects/${projectId}/comments`, { credentials: 'include' });
       const data = await res.json();
-      if (data?.data) setComments(data.data);
+      setComments(Array.isArray(data?.data) ? data.data : []);
     } catch (e) {
       console.error(e);
     }
@@ -111,10 +124,8 @@ export default function ProjectDetailPage() {
     }
   };
   const createApplication = useCreateApplication();
-  const updateApplication = useUpdateApplication(projectId);
+  const updateApplication = useUpdateApplication(selectedApplication ?? '');
   const deleteProject = useDeleteProject(projectId);
-
-  const project = data?.project;
 
   const isOwner = project?.clientId === user?.id;
   const isVendor = user?.role === 'VENDOR';
@@ -334,14 +345,14 @@ export default function ProjectDetailPage() {
           </Card>
 
           {/* Photos */}
-          {project.photos && (
+          {parseJsonArray(project.photos).length > 0 && (
             <Card className="glass-card">
               <CardHeader>
                 <CardTitle>Foto Proyek</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                  {JSON.parse(project.photos).map((url: string, index: number) => (
+                  {parseJsonArray(project.photos).map((url: string, index: number) => (
                     <img
                       key={index}
                       src={url}
@@ -355,14 +366,14 @@ export default function ProjectDetailPage() {
           )}
 
           {/* Files */}
-          {project.files && (
+          {parseJsonArray(project.files).length > 0 && (
             <Card className="glass-card">
               <CardHeader>
                 <CardTitle>Dokumen Pendukung</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="space-y-2">
-                  {JSON.parse(project.files).map((url: string, index: number) => (
+                  {parseJsonArray(project.files).map((url: string, index: number) => (
                     <a
                       key={index}
                       href={url}
