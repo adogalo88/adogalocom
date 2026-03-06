@@ -49,6 +49,12 @@ export async function GET(
             isVerified: true,
           },
         },
+        city: {
+          select: { id: true, name: true, province: { select: { id: true, name: true } } },
+        },
+        project: {
+          select: { id: true, title: true, status: true },
+        },
       },
     });
 
@@ -56,6 +62,14 @@ export async function GET(
       return NextResponse.json(
         { error: 'Portofolio tidak ditemukan' },
         { status: 404 }
+      );
+    }
+
+    // Hanya pemilik yang boleh melihat (dashboard)
+    if (portfolio.userId !== currentUser.id) {
+      return NextResponse.json(
+        { error: 'Anda tidak memiliki akses ke portofolio ini' },
+        { status: 403 }
       );
     }
 

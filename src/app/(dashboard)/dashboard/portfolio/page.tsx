@@ -186,116 +186,130 @@ export default function PortfolioPage() {
         </Card>
       ) : (
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {portfolio.map((item) => (
-            <Card key={item.id} className="glass-card overflow-hidden group">
-              {/* Image */}
-              <div className="relative h-48 bg-muted">
-                {item.images && item.images.length > 0 ? (
-                  <>
-                    <img
-                      src={item.images[0]}
-                      alt={item.title}
-                      className="w-full h-full object-cover transition-transform group-hover:scale-105 cursor-pointer"
-                      onClick={() => openImagePreview(item.images, 0)}
-                    />
-                    {item.images.length > 1 && (
-                      <Badge 
-                        className="absolute bottom-2 right-2 bg-black/60 text-white hover:bg-black/70"
-                      >
-                        <ImageIcon className="h-3 w-3 mr-1" />
-                        {item.images.length} foto
+          {portfolio.map((item) => {
+            const isTukang = user?.role === 'TUKANG';
+            const cardContent = (
+              <Card key={item.id} className={`glass-card overflow-hidden group ${isTukang ? 'cursor-pointer hover:border-emerald-500/30 transition-colors' : ''}`}>
+                {/* Image */}
+                <div className="relative h-48 bg-muted">
+                  {item.images && item.images.length > 0 ? (
+                    <>
+                      <img
+                        src={item.images[0]}
+                        alt={item.title}
+                        className="w-full h-full object-cover transition-transform group-hover:scale-105 cursor-pointer"
+                        onClick={(e) => {
+                          if (isTukang) return; // navigation handled by parent link
+                          openImagePreview(item.images, 0);
+                        }}
+                      />
+                      {item.images.length > 1 && (
+                        <Badge 
+                          className="absolute bottom-2 right-2 bg-black/60 text-white hover:bg-black/70"
+                        >
+                          <ImageIcon className="h-3 w-3 mr-1" />
+                          {item.images.length} foto
+                        </Badge>
+                      )}
+                    </>
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center">
+                      <ImageIcon className="h-12 w-12 text-muted-foreground/50" />
+                    </div>
+                  )}
+                  
+                  {/* Actions Menu */}
+                  <div className="absolute top-2 right-2" onClick={(e) => e.stopPropagation()}>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button 
+                          variant="secondary" 
+                          size="icon"
+                          className="h-8 w-8 bg-white/80 backdrop-blur-sm hover:bg-white"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <MoreVertical className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem asChild>
+                          <Link href={`/dashboard/portfolio/${item.id}/edit`}>
+                            <Pencil className="h-4 w-4 mr-2" />
+                            Edit
+                          </Link>
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem 
+                          className="text-red-600 focus:text-red-600"
+                          onClick={() => setDeleteId(item.id)}
+                        >
+                          <Trash2 className="h-4 w-4 mr-2" />
+                          Hapus
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
+                </div>
+
+                {/* Content */}
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-lg line-clamp-1">{item.title}</CardTitle>
+                  <CardDescription className="line-clamp-2">
+                    {item.description}
+                  </CardDescription>
+                </CardHeader>
+                
+                <CardContent className="pt-0">
+                  <div className="flex items-center justify-between text-sm text-muted-foreground">
+                    <div className="flex items-center gap-1">
+                      <Calendar className="h-3.5 w-3.5" />
+                      {formatDate(item.createdAt)}
+                    </div>
+                    {item.projectId && (
+                      <Badge variant="outline" className="text-xs">
+                        <ExternalLink className="h-3 w-3 mr-1" />
+                        Proyek Terkait
                       </Badge>
                     )}
-                  </>
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center">
-                    <ImageIcon className="h-12 w-12 text-muted-foreground/50" />
                   </div>
-                )}
-                
-                {/* Actions Menu */}
-                <div className="absolute top-2 right-2">
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button 
-                        variant="secondary" 
-                        size="icon"
-                        className="h-8 w-8 bg-white/80 backdrop-blur-sm hover:bg-white"
-                      >
-                        <MoreVertical className="h-4 w-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem asChild>
-                        <Link href={`/dashboard/portfolio/${item.id}/edit`}>
-                          <Pencil className="h-4 w-4 mr-2" />
-                          Edit
-                        </Link>
-                      </DropdownMenuItem>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem 
-                        className="text-red-600 focus:text-red-600"
-                        onClick={() => setDeleteId(item.id)}
-                      >
-                        <Trash2 className="h-4 w-4 mr-2" />
-                        Hapus
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </div>
-              </div>
-
-              {/* Content */}
-              <CardHeader className="pb-2">
-                <CardTitle className="text-lg line-clamp-1">{item.title}</CardTitle>
-                <CardDescription className="line-clamp-2">
-                  {item.description}
-                </CardDescription>
-              </CardHeader>
-              
-              <CardContent className="pt-0">
-                <div className="flex items-center justify-between text-sm text-muted-foreground">
-                  <div className="flex items-center gap-1">
-                    <Calendar className="h-3.5 w-3.5" />
-                    {formatDate(item.createdAt)}
-                  </div>
-                  {item.projectId && (
-                    <Badge variant="outline" className="text-xs">
-                      <ExternalLink className="h-3 w-3 mr-1" />
-                      Proyek Terkait
-                    </Badge>
+                  
+                  {/* Image Thumbnails */}
+                  {item.images && item.images.length > 1 && (
+                    <div className="flex gap-2 mt-3 overflow-x-auto pb-1" onClick={(e) => e.stopPropagation()}>
+                      {item.images.slice(0, 4).map((img, idx) => (
+                        <button
+                          key={idx}
+                          onClick={() => openImagePreview(item.images, idx)}
+                          className="flex-shrink-0 w-12 h-12 rounded overflow-hidden border-2 border-transparent hover:border-[#fd904c] transition-colors"
+                        >
+                          <img
+                            src={img}
+                            alt={`${item.title} ${idx + 1}`}
+                            className="w-full h-full object-cover"
+                          />
+                        </button>
+                      ))}
+                      {item.images.length > 4 && (
+                        <button
+                          onClick={() => openImagePreview(item.images, 4)}
+                          className="flex-shrink-0 w-12 h-12 rounded bg-muted flex items-center justify-center text-xs text-muted-foreground"
+                        >
+                          +{item.images.length - 4}
+                        </button>
+                      )}
+                    </div>
                   )}
-                </div>
-                
-                {/* Image Thumbnails */}
-                {item.images && item.images.length > 1 && (
-                  <div className="flex gap-2 mt-3 overflow-x-auto pb-1">
-                    {item.images.slice(0, 4).map((img, idx) => (
-                      <button
-                        key={idx}
-                        onClick={() => openImagePreview(item.images, idx)}
-                        className="flex-shrink-0 w-12 h-12 rounded overflow-hidden border-2 border-transparent hover:border-[#fd904c] transition-colors"
-                      >
-                        <img
-                          src={img}
-                          alt={`${item.title} ${idx + 1}`}
-                          className="w-full h-full object-cover"
-                        />
-                      </button>
-                    ))}
-                    {item.images.length > 4 && (
-                      <button
-                        onClick={() => openImagePreview(item.images, 4)}
-                        className="flex-shrink-0 w-12 h-12 rounded bg-muted flex items-center justify-center text-xs text-muted-foreground"
-                      >
-                        +{item.images.length - 4}
-                      </button>
-                    )}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          ))}
+                </CardContent>
+              </Card>
+            );
+            return isTukang ? (
+              <Link key={item.id} href={`/dashboard/portfolio/${item.id}`} className="block">
+                {cardContent}
+              </Link>
+            ) : (
+              cardContent
+            );
+          })}
         </div>
       )}
 

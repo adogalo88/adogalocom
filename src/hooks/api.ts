@@ -864,9 +864,12 @@ export interface Portfolio {
   description: string;
   images: string[];
   projectId: string | null;
+  completedYear?: number | null;
+  cityId?: string | null;
   createdAt: string;
   user?: User;
-  project?: Project;
+  project?: { id: string; title: string; status?: string };
+  city?: { id: string; name: string; province?: { id: string; name: string } };
 }
 
 export function usePortfolio(userId?: string) {
@@ -876,6 +879,14 @@ export function usePortfolio(userId?: string) {
   return useQuery({
     queryKey: ['portfolio', userId],
     queryFn: () => fetchApi<{ portfolio: Portfolio[] }>(`/api/portfolio?${params.toString()}`),
+  });
+}
+
+export function usePortfolioById(id: string | null) {
+  return useQuery({
+    queryKey: ['portfolio', id],
+    queryFn: () => fetchApi<{ portfolio: Portfolio }>(`/api/portfolio/${id}`),
+    enabled: !!id,
   });
 }
 
