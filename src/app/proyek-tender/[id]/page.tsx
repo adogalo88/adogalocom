@@ -8,8 +8,6 @@ import { RoleLandingHeader } from '@/components/landing/RoleLandingHeader';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
   Dialog,
@@ -29,6 +27,11 @@ import {
   Loader2,
   Paperclip,
   Image as ImageIcon,
+  Building2,
+  Hash,
+  Layers,
+  ChevronDown,
+  Download,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -90,6 +93,8 @@ export default function ProyekTenderDetailPage() {
   const [offerFileUrl, setOfferFileUrl] = useState('');
   const [uploadingFile, setUploadingFile] = useState(false);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
+  const [previewCaption, setPreviewCaption] = useState('');
+  const [rfqOpen, setRfqOpen] = useState(false);
 
   const fetchProject = useCallback(async () => {
     if (!id) return;
@@ -227,6 +232,7 @@ export default function ProyekTenderDetailPage() {
         if (res.ok && !data.error) {
           toast.success('Penawaran RFQ berhasil dikirim');
           setOfferDialogOpen(false);
+          setRfqOpen(false);
           fetchProject();
         } else {
           toast.error(data?.error || 'Gagal mengirim penawaran');
@@ -263,11 +269,16 @@ export default function ProyekTenderDetailPage() {
     }
   };
 
+  const openLightbox = (url: string, caption: string) => {
+    setPreviewImage(url);
+    setPreviewCaption(caption);
+  };
+
   if (authLoading || loading) {
     return (
-      <div className="min-h-screen flex flex-col bg-gradient-to-br from-[#fd904c]/5 via-background to-[#e57835]/5">
+      <div className="min-h-screen flex flex-col bg-white dark:bg-gray-950">
         <RoleLandingHeader title="Adogalo" subtitle="Proyek Tender" />
-        <div className="container max-w-4xl mx-auto px-4 py-8">
+        <div className="max-w-4xl mx-auto px-4 py-8 w-full">
           <Skeleton className="h-12 w-48 mb-6" />
           <Skeleton className="h-64 w-full rounded-xl mb-6" />
           <Skeleton className="h-32 w-full rounded-xl" />
@@ -284,253 +295,435 @@ export default function ProyekTenderDetailPage() {
   const locationText = project.city
     ? [project.city.province?.name, project.city.name].filter(Boolean).join(', ')
     : null;
+  const canOffer = !project.userApplication && !isExpired;
 
   return (
-    <div className="min-h-screen flex flex-col bg-gradient-to-br from-[#fd904c]/5 via-background to-[#e57835]/5">
+    <div className="min-h-screen flex flex-col bg-white dark:bg-gray-950 text-gray-800 dark:text-gray-100">
       <RoleLandingHeader title="Adogalo" subtitle="Proyek Tender / Kontrak" />
 
-      <div className="container max-w-4xl mx-auto px-4 py-6">
-        <Link href="/proyek-tender" className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground mb-6">
+      {/* Aurora-style header */}
+      <header className="relative overflow-hidden h-[320px] bg-gradient-to-br from-[#fff8f3] via-[#fff5f0] to-[#fff0e8] dark:from-[#2d1f18] dark:via-[#1f1510] dark:to-[#1a120d]">
+        <div className="absolute inset-0 opacity-70">
+          <div className="absolute w-[200%] h-[200%] -top-1/2 -left-1/2 bg-[radial-gradient(ellipse_60%_40%_at_30%_30%,rgba(253,144,76,0.2)_0%,transparent_50%)] animate-pulse" />
+          <div className="absolute w-[200%] h-[200%] -top-1/2 -left-1/2 bg-[radial-gradient(ellipse_50%_30%_at_70%_60%,rgba(229,120,53,0.15)_0%,transparent_50%)]" />
+        </div>
+        <div className="absolute inset-0 bg-white/20 dark:bg-black/20 backdrop-blur-[2px]" />
+        <div className="relative z-10 h-full flex flex-col items-center justify-center px-4">
+          <div className="inline-flex items-center gap-2 bg-[#e57835]/90 text-white px-4 py-2 rounded-full text-sm font-medium mb-4 shadow-lg border border-white/20 backdrop-blur-sm">
+            <span className="relative flex h-2 w-2">
+              <span className={`absolute inline-flex h-full w-full rounded-full opacity-75 ${isExpired ? 'bg-amber-400' : 'bg-emerald-400'} animate-ping`} />
+              <span className={`relative inline-flex rounded-full h-2 w-2 ${isExpired ? 'bg-amber-500' : 'bg-emerald-500'}`} />
+            </span>
+            {isExpired ? 'Kadaluarsa' : 'Dibuka'}
+          </div>
+          <h1 className="text-2xl md:text-3xl lg:text-4xl font-bold text-[#c2652a] dark:text-[#fd904c] text-center mb-3 max-w-3xl">
+            {project.title}
+          </h1>
+          <p className="text-sm md:text-base text-[#c2652a]/80 dark:text-[#fd904c]/90 text-center max-w-xl bg-white/50 dark:bg-black/20 px-6 py-3 rounded-2xl border border-[#fd904c]/20 backdrop-blur-sm">
+            {project.category?.name ?? 'Proyek Tender'}
+          </p>
+        </div>
+        <div className="absolute bottom-0 left-0 right-0">
+          <svg viewBox="0 0 1440 80" fill="none" className="w-full h-auto block">
+            <path d="M0 80L48 70C96 60 192 40 288 35C384 30 480 40 576 50C672 60 768 70 864 65C960 60 1056 40 1152 35C1248 30 1344 40 1392 45L1440 50V80H1392C1344 80 1248 80 1152 80C1056 80 960 80 864 80C768 80 672 80 576 80C480 80 384 80 288 80C192 80 96 80 48 80H0Z" fill="var(--background)" />
+          </svg>
+        </div>
+      </header>
+
+      <main className="max-w-[1280px] mx-auto px-4 sm:px-6 lg:px-8 -mt-5 relative z-20 pb-12">
+        <Link href="/proyek-tender" className="inline-flex items-center gap-2 text-sm text-gray-500 hover:text-[#e57835] dark:hover:text-[#fd904c] mb-6 transition-colors">
           <ArrowLeft className="h-4 w-4" />
           Kembali ke daftar proyek
         </Link>
 
-        {/* Banner */}
-        <div className="rounded-2xl border border-white/20 bg-white/70 dark:bg-gray-900/50 backdrop-blur-xl overflow-hidden mb-8">
-          <div className="p-6 md:p-8 bg-gradient-to-br from-[#fd904c]/10 to-[#e57835]/10">
-            <div className="flex flex-wrap items-center gap-2 mb-4">
-              {project.category && (
-                <Badge className="bg-[#fd904c]/20 text-[#e57835]">{project.category.name}</Badge>
-              )}
-              {isExpired && (
-                <Badge variant="secondary" className="bg-amber-500/20 text-amber-700 dark:text-amber-400">Kadaluarsa</Badge>
-              )}
+        {/* Card: Informasi Proyek */}
+        <section className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-6 md:p-8 mb-8 shadow-sm hover:shadow-md transition-shadow">
+          <div className="flex items-center gap-3 mb-6">
+            <div className="w-11 h-11 flex items-center justify-center rounded-xl bg-[#fd904c] text-white shadow-lg shadow-[#fd904c]/30">
+              <FileText className="w-5 h-5" />
             </div>
-            <h1 className="text-2xl md:text-3xl font-bold mb-4">{project.title}</h1>
-            <div className="flex flex-wrap gap-4 md:gap-6 text-sm">
-              {project.budget != null && (
-                <span className="flex items-center gap-2">
-                  <Wallet className="h-4 w-4 text-[#e57835]" />
-                  Anggaran: Rp {(project.budget / 1e6).toFixed(0)}jt
-                </span>
-              )}
-              {project.offerDeadline && (
-                <span className="flex items-center gap-2">
-                  <CalendarClock className="h-4 w-4 text-[#e57835]" />
-                  Batas penawaran: {new Date(project.offerDeadline).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}
-                </span>
-              )}
-              {locationText && (
-                <span className="flex items-center gap-2">
-                  <MapPin className="h-4 w-4 text-[#e57835]" />
-                  {locationText}
-                </span>
-              )}
-              {project.startDate && (
-                <span className="flex items-center gap-2">
-                  <Calendar className="h-4 w-4 text-[#e57835]" />
-                  Target mulai: {new Date(project.startDate).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}
-                </span>
-              )}
+            <h2 className="text-xl md:text-2xl font-bold text-[#c2652a] dark:text-[#fd904c]">Informasi Proyek</h2>
+          </div>
+
+          <div className="flex flex-col lg:flex-row gap-8">
+            {/* Deskripsi */}
+            <div className="flex-[2] min-w-0">
+              <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3 flex items-center gap-2">
+                <FileText className="w-4 h-4 text-[#fd904c]" />
+                Deskripsi Proyek
+              </h3>
+              <div className="bg-gray-50 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-700 rounded-xl p-5 text-gray-600 dark:text-gray-400 leading-relaxed whitespace-pre-line min-h-[120px]">
+                {project.description || 'Tidak ada deskripsi.'}
+              </div>
+            </div>
+
+            {/* Detail Proyek */}
+            <div className="flex-1 lg:max-w-[380px]">
+              <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3 flex items-center gap-2">
+                <Building2 className="w-4 h-4 text-[#fd904c]" />
+                Detail Proyek
+              </h3>
+              <div className="space-y-2">
+                <div className="flex items-center gap-3 p-3 rounded-xl bg-gray-50 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-700">
+                  <div className="w-9 h-9 flex items-center justify-center rounded-lg bg-gray-200 dark:bg-gray-700 text-gray-500">
+                    <Hash className="w-4 h-4" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs text-gray-500">ID Proyek</p>
+                    <p className="text-sm font-semibold text-gray-800 dark:text-gray-200 truncate">{project.id.slice(-8)}</p>
+                  </div>
+                </div>
+                {project.category && (
+                  <div className="flex items-center gap-3 p-3 rounded-xl bg-gray-50 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-700">
+                    <div className="w-9 h-9 flex items-center justify-center rounded-lg bg-gray-200 dark:bg-gray-700 text-gray-500">
+                      <Layers className="w-4 h-4" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xs text-gray-500">Kategori</p>
+                      <p className="text-sm font-semibold text-gray-800 dark:text-gray-200 truncate">{project.category.name}</p>
+                    </div>
+                  </div>
+                )}
+                {locationText && (
+                  <div className="flex items-center gap-3 p-3 rounded-xl bg-gray-50 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-700">
+                    <div className="w-9 h-9 flex items-center justify-center rounded-lg bg-gray-200 dark:bg-gray-700 text-gray-500">
+                      <MapPin className="w-4 h-4" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xs text-gray-500">Lokasi</p>
+                      <p className="text-sm font-semibold text-gray-800 dark:text-gray-200 truncate">{locationText}</p>
+                    </div>
+                  </div>
+                )}
+                {project.budget != null && (
+                  <div className="flex items-center gap-3 p-3 rounded-xl bg-[#fd904c]/10 dark:bg-[#fd904c]/10 border border-[#fd904c]/20">
+                    <div className="w-9 h-9 flex items-center justify-center rounded-lg bg-[#fd904c]/20 text-[#e57835]">
+                      <Wallet className="w-4 h-4" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xs text-gray-500">Budget Estimasi</p>
+                      <p className="text-sm font-semibold text-[#e57835] dark:text-[#fd904c]">Rp {project.budget.toLocaleString('id-ID')}</p>
+                    </div>
+                  </div>
+                )}
+                {project.offerDeadline && (
+                  <div className="flex items-center gap-3 p-3 rounded-xl bg-[#fd904c]/10 dark:bg-[#fd904c]/10 border border-[#fd904c]/20">
+                    <div className="w-9 h-9 flex items-center justify-center rounded-lg bg-[#fd904c]/20 text-[#e57835]">
+                      <CalendarClock className="w-4 h-4" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xs text-gray-500">Batas Penawaran</p>
+                      <p className="text-sm font-semibold text-[#e57835] dark:text-[#fd904c]">
+                        {new Date(project.offerDeadline).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}
+                      </p>
+                    </div>
+                  </div>
+                )}
+                {project.startDate && (
+                  <div className="flex items-center gap-3 p-3 rounded-xl bg-gray-50 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-700">
+                    <div className="w-9 h-9 flex items-center justify-center rounded-lg bg-gray-200 dark:bg-gray-700 text-gray-500">
+                      <Calendar className="w-4 h-4" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xs text-gray-500">Target Mulai</p>
+                      <p className="text-sm font-semibold text-gray-800 dark:text-gray-200">
+                        {new Date(project.startDate).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
-        </div>
+        </section>
 
-        {/* Body - Deskripsi */}
-        <Card className="rounded-2xl border-white/20 bg-white/70 dark:bg-gray-900/50 backdrop-blur-xl mb-8">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <FileText className="h-5 w-5" />
-              Deskripsi Proyek
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="whitespace-pre-wrap text-muted-foreground">{project.description}</p>
-          </CardContent>
-        </Card>
-
-        {/* Gallery */}
+        {/* Card: Galeri Foto */}
         {photos.length > 0 && (
-          <Card className="rounded-2xl border-white/20 bg-white/70 dark:bg-gray-900/50 backdrop-blur-xl mb-8">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <ImageIcon className="h-5 w-5" />
-                Galeri Foto
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                {photos.map((url, i) => (
-                  <button
-                    key={i}
-                    type="button"
-                    className="relative aspect-video rounded-lg overflow-hidden bg-muted"
-                    onClick={() => setPreviewImage(url)}
-                  >
-                    <img src={url.startsWith('/') ? url : url} alt="" className="w-full h-full object-cover" />
-                  </button>
-                ))}
+          <section className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-6 md:p-8 mb-8 shadow-sm hover:shadow-md transition-shadow">
+            <div className="flex items-center gap-3 mb-6">
+              <div className="w-11 h-11 flex items-center justify-center rounded-xl bg-[#fd904c] text-white shadow-lg shadow-[#fd904c]/30">
+                <ImageIcon className="w-5 h-5" />
               </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Lampiran */}
-        {files.length > 0 && (
-          <Card className="rounded-2xl border-white/20 bg-white/70 dark:bg-gray-900/50 backdrop-blur-xl mb-8">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Paperclip className="h-5 w-5" />
-                Lampiran
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <ul className="space-y-2">
-                {files.map((url, i) => (
-                  <li key={i}>
-                    <a href={url.startsWith('/') ? url : url} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
-                      Dokumen {i + 1}
-                    </a>
-                  </li>
-                ))}
-              </ul>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Diskusi */}
-        <Card className="rounded-2xl border-white/20 bg-white/70 dark:bg-gray-900/50 backdrop-blur-xl mb-8">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <MessageSquare className="h-5 w-5" />
-              Diskusi
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {comments.map((c) => (
-              <div key={c.id} className="flex gap-3 p-3 rounded-lg bg-muted/50">
-                <div className="shrink-0 w-8 h-8 rounded-full bg-[#fd904c]/20 flex items-center justify-center text-[#e57835] font-medium">
-                  {c.user.name?.charAt(0) ?? '?'}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium">{c.user.name}</p>
-                  <p className="text-sm text-muted-foreground whitespace-pre-wrap">{c.content}</p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    {new Date(c.createdAt).toLocaleString('id-ID')}
-                  </p>
-                </div>
-              </div>
-            ))}
-            {(user.role === 'VENDOR' || user.role === 'CLIENT') && (
-              <div className="flex gap-2">
-                <Textarea
-                  placeholder="Tulis komentar..."
-                  value={commentText}
-                  onChange={(e) => setCommentText(e.target.value)}
-                  className="min-h-[80px]"
-                />
-                <Button
-                  onClick={handleSubmitComment}
-                  disabled={submittingComment || !commentText.trim()}
-                  className="shrink-0 bg-gradient-to-r from-[#fd904c] to-[#e57835]"
+              <h2 className="text-xl md:text-2xl font-bold text-[#c2652a] dark:text-[#fd904c]">Galeri Foto Preferensi & Ruangan</h2>
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+              {photos.map((url, i) => (
+                <button
+                  key={i}
+                  type="button"
+                  className="relative aspect-[4/3] rounded-xl overflow-hidden bg-gray-100 dark:bg-gray-800 shadow-md hover:scale-[1.02] hover:shadow-xl transition-all duration-300 group"
+                  onClick={() => openLightbox(url, `Foto ${i + 1}`)}
                 >
-                  {submittingComment ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-                </Button>
+                  <img src={url} alt={`Foto ${i + 1}`} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-[#c2652a]/80 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-3">
+                    <span className="text-white text-sm font-medium truncate w-full">Foto {i + 1}</span>
+                  </div>
+                </button>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {/* Card: Lampiran Dokumen */}
+        {files.length > 0 && (
+          <section className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-6 md:p-8 mb-8 shadow-sm hover:shadow-md transition-shadow">
+            <div className="flex items-center gap-3 mb-6">
+              <div className="w-11 h-11 flex items-center justify-center rounded-xl bg-[#fd904c] text-white shadow-lg shadow-[#fd904c]/30">
+                <Paperclip className="w-5 h-5" />
+              </div>
+              <h2 className="text-xl md:text-2xl font-bold text-[#c2652a] dark:text-[#fd904c]">Lampiran Dokumen</h2>
+            </div>
+            <div className="space-y-3">
+              {files.map((url, i) => (
+                <div
+                  key={i}
+                  className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-700 rounded-xl hover:border-[#fd904c]/30 hover:shadow-sm transition-all"
+                >
+                  <div className="flex items-center gap-4">
+                    <div className="w-11 h-11 flex items-center justify-center rounded-lg bg-[#fd904c]/10 text-[#e57835]">
+                      <FileText className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <p className="font-medium text-gray-800 dark:text-gray-200">Dokumen {i + 1}</p>
+                      <p className="text-sm text-gray-500">Lampiran proyek</p>
+                    </div>
+                  </div>
+                  <a
+                    href={url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-[#e57835] hover:bg-[#fd904c]/10 rounded-lg transition-colors"
+                  >
+                    <Download className="w-4 h-4" />
+                    Unduh
+                  </a>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {/* Card: Diskusi Proyek */}
+        <section className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-6 md:p-8 mb-8 shadow-sm hover:shadow-md transition-shadow">
+          <div className="flex items-center gap-3 mb-6">
+            <div className="w-11 h-11 flex items-center justify-center rounded-xl bg-[#e57835] text-white shadow-lg shadow-[#e57835]/30">
+              <MessageSquare className="w-5 h-5" />
+            </div>
+            <h2 className="text-xl md:text-2xl font-bold text-[#c2652a] dark:text-[#fd904c]">Diskusi Proyek</h2>
+          </div>
+
+          <div className="h-[320px] overflow-y-auto pr-2 mb-4 space-y-4">
+            {comments.map((c) => {
+              const isVendor = c.user.role === 'VENDOR';
+              return (
+                <div key={c.id} className={`flex gap-3 ${isVendor ? 'flex-row-reverse' : ''}`}>
+                  <div className={`w-9 h-9 shrink-0 rounded-full flex items-center justify-center text-xs font-bold text-white border-2 border-white/30 shadow-md ${isVendor ? 'bg-[#e57835]' : 'bg-[#fd904c]'}`}>
+                    {c.user.name?.charAt(0) ?? '?'}
+                  </div>
+                  <div className={`max-w-[75%] ${isVendor ? 'text-right' : ''}`}>
+                    <div className={`flex items-center gap-2 mb-1 ${isVendor ? 'justify-end' : ''}`}>
+                      <span className={`text-sm font-medium ${isVendor ? 'text-[#e57835]' : 'text-[#fd904c]'}`}>{c.user.name}</span>
+                      <span className="text-xs text-gray-400">
+                        {new Date(c.createdAt).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}, {new Date(c.createdAt).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}
+                      </span>
+                    </div>
+                    <div
+                      className={`inline-block px-4 py-3 rounded-2xl text-sm text-gray-700 dark:text-gray-300 leading-relaxed ${
+                        isVendor
+                          ? 'bg-[#fd904c]/10 dark:bg-[#fd904c]/10 border border-[#fd904c]/20 rounded-tr-md'
+                          : 'bg-[#fd904c]/10 dark:bg-[#fd904c]/10 border border-[#fd904c]/20 rounded-tl-md'
+                      }`}
+                    >
+                      {c.content}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {(user.role === 'VENDOR' || user.role === 'CLIENT') && (
+            <div className="flex gap-3 pt-4 border-t border-gray-100 dark:border-gray-800">
+              <Textarea
+                placeholder="Tulis pesan Anda..."
+                value={commentText}
+                onChange={(e) => setCommentText(e.target.value)}
+                className="min-h-[50px] max-h-[100px] resize-none rounded-xl border-gray-200 dark:border-gray-700 focus:border-[#fd904c] focus:ring-[#fd904c]/20"
+              />
+              <Button
+                onClick={handleSubmitComment}
+                disabled={submittingComment || !commentText.trim()}
+                className="self-end h-12 px-5 bg-[#fd904c] hover:bg-[#e57835] text-white rounded-xl shadow-lg shadow-[#fd904c]/30"
+              >
+                {submittingComment ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+              </Button>
+            </div>
+          )}
+        </section>
+
+        {/* Card: Buat Penawaran (collapsible) */}
+        <section className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl overflow-hidden mb-8 shadow-sm">
+          <button
+            type="button"
+            onClick={() => canOffer && setRfqOpen((o) => !o)}
+            className="w-full flex items-center justify-between p-6 md:p-8 text-left hover:bg-gray-50/50 dark:hover:bg-gray-800/30 transition-colors disabled:opacity-60"
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-11 h-11 flex items-center justify-center rounded-xl bg-[#fd904c] text-white shadow-lg shadow-[#fd904c]/30">
+                <FileText className="w-5 h-5" />
+              </div>
+              <div>
+                <h2 className="text-xl font-bold text-[#c2652a] dark:text-[#fd904c]">Buat Penawaran</h2>
+                <p className="text-sm text-gray-500">
+                  {project.rfq?.items?.length ? 'Isi form RFQ untuk mengajukan penawaran Anda' : 'Upload file penawaran'}
+                </p>
+              </div>
+            </div>
+            {canOffer && (
+              <div className={`w-10 h-10 flex items-center justify-center rounded-lg bg-[#fd904c]/10 text-[#e57835] transition-transform ${rfqOpen ? 'rotate-180' : ''}`}>
+                <ChevronDown className="w-5 h-5" />
               </div>
             )}
-          </CardContent>
-        </Card>
+          </button>
 
-        {/* Ajukan penawaran */}
-        <Card className="rounded-2xl border-white/20 bg-white/70 dark:bg-gray-900/50 backdrop-blur-xl mb-8">
-          <CardContent className="pt-6">
-            {project.userApplication ? (
-              <p className="text-muted-foreground">Anda sudah mengajukan penawaran. Status: {project.userApplication.status}</p>
-            ) : isExpired ? (
-              <p className="text-amber-600 dark:text-amber-400">Batas akhir penawaran telah lewat. Proyek kadaluarsa.</p>
-            ) : (
-              <Button
-                onClick={() => setOfferDialogOpen(true)}
-                className="bg-gradient-to-r from-[#fd904c] to-[#e57835] hover:opacity-90"
-              >
-                Ajukan Penawaran
-              </Button>
-            )}
-          </CardContent>
-        </Card>
-      </div>
+          {!canOffer && (
+            <div className="px-6 pb-6 text-gray-500">
+              {project.userApplication ? 'Anda sudah mengajukan penawaran.' : isExpired ? 'Batas akhir penawaran telah lewat. Proyek kadaluarsa.' : null}
+            </div>
+          )}
 
-      {/* Dialog Ajukan Penawaran */}
+          {canOffer && rfqOpen && (
+            <div className="border-t border-gray-100 dark:border-gray-800 p-6 md:p-8">
+              {project.rfq?.items?.length ? (
+                <>
+                  <div className="overflow-x-auto mb-6">
+                    <table className="w-full text-sm border-collapse">
+                      <thead>
+                        <tr>
+                          <th className="text-left p-3 bg-[#fd904c]/10 text-[#e57835] font-semibold rounded-tl-xl">No</th>
+                          <th className="text-left p-3 bg-[#fd904c]/10 text-[#e57835] font-semibold">Item Pekerjaan</th>
+                          <th className="text-center p-3 bg-[#fd904c]/10 text-[#e57835] font-semibold">Qty</th>
+                          <th className="text-center p-3 bg-[#fd904c]/10 text-[#e57835] font-semibold">Satuan</th>
+                          <th className="text-right p-3 bg-[#fd904c]/10 text-[#e57835] font-semibold rounded-tr-xl">Harga/Unit (Rp)</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {project.rfq.items.map((item, idx) => (
+                          <tr key={item.id} className="border-b border-gray-100 dark:border-gray-800 hover:bg-gray-50/50 dark:hover:bg-gray-800/30">
+                            <td className="p-3 text-gray-500">{idx + 1}</td>
+                            <td className="p-3 font-medium text-gray-800 dark:text-gray-200">{item.itemName}</td>
+                            <td className="p-3 text-center text-gray-600">{item.quantity}</td>
+                            <td className="p-3 text-center text-gray-600">{item.unit}</td>
+                            <td className="p-3 text-right">
+                              <Input
+                                type="number"
+                                min={0}
+                                step="any"
+                                placeholder="0"
+                                value={rfqPrices[item.id] || ''}
+                                onChange={(e) => setRfqPrices((prev) => ({ ...prev, [item.id]: Number(e.target.value) || 0 }))}
+                                className="w-28 text-right rounded-lg border-gray-200 focus:border-[#fd904c]"
+                              />
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 mt-4">Catatan Vendor</label>
+                  <Textarea
+                    placeholder="Tambahkan catatan atau keterangan tambahan..."
+                    value={rfqNotes}
+                    onChange={(e) => setRfqNotes(e.target.value)}
+                    className="min-h-[80px] rounded-xl border-gray-200 focus:border-[#fd904c] mb-6"
+                  />
+                  <div className="flex justify-end gap-3">
+                    <Button variant="outline" onClick={() => setOfferDialogOpen(false)}>Batal</Button>
+                    <Button
+                      onClick={handleSubmitOffer}
+                      disabled={offerSubmitting || Object.values(rfqPrices).every((v) => !v || v <= 0)}
+                      className="bg-[#fd904c] hover:bg-[#e57835] text-white shadow-lg shadow-[#fd904c]/30"
+                    >
+                      {offerSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                      Kirim Penawaran
+                    </Button>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">Unggah file penawaran (PDF/dokumen).</p>
+                  <div className="flex items-center gap-3 mb-4">
+                    <Input type="file" accept=".pdf,.doc,.docx" onChange={handleUploadOfferFile} disabled={uploadingFile} className="flex-1" />
+                    {uploadingFile && <Loader2 className="w-5 h-5 animate-spin text-[#fd904c]" />}
+                  </div>
+                  {offerFileUrl && <p className="text-sm text-green-600 dark:text-green-400 mb-4">File terunggah. Klik Kirim untuk mengajukan penawaran.</p>}
+                  <div className="flex justify-end">
+                    <Button
+                      onClick={handleSubmitOffer}
+                      disabled={offerSubmitting || !offerFileUrl}
+                      className="bg-[#fd904c] hover:bg-[#e57835] text-white shadow-lg shadow-[#fd904c]/30"
+                    >
+                      {offerSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                      Kirim Penawaran
+                    </Button>
+                  </div>
+                </>
+              )}
+            </div>
+          )}
+        </section>
+
+        <footer className="text-center py-8 text-gray-400 text-sm border-t border-gray-100 dark:border-gray-800">
+          © {new Date().getFullYear()} Adogalo. All rights reserved.
+        </footer>
+      </main>
+
+      {/* Dialog fallback untuk ajukan penawaran (opsional - form sudah inline di card) */}
       <Dialog open={offerDialogOpen} onOpenChange={setOfferDialogOpen}>
         <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>
-              {project.rfq?.items?.length ? 'Isi Penawaran RFQ' : 'Upload File Penawaran'}
-            </DialogTitle>
+            <DialogTitle>{project.rfq?.items?.length ? 'Isi Penawaran RFQ' : 'Upload File Penawaran'}</DialogTitle>
           </DialogHeader>
           {project.rfq?.items?.length ? (
             <div className="space-y-4">
-              <p className="text-sm text-muted-foreground">Isi harga per satuan untuk setiap item.</p>
               {project.rfq.items.map((item) => (
-                <div key={item.id} className="flex flex-col gap-1">
-                  <label className="text-sm font-medium">
-                    {item.itemName} ({item.quantity} {item.unit})
-                  </label>
+                <div key={item.id}>
+                  <label className="text-sm font-medium">{item.itemName} ({item.quantity} {item.unit})</label>
                   <Input
                     type="number"
                     min={0}
                     step="any"
-                    placeholder="Harga per satuan (Rp)"
                     value={rfqPrices[item.id] || ''}
                     onChange={(e) => setRfqPrices((prev) => ({ ...prev, [item.id]: Number(e.target.value) || 0 }))}
+                    className="mt-1"
                   />
                 </div>
               ))}
-              <div>
-                <label className="text-sm font-medium">Catatan (opsional)</label>
-                <Textarea
-                  placeholder="Catatan untuk client..."
-                  value={rfqNotes}
-                  onChange={(e) => setRfqNotes(e.target.value)}
-                  className="mt-1"
-                />
-              </div>
+              <Textarea placeholder="Catatan" value={rfqNotes} onChange={(e) => setRfqNotes(e.target.value)} />
             </div>
           ) : (
             <div className="space-y-4">
-              <p className="text-sm text-muted-foreground">Unggah file penawaran (PDF/dokumen).</p>
-              <div className="flex items-center gap-2">
-                <Input
-                  type="file"
-                  accept=".pdf,.doc,.docx"
-                  onChange={handleUploadOfferFile}
-                  disabled={uploadingFile}
-                />
-                {uploadingFile && <Loader2 className="h-5 w-5 animate-spin" />}
-              </div>
-              {offerFileUrl && (
-                <p className="text-sm text-green-600 dark:text-green-400">File terunggah. Klik Kirim untuk mengajukan penawaran.</p>
-              )}
+              <Input type="file" accept=".pdf,.doc,.docx" onChange={handleUploadOfferFile} disabled={uploadingFile} />
+              {offerFileUrl && <p className="text-sm text-green-600">File terunggah.</p>}
             </div>
           )}
           <div className="flex justify-end gap-2 pt-4">
             <Button variant="outline" onClick={() => setOfferDialogOpen(false)}>Batal</Button>
-            <Button
-              onClick={handleSubmitOffer}
-              disabled={offerSubmitting || (!!project.rfq?.items?.length && Object.values(rfqPrices).every((v) => !v || v <= 0)) || (!project.rfq?.items?.length && !offerFileUrl)}
-              className="bg-gradient-to-r from-[#fd904c] to-[#e57835]"
-            >
-              {offerSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Kirim Penawaran'}
+            <Button onClick={handleSubmitOffer} disabled={offerSubmitting} className="bg-[#fd904c] hover:bg-[#e57835]">
+              {offerSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Kirim'}
             </Button>
           </div>
         </DialogContent>
       </Dialog>
 
-      {/* Image preview */}
-      <Dialog open={!!previewImage} onOpenChange={() => setPreviewImage(null)}>
-        <DialogContent className="max-w-4xl">
+      {/* Lightbox */}
+      <Dialog open={!!previewImage} onOpenChange={() => { setPreviewImage(null); setPreviewCaption(''); }}>
+        <DialogContent className="max-w-4xl p-0 overflow-hidden">
           {previewImage && (
-            <img src={previewImage} alt="Preview" className="w-full h-auto max-h-[85vh] object-contain rounded-lg" />
+            <>
+              <img src={previewImage} alt={previewCaption} className="w-full h-auto max-h-[85vh] object-contain rounded-lg" />
+              {previewCaption && <p className="text-center font-medium py-2 text-sm text-gray-600 dark:text-gray-400">{previewCaption}</p>}
+            </>
           )}
         </DialogContent>
       </Dialog>
