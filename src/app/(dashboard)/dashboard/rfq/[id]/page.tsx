@@ -358,10 +358,12 @@ export default function RFQDetailPage({ params }: { params: Promise<{ id: string
         : 0,
   };
 
+  const proj = rfq.project;
+  const city = proj.city;
   const locationStr =
-    rfq.project.address ||
-    rfq.project.city?.name ||
-    (rfq.project.city?.province && rfq.project.city.province.name) ||
+    proj.address ||
+    (city && city.name) ||
+    (city && city.province && city.province.name) ||
     '-';
   const deadlineStr = rfq.project.offerDeadline
     ? new Date(rfq.project.offerDeadline).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })
