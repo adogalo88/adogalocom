@@ -30,7 +30,6 @@ import {
 import { toast } from 'sonner';
 import { useAuth } from '@/providers/AuthProvider';
 import { cn } from '@/lib/utils';
-import { getProjectLocationStr } from '@/lib/rfq-project-location';
 
 interface RFQItemPrice {
   id: string;
@@ -359,7 +358,13 @@ export default function RFQDetailPage({ params }: { params: Promise<{ id: string
         : 0,
   };
 
-  const locationStr = getProjectLocationStr(rfq.project);
+  const proj = rfq.project;
+  const city = proj && proj.city ? proj.city : null;
+  const locationStr =
+    (proj && proj.address && proj.address.trim()) ||
+    (city && city.name) ||
+    (city && city.province && city.province.name) ||
+    '-';
   const deadlineStr = rfq.project.offerDeadline
     ? new Date(rfq.project.offerDeadline).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })
     : rfq.deadline
