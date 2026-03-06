@@ -285,7 +285,6 @@ export const GET = withAuth(async (user, request: NextRequest, context) => {
                   },
                 },
                 prices: { include: { item: true } },
-                extraItems: { orderBy: { sortOrder: 'asc' } },
               },
               orderBy: { submittedAt: 'desc' },
             },

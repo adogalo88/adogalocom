@@ -20,16 +20,7 @@ const createSubmissionSchema = z.object({
   itemPrices: z.array(z.object({
     itemId: z.string(),
     unitPrice: z.number().positive('Harga harus positif'),
-    vendorNotes: z.string().optional(),
   })),
-  extraItems: z.array(z.object({
-    itemName: z.string().min(1, 'Nama item wajib'),
-    spesifikasi: z.string().optional(),
-    quantity: z.number().positive(),
-    unit: z.string().min(1),
-    unitPrice: z.number().min(0),
-    catatanKhusus: z.string().optional(),
-  })).optional().default([]),
   notes: z.string().optional(),
 });
 
@@ -202,7 +193,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { rfqId, itemPrices, extraItems = [], notes } = validationResult.data;
+    const { rfqId, itemPrices, notes } = validationResult.data;
 
     // Get RFQ with project (offerDeadline on project)
     const rfq = await db.rFQ.findUnique({
@@ -273,7 +264,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Calculate total and build prices data (with vendorNotes)
+    // Calculate total
     let totalOffer = 0;
     const pricesData = itemPrices.map(ip => {
       const item = rfq.items.find(i => i.id === ip.itemId);
@@ -284,22 +275,6 @@ export async function POST(request: NextRequest) {
         itemId: ip.itemId,
         unitPrice: ip.unitPrice,
         totalPrice,
-        vendorNotes: ip.vendorNotes?.trim() || null,
-      };
-    });
-
-    const extraItemsData = extraItems.map((ei, idx) => {
-      const totalPrice = ei.quantity * ei.unitPrice;
-      totalOffer += totalPrice;
-      return {
-        itemName: ei.itemName.trim(),
-        spesifikasi: ei.spesifikasi?.trim() || null,
-        quantity: ei.quantity,
-        unit: ei.unit,
-        unitPrice: ei.unitPrice,
-        totalPrice,
-        catatanKhusus: ei.catatanKhusus?.trim() || null,
-        sortOrder: idx,
       };
     });
 
@@ -321,9 +296,6 @@ export async function POST(request: NextRequest) {
         prices: {
           create: pricesData,
         },
-        extraItems: {
-          create: extraItemsData,
-        },
       },
       update: {
         status: 'SUBMITTED',
@@ -334,10 +306,6 @@ export async function POST(request: NextRequest) {
           deleteMany: {},
           create: pricesData,
         },
-        extraItems: {
-          deleteMany: {},
-          create: extraItemsData,
-        },
       },
       include: {
         prices: {
@@ -345,7 +313,6 @@ export async function POST(request: NextRequest) {
             item: true,
           },
         },
-        extraItems: { orderBy: { sortOrder: 'asc' } },
         vendor: {
           select: {
             id: true,

@@ -84,7 +84,6 @@ export async function GET(
                 item: true,
               },
             },
-            extraItems: { orderBy: { sortOrder: 'asc' } },
           },
           orderBy: { totalOffer: 'asc' }, // Urutkan dari termurah
         },
