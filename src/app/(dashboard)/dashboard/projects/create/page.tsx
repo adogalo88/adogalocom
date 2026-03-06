@@ -551,7 +551,7 @@ export default function CreateProjectPage() {
                   <TableHeader>
                     <TableRow>
                       <TableHead className="w-[30%]">Nama Item *</TableHead>
-                      <TableHead className="w-[25%]">Deskripsi</TableHead>
+                      <TableHead className="w-[25%]">Spesifikasi/Permintaan Khusus (opsional)</TableHead>
                       <TableHead className="w-[15%]">Jumlah *</TableHead>
                       <TableHead className="w-[15%]">Satuan *</TableHead>
                       <TableHead className="w-[10%]"></TableHead>
@@ -572,7 +572,7 @@ export default function CreateProjectPage() {
                         </TableCell>
                         <TableCell>
                           <Input
-                            placeholder="Deskripsi singkat"
+                            placeholder="Opsional"
                             {...register(`rfqItems.${index}.description`)}
                             className="border-0 bg-transparent p-1"
                           />

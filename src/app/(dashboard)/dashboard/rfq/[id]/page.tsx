@@ -32,12 +32,26 @@ interface RFQItemPrice {
   id: string;
   unitPrice: number;
   totalPrice: number;
+  vendorNotes: string | null;
   item: {
     id: string;
     itemName: string;
+    description: string | null;
     quantity: number;
     unit: string;
   };
+}
+
+interface RFQSubmissionExtraItem {
+  id: string;
+  itemName: string;
+  spesifikasi: string | null;
+  quantity: number;
+  unit: string;
+  unitPrice: number;
+  totalPrice: number;
+  catatanKhusus: string | null;
+  sortOrder: number;
 }
 
 interface RFQSubmission {
@@ -54,6 +68,7 @@ interface RFQSubmission {
     rating: number;
   };
   prices: RFQItemPrice[];
+  extraItems?: RFQSubmissionExtraItem[];
 }
 
 interface RFQItem {
@@ -575,21 +590,26 @@ export default function RFQDetailPage({ params }: { params: Promise<{ id: string
                                 <TableHead className="text-center">Qty</TableHead>
                                 <TableHead className="text-right">Harga/Satuan</TableHead>
                                 <TableHead className="text-right">Total</TableHead>
+                                <TableHead className="min-w-[140px] max-w-[200px]">Catatan Khusus/Tambahan</TableHead>
                               </TableRow>
                             </TableHeader>
                             <TableBody>
                               {selected.prices.map((price) => (
                                 <TableRow key={price.id}>
-                                  <TableCell>{price.item.itemName}</TableCell>
-                                  <TableCell className="text-center">
-                                    {price.item.quantity} {price.item.unit}
-                                  </TableCell>
-                                  <TableCell className="text-right">
-                                    {formatCurrency(price.unitPrice)}
-                                  </TableCell>
-                                  <TableCell className="text-right font-medium">
-                                    {formatCurrency(price.totalPrice)}
-                                  </TableCell>
+                                  <TableCell className="font-medium align-top break-words max-w-[180px]">{price.item.itemName}</TableCell>
+                                  <TableCell className="text-center align-top">{price.item.quantity} {price.item.unit}</TableCell>
+                                  <TableCell className="text-right align-top">{formatCurrency(price.unitPrice)}</TableCell>
+                                  <TableCell className="text-right font-medium align-top">{formatCurrency(price.totalPrice)}</TableCell>
+                                  <TableCell className="text-sm text-muted-foreground align-top break-words max-w-[200px]">{price.vendorNotes || '–'}</TableCell>
+                                </TableRow>
+                              ))}
+                              {(selected.extraItems?.length ?? 0) > 0 && selected.extraItems!.map((ex) => (
+                                <TableRow key={ex.id} className="bg-amber-50/70 dark:bg-amber-950/30">
+                                  <TableCell className="font-medium align-top break-words max-w-[180px]">{ex.itemName}</TableCell>
+                                  <TableCell className="text-center align-top">{ex.quantity} {ex.unit}</TableCell>
+                                  <TableCell className="text-right align-top">{formatCurrency(ex.unitPrice)}</TableCell>
+                                  <TableCell className="text-right font-medium align-top">{formatCurrency(ex.totalPrice)}</TableCell>
+                                  <TableCell className="text-sm text-muted-foreground align-top break-words max-w-[200px]">{ex.catatanKhusus || '–'}</TableCell>
                                 </TableRow>
                               ))}
                             </TableBody>
@@ -632,21 +652,26 @@ export default function RFQDetailPage({ params }: { params: Promise<{ id: string
                         <TableHead className="text-center">Qty</TableHead>
                         <TableHead className="text-right">Harga/Satuan</TableHead>
                         <TableHead className="text-right">Total</TableHead>
+                        <TableHead className="min-w-[140px] max-w-[200px]">Catatan Khusus/Tambahan</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {mySubmission.prices.map((price) => (
                         <TableRow key={price.id}>
-                          <TableCell>{price.item.itemName}</TableCell>
-                          <TableCell className="text-center">
-                            {price.item.quantity} {price.item.unit}
-                          </TableCell>
-                          <TableCell className="text-right">
-                            {formatCurrency(price.unitPrice)}
-                          </TableCell>
-                          <TableCell className="text-right font-medium">
-                            {formatCurrency(price.totalPrice)}
-                          </TableCell>
+                          <TableCell className="font-medium align-top break-words max-w-[180px]">{price.item.itemName}</TableCell>
+                          <TableCell className="text-center align-top">{price.item.quantity} {price.item.unit}</TableCell>
+                          <TableCell className="text-right align-top">{formatCurrency(price.unitPrice)}</TableCell>
+                          <TableCell className="text-right font-medium align-top">{formatCurrency(price.totalPrice)}</TableCell>
+                          <TableCell className="text-sm text-muted-foreground align-top break-words max-w-[200px]">{price.vendorNotes || '–'}</TableCell>
+                        </TableRow>
+                      ))}
+                      {(mySubmission.extraItems?.length ?? 0) > 0 && mySubmission.extraItems!.map((ex) => (
+                        <TableRow key={ex.id} className="bg-amber-50/70 dark:bg-amber-950/30">
+                          <TableCell className="font-medium align-top break-words max-w-[180px]">{ex.itemName}</TableCell>
+                          <TableCell className="text-center align-top">{ex.quantity} {ex.unit}</TableCell>
+                          <TableCell className="text-right align-top">{formatCurrency(ex.unitPrice)}</TableCell>
+                          <TableCell className="text-right font-medium align-top">{formatCurrency(ex.totalPrice)}</TableCell>
+                          <TableCell className="text-sm text-muted-foreground align-top break-words max-w-[200px]">{ex.catatanKhusus || '–'}</TableCell>
                         </TableRow>
                       ))}
                     </TableBody>

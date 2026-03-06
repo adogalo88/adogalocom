@@ -35,6 +35,7 @@ import {
   ChevronDown,
   Download,
   Trash2,
+  Plus,
 } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
@@ -104,6 +105,8 @@ export default function ProyekTenderDetailPage() {
   const [offerDialogOpen, setOfferDialogOpen] = useState(false);
   const [offerSubmitting, setOfferSubmitting] = useState(false);
   const [rfqPrices, setRfqPrices] = useState<Record<string, number>>({});
+  const [rfqVendorNotes, setRfqVendorNotes] = useState<Record<string, string>>({});
+  const [rfqExtraRows, setRfqExtraRows] = useState<Array<{ id: string; itemName: string; spesifikasi: string; quantity: number; unit: string; unitPrice: number; catatanKhusus: string }>>([]);
   const [rfqNotes, setRfqNotes] = useState('');
   const [offerFileUrl, setOfferFileUrl] = useState('');
   const [uploadingFile, setUploadingFile] = useState(false);
@@ -262,7 +265,19 @@ export default function ProyekTenderDetailPage() {
         const itemPrices = project.rfq.items.map((item) => ({
           itemId: item.id,
           unitPrice: rfqPrices[item.id] ?? 0,
+          vendorNotes: (rfqVendorNotes[item.id] ?? '').trim() || undefined,
         }));
+        const extraItemsPayload = rfqExtraRows
+          .filter((r) => (r.itemName || '').trim())
+          .map((r) => ({
+            itemName: r.itemName.trim(),
+            spesifikasi: (r.spesifikasi || '').trim() || undefined,
+            quantity: Number(r.quantity) || 0,
+            unit: (r.unit || 'pcs').trim(),
+            unitPrice: Number(r.unitPrice) || 0,
+            catatanKhusus: (r.catatanKhusus || '').trim() || undefined,
+          }))
+          .filter((r) => r.quantity > 0);
         if (itemPrices.some((p) => !p.unitPrice || p.unitPrice <= 0)) {
           toast.error('Isi semua harga item RFQ');
           setOfferSubmitting(false);
@@ -270,7 +285,8 @@ export default function ProyekTenderDetailPage() {
         }
         let notes = rfqNotes ?? '';
         if ((taxEnabled || discountEnabled) && project.rfq?.items) {
-          const st = project.rfq.items.reduce((s, item) => s + (rfqPrices[item.id] ?? 0) * item.quantity, 0);
+          const st = project.rfq.items.reduce((s, item) => s + (rfqPrices[item.id] ?? 0) * item.quantity, 0) +
+            rfqExtraRows.reduce((s, r) => s + r.quantity * r.unitPrice, 0);
           const disc = discountEnabled
             ? discountType === 'percent'
               ? (st * Math.min(100, Math.max(0, discountValue))) / 100
@@ -294,6 +310,7 @@ export default function ProyekTenderDetailPage() {
           body: JSON.stringify({
             rfqId: project.rfq.id,
             itemPrices,
+            extraItems: extraItemsPayload,
             notes: notes || undefined,
           }),
         });
@@ -382,6 +399,9 @@ export default function ProyekTenderDetailPage() {
       grandTotal += total;
     });
   }
+  rfqExtraRows.forEach((row) => {
+    grandTotal += row.quantity * row.unitPrice;
+  });
 
   const locationText = project.city
     ? [project.city.province?.name, project.city.name].filter(Boolean).join(', ')
@@ -722,6 +742,44 @@ export default function ProyekTenderDetailPage() {
           )}
         </section>
 
+        {/* Tabel Spesifikasi/Permintaan Khusus dari Client (hanya untuk proyek WITH RFQ) */}
+        {project.rfq?.items?.length ? (
+          <section className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl overflow-hidden mb-8 shadow-sm">
+            <div className="p-6 md:p-8">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-11 h-11 flex items-center justify-center rounded-xl bg-[#fd904c]/10 text-[#fd904c]">
+                  <FileText className="w-5 h-5" />
+                </div>
+                <h2 className="text-xl font-bold text-[#c2652a] dark:text-[#fd904c]">Spesifikasi / Permintaan Khusus (dari Client)</h2>
+              </div>
+              <div className="overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-700">
+                <table className="w-full text-sm border-collapse table-fixed min-w-[500px]">
+                  <thead>
+                    <tr>
+                      <th className="w-12 text-left p-3 bg-[#fd904c]/10 text-[#e57835] font-semibold rounded-tl-xl border-b border-gray-200 dark:border-gray-700">No</th>
+                      <th className="w-[22%] text-left p-3 bg-[#fd904c]/10 text-[#e57835] font-semibold border-b border-gray-200 dark:border-gray-700">Nama Item</th>
+                      <th className="min-w-[28%] text-left p-3 bg-[#fd904c]/10 text-[#e57835] font-semibold border-b border-gray-200 dark:border-gray-700">Spesifikasi/Permintaan Khusus</th>
+                      <th className="w-16 text-center p-3 bg-[#fd904c]/10 text-[#e57835] font-semibold border-b border-gray-200 dark:border-gray-700">Qty</th>
+                      <th className="w-20 text-center p-3 bg-[#fd904c]/10 text-[#e57835] font-semibold rounded-tr-xl border-b border-gray-200 dark:border-gray-700">Satuan</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {project.rfq.items.map((item, idx) => (
+                      <tr key={item.id} className="border-b border-gray-100 dark:border-gray-800">
+                        <td className="p-3 text-gray-500 align-top">{idx + 1}</td>
+                        <td className="p-3 font-medium text-gray-800 dark:text-gray-200 break-words align-top max-w-0" style={{ wordBreak: 'break-word' }}>{item.itemName}</td>
+                        <td className="p-3 text-gray-600 dark:text-gray-400 break-words align-top max-w-0" style={{ wordBreak: 'break-word' }}>{item.description || '–'}</td>
+                        <td className="p-3 text-center text-gray-600 dark:text-gray-400 align-top">{item.quantity}</td>
+                        <td className="p-3 text-center text-gray-600 dark:text-gray-400 align-top">{item.unit}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </section>
+        ) : null}
+
         {/* Card: Buat Penawaran (collapsible) atau cap stempel jika vendor sudah submit */}
         <section className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl overflow-hidden mb-8 shadow-sm">
           {hasVendorSubmittedRfq ? (
@@ -767,26 +825,30 @@ export default function ProyekTenderDetailPage() {
             <div className="border-t border-gray-100 dark:border-gray-800 p-6 md:p-8">
               {project.rfq?.items?.length ? (
                 <>
-                  <div className="overflow-x-auto mb-6">
-                    <table className="w-full text-sm border-collapse">
+                  <div className="overflow-x-auto mb-4">
+                    <table className="w-full text-sm border-collapse table-fixed min-w-[640px]">
                       <thead>
                         <tr>
-                          <th className="text-left p-3 bg-[#fd904c]/10 text-[#e57835] font-semibold rounded-tl-xl">No</th>
-                          <th className="text-left p-3 bg-[#fd904c]/10 text-[#e57835] font-semibold">Item Pekerjaan</th>
-                          <th className="text-center p-3 bg-[#fd904c]/10 text-[#e57835] font-semibold">Qty</th>
-                          <th className="text-center p-3 bg-[#fd904c]/10 text-[#e57835] font-semibold">Satuan</th>
-                          <th className="text-right p-3 bg-[#fd904c]/10 text-[#e57835] font-semibold">Harga/Unit (Rp)</th>
-                          <th className="text-right p-3 bg-[#fd904c]/10 text-[#e57835] font-semibold rounded-tr-xl">Total (Rp)</th>
+                          <th className="w-10 text-left p-3 bg-[#fd904c]/10 text-[#e57835] font-semibold rounded-tl-xl">No</th>
+                          <th className="min-w-[120px] text-left p-3 bg-[#fd904c]/10 text-[#e57835] font-semibold">Item Pekerjaan</th>
+                          <th className="min-w-[100px] text-left p-3 bg-[#fd904c]/10 text-[#e57835] font-semibold hidden md:table-cell">Spesifikasi (ops.)</th>
+                          <th className="w-14 text-center p-3 bg-[#fd904c]/10 text-[#e57835] font-semibold">Qty</th>
+                          <th className="w-16 text-center p-3 bg-[#fd904c]/10 text-[#e57835] font-semibold">Satuan</th>
+                          <th className="w-28 text-right p-3 bg-[#fd904c]/10 text-[#e57835] font-semibold">Harga/Unit (Rp)</th>
+                          <th className="w-24 text-right p-3 bg-[#fd904c]/10 text-[#e57835] font-semibold">Total (Rp)</th>
+                          <th className="min-w-[140px] text-left p-3 bg-[#fd904c]/10 text-[#e57835] font-semibold">Catatan Khusus/Tambahan</th>
+                          <th className="w-12 p-3 bg-[#fd904c]/10 text-[#e57835] font-semibold rounded-tr-xl"></th>
                         </tr>
                       </thead>
                       <tbody>
                         {project.rfq.items.map((item, idx) => (
                           <tr key={item.id} className="border-b border-gray-100 dark:border-gray-800 hover:bg-gray-50/50 dark:hover:bg-gray-800/30">
-                            <td className="p-3 text-gray-500">{idx + 1}</td>
-                            <td className="p-3 font-medium text-gray-800 dark:text-gray-200">{item.itemName}</td>
-                            <td className="p-3 text-center text-gray-600">{item.quantity}</td>
-                            <td className="p-3 text-center text-gray-600">{item.unit}</td>
-                            <td className="p-3 text-right">
+                            <td className="p-2 text-gray-500 align-top">{idx + 1}</td>
+                            <td className="p-2 font-medium text-gray-800 dark:text-gray-200 break-words align-top max-w-0" style={{ wordBreak: 'break-word' }}>{item.itemName}</td>
+                            <td className="p-2 text-gray-500 text-sm break-words align-top max-w-0 hidden md:table-cell" style={{ wordBreak: 'break-word' }}>{item.description || '–'}</td>
+                            <td className="p-2 text-center text-gray-600 align-top">{item.quantity}</td>
+                            <td className="p-2 text-center text-gray-600 align-top">{item.unit}</td>
+                            <td className="p-2 text-right align-top">
                               <Input
                                 type="number"
                                 min={0}
@@ -794,49 +856,150 @@ export default function ProyekTenderDetailPage() {
                                 placeholder="0"
                                 value={rfqPrices[item.id] ?? ''}
                                 onChange={(e) => setRfqPrices((prev) => ({ ...prev, [item.id]: Number(e.target.value) || 0 }))}
-                                className="w-28 text-right rounded-lg border-gray-200 focus:border-[#fd904c]"
+                                className="w-full min-w-[6rem] max-w-[7rem] ml-auto text-right rounded-lg border-gray-200 focus:border-[#fd904c]"
                               />
                             </td>
-                            <td className="p-3 text-right font-medium text-gray-800 dark:text-gray-200 whitespace-nowrap">
+                            <td className="p-2 text-right font-medium text-gray-800 dark:text-gray-200 whitespace-nowrap align-top">
                               {rowTotals[item.id] > 0 ? `Rp ${rowTotals[item.id].toLocaleString('id-ID')}` : '-'}
+                            </td>
+                            <td className="p-2 align-top max-w-0" style={{ overflow: 'hidden' }}>
+                              <Input
+                                placeholder="Opsional: saran material/pekerjaan"
+                                value={rfqVendorNotes[item.id] ?? ''}
+                                onChange={(e) => setRfqVendorNotes((prev) => ({ ...prev, [item.id]: e.target.value }))}
+                                className="w-full text-sm rounded-lg border-gray-200 focus:border-[#fd904c] min-w-0 max-w-full overflow-hidden"
+                              />
+                            </td>
+                            <td className="p-2 align-top hidden md:table-cell"></td>
+                            <td className="p-2 align-top"></td>
+                          </tr>
+                        ))}
+                        {rfqExtraRows.map((row, idx) => (
+                          <tr key={row.id} className="border-b border-amber-200 dark:border-amber-800 bg-amber-50/70 dark:bg-amber-950/30">
+                            <td className="p-2 text-gray-500 align-top">{project.rfq!.items.length + idx + 1}</td>
+                            <td className="p-2 align-top max-w-0" style={{ overflow: 'hidden' }}>
+                              <Input
+                                placeholder="Nama item"
+                                value={row.itemName}
+                                onChange={(e) => setRfqExtraRows((prev) => prev.map((r) => r.id === row.id ? { ...r, itemName: e.target.value } : r))}
+                                className="w-full min-w-0 text-sm rounded-lg border-amber-200 dark:border-amber-700"
+                              />
+                            </td>
+                            <td className="p-2 align-top max-w-0 hidden md:table-cell" style={{ overflow: 'hidden' }}>
+                              <Input
+                                placeholder="Opsional"
+                                value={row.spesifikasi}
+                                onChange={(e) => setRfqExtraRows((prev) => prev.map((r) => r.id === row.id ? { ...r, spesifikasi: e.target.value } : r))}
+                                className="w-full min-w-0 text-sm rounded-lg border-amber-200 dark:border-amber-700"
+                              />
+                            </td>
+                            <td className="p-2 align-top">
+                              <Input
+                                type="number"
+                                min={0.01}
+                                step="any"
+                                placeholder="0"
+                                value={row.quantity || ''}
+                                onChange={(e) => setRfqExtraRows((prev) => prev.map((r) => r.id === row.id ? { ...r, quantity: Number(e.target.value) || 0 } : r))}
+                                className="w-16 text-right rounded-lg border-amber-200 dark:border-amber-700"
+                              />
+                            </td>
+                            <td className="p-2 align-top">
+                              <select
+                                value={row.unit}
+                                onChange={(e) => setRfqExtraRows((prev) => prev.map((r) => r.id === row.id ? { ...r, unit: e.target.value } : r))}
+                                className="rounded-lg border border-amber-200 dark:border-amber-700 bg-white dark:bg-gray-800 text-sm px-2 py-1.5 w-full"
+                              >
+                                <option value="m">m</option>
+                                <option value="m2">m²</option>
+                                <option value="m3">m³</option>
+                                <option value="kg">kg</option>
+                                <option value="pcs">pcs</option>
+                                <option value="unit">unit</option>
+                                <option value="ls">ls</option>
+                                <option value="set">set</option>
+                              </select>
+                            </td>
+                            <td className="p-2 text-right align-top">
+                              <Input
+                                type="number"
+                                min={0}
+                                step="any"
+                                placeholder="0"
+                                value={row.unitPrice || ''}
+                                onChange={(e) => setRfqExtraRows((prev) => prev.map((r) => r.id === row.id ? { ...r, unitPrice: Number(e.target.value) || 0 } : r))}
+                                className="w-full min-w-[5rem] max-w-[7rem] ml-auto text-right rounded-lg border-amber-200 dark:border-amber-700"
+                              />
+                            </td>
+                            <td className="p-2 text-right font-medium text-amber-800 dark:text-amber-200 whitespace-nowrap align-top">
+                              Rp {(row.quantity * row.unitPrice).toLocaleString('id-ID')}
+                            </td>
+                            <td className="p-2 align-top max-w-0" style={{ overflow: 'hidden' }}>
+                              <Input
+                                placeholder="Catatan (opsional)"
+                                value={row.catatanKhusus}
+                                onChange={(e) => setRfqExtraRows((prev) => prev.map((r) => r.id === row.id ? { ...r, catatanKhusus: e.target.value } : r))}
+                                className="w-full text-sm rounded-lg border-amber-200 dark:border-amber-700 min-w-0 max-w-full"
+                              />
+                            </td>
+                            <td className="p-2 align-top">
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => setRfqExtraRows((prev) => prev.filter((r) => r.id !== row.id))}
+                                className="text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/50 h-8 w-8 p-0"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
                             </td>
                           </tr>
                         ))}
                       </tbody>
                       <tfoot>
                         <tr className="border-b border-gray-200 dark:border-gray-700">
-                          <td colSpan={5} className="p-3 text-right text-gray-600 dark:text-gray-400">Subtotal</td>
-                          <td className="p-3 text-right font-medium whitespace-nowrap">Rp {subtotal.toLocaleString('id-ID')}</td>
+                          <td colSpan={7} className="p-3 text-right text-gray-600 dark:text-gray-400">Subtotal</td>
+                          <td colSpan={2} className="p-3 text-right font-medium whitespace-nowrap">Rp {subtotal.toLocaleString('id-ID')}</td>
                         </tr>
                         {discountEnabled && (
                           <tr className="border-b border-gray-200 dark:border-gray-700">
-                            <td colSpan={5} className="p-3 text-right text-gray-600 dark:text-gray-400">
+                            <td colSpan={7} className="p-3 text-right text-gray-600 dark:text-gray-400">
                               Diskon {discountType === 'percent' ? `(${discountValue}%)` : '(Rp tetap)'}
                             </td>
-                            <td className="p-3 text-right text-red-600 dark:text-red-400 whitespace-nowrap">
+                            <td colSpan={2} className="p-3 text-right text-red-600 dark:text-red-400 whitespace-nowrap">
                               - Rp {discountAmount.toLocaleString('id-ID')}
                             </td>
                           </tr>
                         )}
                         {taxEnabled && (
                           <tr className="border-b border-gray-200 dark:border-gray-700">
-                            <td colSpan={5} className="p-3 text-right text-gray-600 dark:text-gray-400">
+                            <td colSpan={7} className="p-3 text-right text-gray-600 dark:text-gray-400">
                               {taxLabel} ({taxPercent}%)
                             </td>
-                            <td className="p-3 text-right text-gray-700 dark:text-gray-300 whitespace-nowrap">
+                            <td colSpan={2} className="p-3 text-right text-gray-700 dark:text-gray-300 whitespace-nowrap">
                               Rp {taxAmount.toLocaleString('id-ID')}
                             </td>
                           </tr>
                         )}
                         <tr className="bg-[#fd904c] text-white font-bold">
-                          <td colSpan={5} className="p-3 rounded-bl-xl">Total Penawaran</td>
-                          <td className="p-3 text-right rounded-br-xl whitespace-nowrap">
+                          <td colSpan={7} className="p-3 rounded-bl-xl">Total Penawaran</td>
+                          <td colSpan={2} className="p-3 text-right rounded-br-xl whitespace-nowrap">
                             Rp {totalWithTaxDiscount.toLocaleString('id-ID')}
                           </td>
                         </tr>
                       </tfoot>
                     </table>
                   </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setRfqExtraRows((prev) => [...prev, { id: `ex-${Date.now()}-${prev.length}`, itemName: '', spesifikasi: '', quantity: 1, unit: 'pcs', unitPrice: 0, catatanKhusus: '' }])}
+                    className="mb-6 border-amber-300 dark:border-amber-700 text-amber-700 dark:text-amber-300 hover:bg-amber-50 dark:hover:bg-amber-950/30"
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    Tambah baris (item tambahan dari vendor)
+                  </Button>
 
                   {/* Pajak & Diskon (default non-aktif) */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6 p-4 rounded-xl bg-gray-50 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-700">
