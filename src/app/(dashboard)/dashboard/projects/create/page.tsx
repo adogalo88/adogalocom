@@ -39,6 +39,10 @@ const projectSchema = z.object({
   skillIds: z.array(z.string()).optional(),
   startDate: z.string().optional(),
   endDate: z.string().optional(),
+  offerDeadline: z.string().optional(),
+  applicationDeadline: z.string().optional(),
+  minSalary: z.number().min(0).optional().nullable(),
+  maxSalary: z.number().min(0).optional().nullable(),
   // RFQ hanya wajib divalidasi saat subtipe WITH_RFQ; kalau WITHOUT_RFQ abaikan
   rfqItems: z.array(z.object({
     itemName: z.string(),
@@ -201,7 +205,7 @@ export default function CreateProjectPage() {
         ...data,
         type,
         tenderSubtype: type === 'TENDER' ? tenderSubtype : undefined,
-        budget: data.budget || undefined,
+        budget: projectType === 'TENDER' ? (data.budget || undefined) : undefined,
         workerNeeded: data.workerNeeded || undefined,
         categoryId: data.categoryId || undefined,
         skillIds: type === 'HARIAN' && selectedSkillIds.length > 0 ? selectedSkillIds : undefined,
@@ -209,6 +213,10 @@ export default function CreateProjectPage() {
         address: data.address || undefined,
         startDate: data.startDate ? new Date(data.startDate).toISOString() : undefined,
         endDate: data.endDate ? new Date(data.endDate).toISOString() : undefined,
+        offerDeadline: data.offerDeadline ? new Date(data.offerDeadline).toISOString() : undefined,
+        applicationDeadline: data.applicationDeadline ? new Date(data.applicationDeadline).toISOString() : undefined,
+        minSalary: data.minSalary ?? undefined,
+        maxSalary: data.maxSalary ?? undefined,
         rfqItems: type === 'TENDER' && tenderSubtype === 'WITH_RFQ' ? data.rfqItems : undefined,
         photos: photos.length > 0 ? JSON.stringify(photos.map(p => p.url)) : undefined,
         files: files.length > 0 ? JSON.stringify(files.map(f => f.url)) : undefined,
@@ -362,29 +370,73 @@ export default function CreateProjectPage() {
               </Select>
             </div>
 
-            {/* Budget (dan Jumlah Pekerja hanya untuk Harian) */}
-            <div className="grid md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="budget">Estimasi Budget (Rp)</Label>
-                <Input
-                  id="budget"
-                  type="number"
-                  placeholder="Contoh: 50000000"
-                  {...register('budget', { valueAsNumber: true })}
-                />
-              </div>
-              {projectType === 'HARIAN' && (
+            {/* TENDER: Budget + Batas akhir penawaran | HARIAN: Gaji min/max (opsional) + Jumlah pekerja + Batas akhir lamaran */}
+            {projectType === 'TENDER' && (
+              <div className="grid md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="workerNeeded">Jumlah Pekerja Dibutuhkan</Label>
+                  <Label htmlFor="budget">Estimasi Anggaran (Rp)</Label>
                   <Input
-                    id="workerNeeded"
+                    id="budget"
                     type="number"
-                    placeholder="Contoh: 3"
-                    {...register('workerNeeded', { valueAsNumber: true })}
+                    placeholder="Contoh: 50000000"
+                    {...register('budget', { valueAsNumber: true })}
                   />
                 </div>
-              )}
-            </div>
+                <div className="space-y-2">
+                  <Label htmlFor="offerDeadline">Batas Akhir Penawaran</Label>
+                  <Input
+                    id="offerDeadline"
+                    type="datetime-local"
+                    {...register('offerDeadline')}
+                  />
+                  <p className="text-xs text-muted-foreground">Setelah tanggal ini vendor tidak bisa lagi mengajukan penawaran</p>
+                </div>
+              </div>
+            )}
+            {projectType === 'HARIAN' && (
+              <div className="space-y-4">
+                <div className="grid md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="minSalary">Gaji Minimum (Rp) - Opsional</Label>
+                    <Input
+                      id="minSalary"
+                      type="number"
+                      placeholder="Contoh: 150000"
+                      {...register('minSalary', { valueAsNumber: true })}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="maxSalary">Gaji Maksimum (Rp) - Opsional</Label>
+                    <Input
+                      id="maxSalary"
+                      type="number"
+                      placeholder="Contoh: 250000"
+                      {...register('maxSalary', { valueAsNumber: true })}
+                    />
+                  </div>
+                </div>
+                <div className="grid md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="workerNeeded">Jumlah Pekerja Dibutuhkan</Label>
+                    <Input
+                      id="workerNeeded"
+                      type="number"
+                      placeholder="Contoh: 3"
+                      {...register('workerNeeded', { valueAsNumber: true })}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="applicationDeadline">Batas Akhir Lamaran</Label>
+                    <Input
+                      id="applicationDeadline"
+                      type="datetime-local"
+                      {...register('applicationDeadline')}
+                    />
+                    <p className="text-xs text-muted-foreground">Setelah tanggal ini tukang tidak bisa lagi apply</p>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {projectType === 'HARIAN' && (
               <div className="space-y-2">

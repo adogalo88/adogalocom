@@ -38,8 +38,12 @@ const createProjectSchema = z.object({
   files: z.string().optional(), // JSON array of file URLs
   startDate: z.string().datetime({ message: 'Format tanggal mulai tidak valid' }).optional(),
   endDate: z.string().datetime({ message: 'Format tanggal selesai tidak valid' }).optional(),
+  offerDeadline: z.string().datetime().optional(), // Batas akhir penawaran (TENDER)
+  applicationDeadline: z.string().datetime().optional(), // Batas akhir lamaran (HARIAN)
+  minSalary: z.number().min(0).optional().nullable(), // Gaji minimum (HARIAN)
+  maxSalary: z.number().min(0).optional().nullable(), // Gaji maksimum (HARIAN)
   categoryId: z.string().optional(),
-  skillIds: z.array(z.string()).optional(), // Keahlian yang dibutuhkan (proyek harian)
+  skillIds: z.array(z.string()).optional(),
   status: z.nativeEnum(ProjectStatus).default('DRAFT'),
   // RFQ items for WITH_RFQ subtype
   rfqItems: z.array(z.object({
@@ -194,10 +198,19 @@ export async function GET(request: NextRequest) {
     ]);
 
     const totalPages = Math.ceil(total / limit);
+    const now = new Date();
+    const withEffectiveStatus = projects.map((p) => {
+      let effectiveStatus = p.status;
+      if (p.status === 'PUBLISHED') {
+        if (p.type === 'TENDER' && p.offerDeadline && now > p.offerDeadline) effectiveStatus = 'EXPIRED';
+        if (p.type === 'HARIAN' && p.applicationDeadline && now > p.applicationDeadline) effectiveStatus = 'EXPIRED';
+      }
+      return { ...p, status: effectiveStatus, offerDeadline: p.offerDeadline, applicationDeadline: p.applicationDeadline, minSalary: p.minSalary, maxSalary: p.maxSalary };
+    });
 
     return NextResponse.json({
       success: true,
-      data: projects,
+      data: withEffectiveStatus,
       pagination: {
         page,
         limit,
@@ -331,6 +344,10 @@ export async function POST(request: NextRequest) {
         files: projectData.files,
         startDate: projectData.startDate ? new Date(projectData.startDate) : undefined,
         endDate: projectData.endDate ? new Date(projectData.endDate) : undefined,
+        offerDeadline: projectData.offerDeadline ? new Date(projectData.offerDeadline) : undefined,
+        applicationDeadline: projectData.applicationDeadline ? new Date(projectData.applicationDeadline) : undefined,
+        minSalary: projectData.minSalary ?? undefined,
+        maxSalary: projectData.maxSalary ?? undefined,
         categoryId: projectData.categoryId,
         clientId: currentUser.id,
         ...(projectData.skillIds && projectData.skillIds.length > 0 ? {

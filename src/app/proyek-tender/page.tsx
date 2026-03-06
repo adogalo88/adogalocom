@@ -15,7 +15,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Search, MapPin, Wallet, Briefcase, Loader2, ChevronLeft, ChevronRight, FileText } from 'lucide-react';
+import { Search, MapPin, Wallet, Briefcase, Loader2, ChevronLeft, ChevronRight, FileText, CalendarClock } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
 
 interface Project {
   id: string;
@@ -24,6 +25,7 @@ interface Project {
   type: string;
   status: string;
   budget: number | null;
+  offerDeadline?: string | null;
   city?: { id: string; name: string; province?: { name: string } } | null;
   category?: { id: string; name: string } | null;
   _count?: { applications: number };
@@ -176,36 +178,50 @@ export default function ProyekTenderPage() {
               Menampilkan {projects.length} dari {pagination.total} proyek
             </p>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {projects.map((p) => (
-                <Link key={p.id} href={`/dashboard/projects/${p.id}`}>
-                  <Card className="h-full rounded-2xl border border-white/20 bg-white/70 dark:bg-gray-900/50 backdrop-blur-xl hover:shadow-xl hover:shadow-[#fd904c]/10 hover:border-[#fd904c]/30 transition-all duration-200 overflow-hidden">
-                    <CardContent className="p-5">
-                      <h3 className="font-semibold text-lg line-clamp-2 mb-2">{p.title}</h3>
-                      <p className="text-sm text-muted-foreground line-clamp-2 mb-3">{p.description}</p>
-                      {p.category && (
-                        <span className="inline-block text-xs font-medium text-[#e57835] bg-[#fd904c]/10 px-2 py-0.5 rounded mb-3">{p.category.name}</span>
-                      )}
-                      <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
-                        {p.city && (
-                          <span className="flex items-center gap-1">
-                            <MapPin className="h-3.5 w-3.5" />
-                            {p.city.name}
-                          </span>
+              {projects.map((p) => {
+                const isExpired = p.status === 'EXPIRED';
+                return (
+                  <Link key={p.id} href={`/proyek-tender/${p.id}`}>
+                    <Card className={`h-full rounded-2xl border border-white/20 bg-white/70 dark:bg-gray-900/50 backdrop-blur-xl hover:shadow-xl hover:shadow-[#fd904c]/10 hover:border-[#fd904c]/30 transition-all duration-200 overflow-hidden ${isExpired ? 'opacity-85' : ''}`}>
+                      <CardContent className="p-5">
+                        <div className="flex items-start justify-between gap-2 mb-2">
+                          <h3 className="font-semibold text-lg line-clamp-2 flex-1">{p.title}</h3>
+                          {isExpired && (
+                            <Badge variant="secondary" className="shrink-0 bg-amber-500/20 text-amber-700 dark:text-amber-400">Kadaluarsa</Badge>
+                          )}
+                        </div>
+                        <p className="text-sm text-muted-foreground line-clamp-2 mb-3">{p.description}</p>
+                        {p.category && (
+                          <span className="inline-block text-xs font-medium text-[#e57835] bg-[#fd904c]/10 px-2 py-0.5 rounded mb-3">{p.category.name}</span>
                         )}
-                        {p.budget != null && (
-                          <span className="flex items-center gap-1">
-                            <Wallet className="h-3.5 w-3.5" />
-                            Rp {(p.budget / 1e6).toFixed(0)}jt
-                          </span>
+                        <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
+                          {p.city && (
+                            <span className="flex items-center gap-1">
+                              <MapPin className="h-3.5 w-3.5" />
+                              {p.city.name}
+                            </span>
+                          )}
+                          {p.budget != null && (
+                            <span className="flex items-center gap-1">
+                              <Wallet className="h-3.5 w-3.5" />
+                              Rp {(p.budget / 1e6).toFixed(0)}jt
+                            </span>
+                          )}
+                          {p.offerDeadline && (
+                            <span className="flex items-center gap-1">
+                              <CalendarClock className="h-3.5 w-3.5" />
+                              Batas: {new Date(p.offerDeadline).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}
+                            </span>
+                          )}
+                        </div>
+                        {p._count?.applications != null && (
+                          <p className="text-xs text-muted-foreground mt-2">{p._count.applications} lamaran</p>
                         )}
-                      </div>
-                      {p._count?.applications != null && (
-                        <p className="text-xs text-muted-foreground mt-2">{p._count.applications} lamaran</p>
-                      )}
-                    </CardContent>
-                  </Card>
-                </Link>
-              ))}
+                      </CardContent>
+                    </Card>
+                  </Link>
+                );
+              })}
             </div>
             {pagination.totalPages > 1 && (
               <div className="flex justify-center items-center gap-2 mt-10">

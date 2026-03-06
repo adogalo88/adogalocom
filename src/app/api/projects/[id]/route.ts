@@ -25,8 +25,12 @@ const projectUpdateSchema = z.object({
   startDate: z.string().datetime().optional().nullable().transform(val => val ? new Date(val) : null),
   endDate: z.string().datetime().optional().nullable().transform(val => val ? new Date(val) : null),
   categoryId: z.string().optional().nullable(),
-  status: z.enum(['DRAFT', 'PENDING_VERIFICATION', 'PUBLISHED', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED', 'REJECTED']).optional(),
+  status: z.enum(['DRAFT', 'PENDING_VERIFICATION', 'PUBLISHED', 'EXPIRED', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED', 'REJECTED']).optional(),
   vendorId: z.string().optional().nullable(),
+  offerDeadline: z.string().datetime().optional().nullable().transform((v) => (v ? new Date(v) : null)),
+  applicationDeadline: z.string().datetime().optional().nullable().transform((v) => (v ? new Date(v) : null)),
+  minSalary: z.number().min(0).optional().nullable(),
+  maxSalary: z.number().min(0).optional().nullable(),
 });
 
 // Helper to format project response with full details
@@ -36,13 +40,23 @@ function formatProjectResponse(project: any, userApplication?: any) {
     title: project.title,
     description: project.description,
     type: project.type,
+    tenderSubtype: project.tenderSubtype,
     status: project.status,
     budget: project.budget,
     location: project.location,
+    cityId: project.cityId,
+    city: project.city,
+    address: project.address,
     workerNeeded: project.workerNeeded,
     requirements: project.requirements,
+    photos: project.photos,
+    files: project.files,
     startDate: project.startDate,
     endDate: project.endDate,
+    offerDeadline: project.offerDeadline,
+    applicationDeadline: project.applicationDeadline,
+    minSalary: project.minSalary,
+    maxSalary: project.maxSalary,
     createdAt: project.createdAt,
     updatedAt: project.updatedAt,
     acceptedAt: project.acceptedAt,
@@ -76,10 +90,24 @@ function formatProjectResponse(project: any, userApplication?: any) {
       icon: project.category.icon,
     } : null,
     skills: project.skills?.map((s: { id: string; name: string }) => ({ id: s.id, name: s.name })) || [],
+    rfq: project.rfq ? {
+      id: project.rfq.id,
+      title: project.rfq.title,
+      status: project.rfq.status,
+      items: project.rfq.items?.map((item: any) => ({
+        id: item.id,
+        itemName: item.itemName,
+        description: item.description,
+        quantity: item.quantity,
+        unit: item.unit,
+        sortOrder: item.sortOrder,
+      })) || [],
+    } : null,
     applications: project.applications?.map((app: any) => ({
       id: app.id,
       coverLetter: app.coverLetter,
       proposedBudget: app.proposedBudget,
+      offerFileUrl: app.offerFileUrl,
       status: app.status,
       createdAt: app.createdAt,
       user: {
@@ -120,6 +148,7 @@ function formatProjectResponse(project: any, userApplication?: any) {
       id: userApplication.id,
       coverLetter: userApplication.coverLetter,
       proposedBudget: userApplication.proposedBudget,
+      offerFileUrl: userApplication.offerFileUrl,
       status: userApplication.status,
       createdAt: userApplication.createdAt,
     } : null,
@@ -135,8 +164,7 @@ function canViewProject(user: any, project: any): boolean {
       // Can view own projects or published projects
       return project.clientId === user.id || project.status === 'PUBLISHED';
     case UserRole.VENDOR:
-      // Can view published projects
-      return project.status === 'PUBLISHED';
+      return project.status === 'PUBLISHED' || project.status === 'EXPIRED';
     case UserRole.TUKANG:
       // Can view published projects with workers needed
       return project.status === 'PUBLISHED' && project.workerNeeded > 0;
@@ -191,6 +219,13 @@ export const GET = withAuth(async (user, request: NextRequest, context) => {
             experience: true,
           },
         },
+        city: {
+          select: {
+            id: true,
+            name: true,
+            province: { select: { id: true, name: true } },
+          },
+        },
         category: {
           select: {
             id: true,
@@ -202,11 +237,17 @@ export const GET = withAuth(async (user, request: NextRequest, context) => {
         skills: {
           select: { id: true, name: true },
         },
+        rfq: {
+          include: {
+            items: { orderBy: { sortOrder: 'asc' } },
+          },
+        },
         applications: {
           select: {
             id: true,
             coverLetter: true,
             proposedBudget: true,
+            offerFileUrl: true,
             status: true,
             createdAt: true,
             user: {
@@ -278,15 +319,24 @@ export const GET = withAuth(async (user, request: NextRequest, context) => {
       });
     }
     
+    // Effective status: PUBLISHED + past deadline → EXPIRED
+    let effectiveStatus = project.status;
+    if (project.status === 'PUBLISHED') {
+      const now = new Date();
+      if (project.type === 'TENDER' && project.offerDeadline && now > project.offerDeadline) effectiveStatus = 'EXPIRED';
+      if (project.type === 'HARIAN' && project.applicationDeadline && now > project.applicationDeadline) effectiveStatus = 'EXPIRED';
+    }
+    const projectWithStatus = { ...project, status: effectiveStatus };
+
     // Hide applications details for non-owners
-    let responseData = project;
+    let responseData = projectWithStatus;
     if (user.role !== UserRole.ADMIN && project.clientId !== user.id) {
       responseData = {
-        ...project,
-        applications: undefined, // Hide applications for non-owners
+        ...projectWithStatus,
+        applications: undefined,
       };
     }
-    
+
     return apiSuccess({ project: formatProjectResponse(responseData, userApplication) });
     
   } catch (error) {
@@ -393,7 +443,11 @@ export const PATCH = withAuth(async (user, request: NextRequest, context) => {
     if (data.endDate !== undefined) updateData.endDate = data.endDate;
     if (data.categoryId !== undefined) updateData.categoryId = data.categoryId;
     if (data.vendorId !== undefined) updateData.vendorId = data.vendorId;
-    
+    if (data.offerDeadline !== undefined) updateData.offerDeadline = data.offerDeadline;
+    if (data.applicationDeadline !== undefined) updateData.applicationDeadline = data.applicationDeadline;
+    if (data.minSalary !== undefined) updateData.minSalary = data.minSalary;
+    if (data.maxSalary !== undefined) updateData.maxSalary = data.maxSalary;
+
     // Handle status changes
     if (data.status) {
       updateData.status = data.status;

@@ -121,6 +121,7 @@ model User {
   reviewsGiven           Review[]           @relation("ReviewsGiven")
   reviewsReceived        Review[]           @relation("ReviewsReceived")
   portfolioReviewsGiven  PortfolioReview[] @relation("PortfolioReviewsGiven")
+  projectComments       ProjectComment[]
   skillRatingsGiven SkillRating[]      @relation("SkillRatingsGiven")
   skillRatingsReceived SkillRating[]   @relation("SkillRatingsReceived")
   sentMessages      Message[]          @relation("SentMessages")
@@ -230,12 +231,13 @@ enum TenderSubtype {
 
 enum ProjectStatus {
   DRAFT
-  PENDING_VERIFICATION // Menunggu verifikasi admin
+  PENDING_VERIFICATION
   PUBLISHED
+  EXPIRED
   IN_PROGRESS
   COMPLETED
   CANCELLED
-  REJECTED // Ditolak admin
+  REJECTED
 }
 
 model Category {
@@ -300,26 +302,29 @@ model Project {
   requirements    String? // JSON array of requirements
   photos          String? // JSON array of photo URLs (terpisah dari files)
   files           String? // JSON array of document file URLs (terpisah dari photos)
-  startDate       DateTime?
-  endDate         DateTime?
-  categoryId      String?
-  clientId        String
-  vendorId        String?
-  acceptedAt      DateTime?
-  completedAt     DateTime?
-  // Verification fields
-  verifiedAt      DateTime?
-  verifiedBy      String?
-  rejectionReason String?
-  createdAt       DateTime      @default(now())
-  updatedAt       DateTime      @updatedAt
+  startDate             DateTime?
+  endDate               DateTime?
+  offerDeadline         DateTime?
+  applicationDeadline   DateTime?
+  minSalary             Float?
+  maxSalary             Float?
+  categoryId            String?
+  clientId              String
+  vendorId              String?
+  acceptedAt            DateTime?
+  completedAt           DateTime?
+  verifiedAt            DateTime?
+  verifiedBy            String?
+  rejectionReason       String?
+  createdAt             DateTime      @default(now())
+  updatedAt             DateTime      @updatedAt
 
   // Relations
-  city         City?         @relation(fields: [cityId], references: [id])
-  category     Category?     @relation(fields: [categoryId], references: [id])
-  client       User          @relation("ClientProjects", fields: [clientId], references: [id])
-  vendor       User?         @relation("VendorProjects", fields: [vendorId], references: [id])
-  verifier     User?         @relation("ProjectVerifier", fields: [verifiedBy], references: [id])
+  city         City?             @relation(fields: [cityId], references: [id])
+  category     Category?         @relation(fields: [categoryId], references: [id])
+  client       User              @relation("ClientProjects", fields: [clientId], references: [id])
+  vendor       User?              @relation("VendorProjects", fields: [vendorId], references: [id])
+  verifier     User?              @relation("ProjectVerifier", fields: [verifiedBy], references: [id])
   applications Application[]
   boqs         BOQ[]
   rfq          RFQ?
@@ -327,9 +332,10 @@ model Project {
   materials    Material[]
   transactions Transaction[]
   reviews      Review[]
-  skills       Skill[] // Keahlian yang dibutuhkan (proyek harian)
+  skills       Skill[]
   skillRatings SkillRating[]
   portfolios   Portfolio[]
+  comments     ProjectComment[]
 
   @@index([cityId])
   @@index([clientId])
@@ -352,11 +358,11 @@ model Application {
   userId         String
   coverLetter    String?
   proposedBudget Float?
+  offerFileUrl   String?
   status         ApplicationStatus @default(PENDING)
   createdAt      DateTime          @default(now())
   updatedAt      DateTime          @updatedAt
 
-  // Relations
   project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
   user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -364,6 +370,21 @@ model Application {
   @@index([projectId])
   @@index([userId])
   @@map("applications")
+}
+
+model ProjectComment {
+  id        String   @id @default(cuid())
+  projectId String
+  userId    String
+  content   String   @db.Text
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
+  @@map("project_comments")
 }
 
 // =====================

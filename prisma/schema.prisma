@@ -119,6 +119,7 @@ model User {
   reviewsGiven        Review[]           @relation("ReviewsGiven")
   reviewsReceived     Review[]           @relation("ReviewsReceived")
   portfolioReviewsGiven PortfolioReview[] @relation("PortfolioReviewsGiven")
+  projectComments       ProjectComment[]
   skillRatingsGiven SkillRating[]      @relation("SkillRatingsGiven")
   skillRatingsReceived SkillRating[]   @relation("SkillRatingsReceived")
   sentMessages      Message[]          @relation("SentMessages")
@@ -225,6 +226,7 @@ enum ProjectStatus {
   DRAFT
   PENDING_VERIFICATION // Menunggu verifikasi admin
   PUBLISHED
+  EXPIRED // Kadaluarsa (lewat batas akhir penawaran/lamaran)
   IN_PROGRESS
   COMPLETED
   CANCELLED
@@ -295,6 +297,10 @@ model Project {
   files           String? // JSON array of document file URLs (terpisah dari photos)
   startDate       DateTime?
   endDate         DateTime?
+  offerDeadline       DateTime? // Batas akhir penawaran (TENDER)
+  applicationDeadline DateTime? // Batas akhir lamaran (HARIAN)
+  minSalary       Float? // Gaji minimum (HARIAN, opsional)
+  maxSalary       Float? // Gaji maksimum (HARIAN, opsional)
   categoryId      String?
   clientId        String
   vendorId        String?
@@ -323,8 +329,25 @@ model Project {
   skills       Skill[] // Keahlian yang dibutuhkan (proyek harian)
   skillRatings SkillRating[]
   portfolios   Portfolio[]
+  comments     ProjectComment[]
 
   @@map("projects")
+}
+
+// Diskusi per proyek (tampil "Vendor"/"Client" di UI; admin lihat nama asli)
+model ProjectComment {
+  id        String   @id @default(cuid())
+  projectId String
+  userId    String
+  content   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
+  @@map("project_comments")
 }
 
 enum ApplicationStatus {
@@ -340,6 +363,7 @@ model Application {
   userId         String
   coverLetter    String?
   proposedBudget Float?
+  offerFileUrl   String? // File penawaran (TENDER tanpa RFQ)
   status         ApplicationStatus @default(PENDING)
   createdAt      DateTime          @default(now())
   updatedAt      DateTime          @updatedAt

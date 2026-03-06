@@ -189,12 +189,12 @@ export async function POST(request: NextRequest) {
 
     const { rfqId, itemPrices, notes } = validationResult.data;
 
-    // Get RFQ
+    // Get RFQ with project (offerDeadline on project)
     const rfq = await db.rFQ.findUnique({
       where: { id: rfqId },
       include: { 
         items: true,
-        project: { select: { clientId: true } },
+        project: { select: { clientId: true, offerDeadline: true } },
       },
     });
 
@@ -213,8 +213,14 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check deadline
-    if (rfq.deadline && new Date() > rfq.deadline) {
+    const now = new Date();
+    if (rfq.project.offerDeadline && now > rfq.project.offerDeadline) {
+      return NextResponse.json(
+        { error: 'Batas akhir penawaran telah lewat. Proyek kadaluarsa.' },
+        { status: 400 }
+      );
+    }
+    if (rfq.deadline && now > rfq.deadline) {
       return NextResponse.json(
         { error: 'Batas waktu penawaran sudah berakhir' },
         { status: 400 }

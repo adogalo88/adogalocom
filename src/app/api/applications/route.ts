@@ -9,6 +9,7 @@ const createApplicationSchema = z.object({
   projectId: z.string().min(1, 'ID proyek wajib diisi'),
   coverLetter: z.string().max(2000, 'Surat lamaran maksimal 2000 karakter').optional(),
   proposedBudget: z.number().positive('Anggaran yang diajukan harus bernilai positif').optional(),
+  offerFileUrl: z.string().min(1).optional(), // File penawaran (TENDER tanpa RFQ) - path or URL
 });
 
 // Validation schema for query parameters
@@ -208,7 +209,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { projectId, coverLetter, proposedBudget } = validationResult.data;
+    const { projectId, coverLetter, proposedBudget, offerFileUrl } = validationResult.data;
 
     // Check if project exists and is open for applications
     const project = await db.project.findUnique({
@@ -231,6 +232,20 @@ export async function POST(request: NextRequest) {
     if (project.status !== 'PUBLISHED') {
       return NextResponse.json(
         { error: 'Proyek ini tidak menerima lamaran lagi' },
+        { status: 400 }
+      );
+    }
+
+    const now = new Date();
+    if (project.type === 'HARIAN' && project.applicationDeadline && now > project.applicationDeadline) {
+      return NextResponse.json(
+        { error: 'Batas akhir lamaran telah lewat. Proyek kadaluarsa.' },
+        { status: 400 }
+      );
+    }
+    if (project.type === 'TENDER' && project.offerDeadline && now > project.offerDeadline) {
+      return NextResponse.json(
+        { error: 'Batas akhir penawaran telah lewat. Proyek kadaluarsa.' },
         { status: 400 }
       );
     }
@@ -287,6 +302,7 @@ export async function POST(request: NextRequest) {
         userId: currentUser.id,
         coverLetter,
         proposedBudget,
+        offerFileUrl: offerFileUrl ?? undefined,
         status: ApplicationStatus.PENDING,
       },
       include: {
