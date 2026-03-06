@@ -38,6 +38,7 @@ import {
 } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
 
 function maskClientName(name: string | null | undefined): string {
@@ -111,6 +112,7 @@ export default function ProyekTenderDetailPage() {
   const [previewImage, setPreviewImage] = useState<string | null>(null);
   const [previewCaption, setPreviewCaption] = useState('');
   const [rfqOpen, setRfqOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState('info');
   const chatContainerRef = useRef<HTMLDivElement>(null);
   // Pajak & diskon (default non-aktif)
   const [taxEnabled, setTaxEnabled] = useState(false);
@@ -443,14 +445,55 @@ export default function ProyekTenderDetailPage() {
       </header>
 
       <main className="w-full max-w-[100%] px-4 sm:px-6 lg:px-10 xl:px-12 -mt-5 relative z-20 pb-12">
-        <Link
-          href="/proyek-tender"
-          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold bg-[#fd904c] text-white hover:bg-[#e57835] shadow-lg shadow-[#fd904c]/30 border border-[#e57835]/50 mb-6 transition-all hover:shadow-xl"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          Kembali ke daftar proyek
-        </Link>
+        {/* Top bar: Kembali (kiri) + Pemilik Proyek (kanan, menonjol) */}
+        <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
+          <Link
+            href="/proyek-tender"
+            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold bg-[#fd904c] text-white hover:bg-[#e57835] shadow-lg shadow-[#fd904c]/30 border border-[#e57835]/50 transition-all hover:shadow-xl"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Kembali ke daftar proyek
+          </Link>
+          <div className="flex items-center gap-4 px-5 py-4 rounded-2xl bg-white/80 dark:bg-gray-900/80 border border-[#fd904c]/20 shadow-xl shadow-[#fd904c]/10 backdrop-blur-md">
+            <div className="w-14 h-14 rounded-full bg-gradient-to-br from-[#fd904c] to-[#e57835] flex items-center justify-center text-white text-xl font-bold shadow-lg ring-4 ring-[#fd904c]/20">
+              {maskClientName(project.client?.name)?.charAt(0) ?? '?'}
+            </div>
+            <div>
+              <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Pemilik Proyek</p>
+              <p className="text-lg font-bold text-[#c2652a] dark:text-[#fd904c]">{maskClientName(project.client?.name)}</p>
+              <div className="flex items-center gap-2 mt-1">
+                <span className="flex items-center gap-1 text-amber-500">
+                  <Star className="w-5 h-5 fill-amber-500" />
+                  <span className="text-sm font-bold text-gray-800 dark:text-gray-100">
+                    {project.client?.rating != null ? Number(project.client.rating).toFixed(1) : '0.0'}
+                  </span>
+                </span>
+                <span className="text-sm text-gray-500 dark:text-gray-400">·</span>
+                <span className="text-sm text-gray-600 dark:text-gray-300">
+                  {project.client?.completedTenderCount ?? 0} proyek selesai
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
 
+        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v)} className="w-full">
+          <TabsList className="w-full flex flex-wrap h-auto p-1 bg-gray-100 dark:bg-gray-800/50 rounded-xl border border-gray-200 dark:border-gray-700 mb-6">
+            <TabsTrigger value="info" className="flex-1 min-w-[140px] data-[state=active]:bg-[#fd904c] data-[state=active]:text-white data-[state=active]:shadow-lg rounded-lg py-2.5">
+              <FileText className="w-4 h-4 mr-2 shrink-0" />
+              Informasi Proyek
+            </TabsTrigger>
+            <TabsTrigger value="diskusi" className="flex-1 min-w-[120px] data-[state=active]:bg-[#fd904c] data-[state=active]:text-white data-[state=active]:shadow-lg rounded-lg py-2.5">
+              <MessageSquare className="w-4 h-4 mr-2 shrink-0" />
+              Diskusi
+            </TabsTrigger>
+            <TabsTrigger value="penawaran" className="flex-1 min-w-[140px] data-[state=active]:bg-[#fd904c] data-[state=active]:text-white data-[state=active]:shadow-lg rounded-lg py-2.5">
+              <Send className="w-4 h-4 mr-2 shrink-0" />
+              Buat Penawaran
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="info" className="mt-0 space-y-8">
         {/* Card: Informasi Proyek */}
         <section className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-6 md:p-8 mb-8 shadow-sm hover:shadow-md transition-shadow">
           <div className="flex items-center gap-3 mb-6">
@@ -547,29 +590,6 @@ export default function ProyekTenderDetailPage() {
                     </div>
                   </div>
                 )}
-                {/* Pemilik proyek: nama (masked), rating bintang, proyek tender selesai */}
-                <div className="flex items-center gap-3 p-3 rounded-xl bg-gray-50 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-700">
-                  <div className="w-9 h-9 flex items-center justify-center rounded-lg bg-gray-200 dark:bg-gray-700 text-gray-500">
-                    <User className="w-4 h-4" />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="text-xs text-gray-500">Pemilik Proyek</p>
-                    <p className="text-sm font-semibold text-gray-800 dark:text-gray-200">
-                      {maskClientName(project.client?.name)}
-                    </p>
-                    <div className="flex items-center gap-3 mt-1.5 flex-wrap">
-                      <span className="flex items-center gap-1 text-amber-500">
-                        <Star className="w-4 h-4 fill-amber-500" />
-                        <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                          {project.client?.rating != null ? Number(project.client.rating).toFixed(1) : '0'}
-                        </span>
-                      </span>
-                      <span className="text-sm text-muted-foreground">
-                        {project.client?.completedTenderCount ?? 0} proyek tender/kontrak selesai
-                      </span>
-                    </div>
-                  </div>
-                </div>
               </div>
             </div>
           </div>
@@ -640,7 +660,9 @@ export default function ProyekTenderDetailPage() {
             </div>
           </section>
         )}
+          </TabsContent>
 
+          <TabsContent value="diskusi" className="mt-0">
         {/* Card: Diskusi Proyek */}
         <section className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-6 md:p-8 mb-8 shadow-sm hover:shadow-md transition-shadow">
           <div className="flex items-center gap-3 mb-6">
@@ -722,7 +744,9 @@ export default function ProyekTenderDetailPage() {
             </div>
           )}
         </section>
+          </TabsContent>
 
+          <TabsContent value="penawaran" className="mt-0">
         {/* Card: Buat Penawaran (collapsible) atau cap stempel jika vendor sudah submit */}
         <section className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl overflow-hidden mb-8 shadow-sm">
           {hasVendorSubmittedRfq ? (
@@ -958,6 +982,8 @@ export default function ProyekTenderDetailPage() {
             </>
           )}
         </section>
+          </TabsContent>
+        </Tabs>
 
         <footer className="text-center py-8 text-gray-400 text-sm border-t border-gray-100 dark:border-gray-800">
           © {new Date().getFullYear()} Adogalo. All rights reserved.
