@@ -46,8 +46,9 @@ interface RFQ {
   project: {
     id: string;
     title: string;
-    location: string | null;
+    address?: string | null;
     budget: number | null;
+    city?: { id: string; name: string; province?: { name: string } } | null;
     client: {
       id: string;
       name: string;
@@ -216,7 +217,7 @@ export default function RFQListPage() {
                       <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
                         <div className="flex items-center gap-1">
                           <MapPin className="h-4 w-4" />
-                          <span>{rfq.project.location || 'Lokasi tidak disebutkan'}</span>
+                          <span>{rfq.project.address || rfq.project.city?.name || 'Lokasi tidak disebutkan'}</span>
                         </div>
                         <div className="flex items-center gap-1">
                           <Calendar className="h-4 w-4" />

@@ -90,7 +90,7 @@ export async function GET(request: NextRequest) {
             select: {
               id: true,
               title: true,
-              location: true,
+              address: true,
               budget: true,
               cityId: true,
               city: {

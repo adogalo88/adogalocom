@@ -81,10 +81,11 @@ interface RFQ {
     id: string;
     title: string;
     description: string;
-    location: string | null;
+    address?: string | null;
     budget: number | null;
     startDate: string | null;
     endDate: string | null;
+    city?: { id: string; name: string; province?: { name: string } } | null;
     client: {
       id: string;
       name: string;
@@ -318,7 +319,7 @@ export default function RFQDetailPage({ params }: { params: Promise<{ id: string
             </div>
             <div className="flex items-center gap-2">
               <MapPin className="h-4 w-4 text-muted-foreground" />
-              <span>{rfq.project.location || 'Lokasi tidak disebutkan'}</span>
+              <span>{rfq.project.address || rfq.project.city?.name || 'Lokasi tidak disebutkan'}</span>
             </div>
             <div className="flex items-center gap-2">
               <Calendar className="h-4 w-4 text-muted-foreground" />
