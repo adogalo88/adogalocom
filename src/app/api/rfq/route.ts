@@ -22,6 +22,14 @@ const createSubmissionSchema = z.object({
     unitPrice: z.number().positive('Harga harus positif'),
     vendorNotes: z.string().optional(),
   })),
+  extraItems: z.array(z.object({
+    itemName: z.string(),
+    spesifikasi: z.string().optional(),
+    quantity: z.number().min(0),
+    unit: z.string(),
+    unitPrice: z.number().min(0),
+    vendorNotes: z.string().optional(),
+  })).optional().default([]),
   notes: z.string().optional(),
 });
 
@@ -194,7 +202,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { rfqId, itemPrices, notes } = validationResult.data;
+    const { rfqId, itemPrices, extraItems = [], notes } = validationResult.data;
 
     // Get RFQ with project (offerDeadline on project)
     const rfq = await db.rFQ.findUnique({
@@ -280,6 +288,21 @@ export async function POST(request: NextRequest) {
       };
     });
 
+    const extraItemsData = extraItems.map((ei, idx) => {
+      const totalPrice = (ei.quantity || 0) * (ei.unitPrice || 0);
+      totalOffer += totalPrice;
+      return {
+        itemName: (ei.itemName || '').trim() || 'Item',
+        spesifikasi: ei.spesifikasi?.trim() || null,
+        quantity: Number(ei.quantity) || 0,
+        unit: (ei.unit || 'pcs').trim(),
+        unitPrice: Number(ei.unitPrice) || 0,
+        totalPrice,
+        vendorNotes: ei.vendorNotes?.trim() || null,
+        sortOrder: idx,
+      };
+    });
+
     // Create or update submission
     const submission = await db.rFQSubmission.upsert({
       where: {
@@ -298,6 +321,9 @@ export async function POST(request: NextRequest) {
         prices: {
           create: pricesData,
         },
+        extraItems: {
+          create: extraItemsData,
+        },
       },
       update: {
         status: 'SUBMITTED',
@@ -308,6 +334,10 @@ export async function POST(request: NextRequest) {
           deleteMany: {},
           create: pricesData,
         },
+        extraItems: {
+          deleteMany: {},
+          create: extraItemsData,
+        },
       },
       include: {
         prices: {
@@ -315,6 +345,7 @@ export async function POST(request: NextRequest) {
             item: true,
           },
         },
+        extraItems: { orderBy: { sortOrder: 'asc' } },
         vendor: {
           select: {
             id: true,

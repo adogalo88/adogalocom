@@ -602,12 +602,33 @@ model RFQSubmission {
   updatedAt   DateTime            @updatedAt
 
   // Relations
-  rfq    RFQ            @relation(fields: [rfqId], references: [id], onDelete: Cascade)
-  vendor User           @relation(fields: [vendorId], references: [id], onDelete: Cascade)
-  prices RFQItemPrice[]
+  rfq         RFQ                      @relation(fields: [rfqId], references: [id], onDelete: Cascade)
+  vendor      User                     @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  prices      RFQItemPrice[]
+  extraItems  RFQSubmissionExtraItem[] // Baris tambahan dari vendor (item yang tidak ada di RFQ client)
 
   @@unique([rfqId, vendorId]) // Satu vendor hanya bisa submit sekali per RFQ
   @@map("rfq_submissions")
+}
+
+// Baris tambahan yang diisi vendor (antisipasi item yang kurang di RFQ client)
+model RFQSubmissionExtraItem {
+  id            String   @id @default(cuid())
+  submissionId  String
+  itemName      String   @default("")
+  spesifikasi   String?  // Spesifikasi material
+  quantity      Float    @default(0)
+  unit          String   @default("pcs")
+  unitPrice     Float    @default(0)
+  totalPrice    Float    @default(0) // quantity * unitPrice
+  vendorNotes   String?  // Catatan tambahan
+  sortOrder     Int      @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  submission RFQSubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+
+  @@map("rfq_submission_extra_items")
 }
 
 // Harga per item dari vendor

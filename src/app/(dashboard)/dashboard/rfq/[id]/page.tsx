@@ -32,12 +32,25 @@ interface RFQItemPrice {
   id: string;
   unitPrice: number;
   totalPrice: number;
+  vendorNotes: string | null;
   item: {
     id: string;
     itemName: string;
     quantity: number;
     unit: string;
   };
+}
+
+interface RFQSubmissionExtraItem {
+  id: string;
+  itemName: string;
+  spesifikasi: string | null;
+  quantity: number;
+  unit: string;
+  unitPrice: number;
+  totalPrice: number;
+  vendorNotes: string | null;
+  sortOrder: number;
 }
 
 interface RFQSubmission {
@@ -54,6 +67,7 @@ interface RFQSubmission {
     rating: number;
   };
   prices: RFQItemPrice[];
+  extraItems?: RFQSubmissionExtraItem[];
 }
 
 interface RFQItem {
@@ -592,6 +606,14 @@ export default function RFQDetailPage({ params }: { params: Promise<{ id: string
                                   </TableCell>
                                 </TableRow>
                               ))}
+                              {(selected.extraItems?.length ?? 0) > 0 && selected.extraItems!.map((ex) => (
+                                <TableRow key={ex.id} className="bg-amber-50/70 dark:bg-amber-950/30">
+                                  <TableCell className="font-medium">{ex.itemName}</TableCell>
+                                  <TableCell className="text-center">{ex.quantity} {ex.unit}</TableCell>
+                                  <TableCell className="text-right">{formatCurrency(ex.unitPrice)}</TableCell>
+                                  <TableCell className="text-right font-medium">{formatCurrency(ex.totalPrice)}</TableCell>
+                                </TableRow>
+                              ))}
                             </TableBody>
                           </Table>
                           {selected.notes && (
@@ -647,6 +669,14 @@ export default function RFQDetailPage({ params }: { params: Promise<{ id: string
                           <TableCell className="text-right font-medium">
                             {formatCurrency(price.totalPrice)}
                           </TableCell>
+                        </TableRow>
+                      ))}
+                      {(mySubmission.extraItems?.length ?? 0) > 0 && mySubmission.extraItems!.map((ex) => (
+                        <TableRow key={ex.id} className="bg-amber-50/70 dark:bg-amber-950/30">
+                          <TableCell className="font-medium">{ex.itemName}</TableCell>
+                          <TableCell className="text-center">{ex.quantity} {ex.unit}</TableCell>
+                          <TableCell className="text-right">{formatCurrency(ex.unitPrice)}</TableCell>
+                          <TableCell className="text-right font-medium">{formatCurrency(ex.totalPrice)}</TableCell>
                         </TableRow>
                       ))}
                     </TableBody>
