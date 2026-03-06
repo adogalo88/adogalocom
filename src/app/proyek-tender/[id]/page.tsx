@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/providers/AuthProvider';
@@ -57,6 +57,7 @@ interface Project {
     items: { id: string; itemName: string; description: string | null; quantity: number; unit: string; sortOrder: number }[];
   } | null;
   userApplication?: { id: string; status: string; offerFileUrl?: string | null } | null;
+  _count?: { applications?: number; teamMembers?: number };
 }
 
 interface Comment {
@@ -95,6 +96,7 @@ export default function ProyekTenderDetailPage() {
   const [previewImage, setPreviewImage] = useState<string | null>(null);
   const [previewCaption, setPreviewCaption] = useState('');
   const [rfqOpen, setRfqOpen] = useState(false);
+  const chatContainerRef = useRef<HTMLDivElement>(null);
 
   const fetchProject = useCallback(async () => {
     if (!id) return;
@@ -145,6 +147,13 @@ export default function ProyekTenderDetailPage() {
     fetchComments();
   }, [user, authLoading, router, fetchProject, fetchComments]);
 
+  // Scroll diskusi ke bawah saat ada komentar baru
+  useEffect(() => {
+    if (chatContainerRef.current) {
+      chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
+    }
+  }, [comments.length]);
+
   const handleSubmitComment = async () => {
     if (!id || !commentText.trim()) return;
     setSubmittingComment(true);
@@ -160,6 +169,9 @@ export default function ProyekTenderDetailPage() {
         setComments((prev) => [...prev, data.data]);
         setCommentText('');
         toast.success('Komentar terkirim');
+        setTimeout(() => {
+          chatContainerRef.current?.scrollTo({ top: chatContainerRef.current.scrollHeight, behavior: 'smooth' });
+        }, 100);
       } else {
         toast.error(data?.error || 'Gagal mengirim komentar');
       }
@@ -292,6 +304,22 @@ export default function ProyekTenderDetailPage() {
   const photos = parseJsonArray(project.photos);
   const files = parseJsonArray(project.files);
   const isExpired = project.status === 'EXPIRED';
+  const offerCount = project._count?.applications ?? (project as { applications?: unknown[] }).applications?.length ?? 0;
+
+  // RFQ: auto hitung total per baris dan grand total
+  const { rowTotals, grandTotal } = useMemo(() => {
+    if (!project.rfq?.items?.length) return { rowTotals: {} as Record<string, number>, grandTotal: 0 };
+    const rowTotals: Record<string, number> = {};
+    let grandTotal = 0;
+    project.rfq.items.forEach((item) => {
+      const price = rfqPrices[item.id] ?? 0;
+      const total = item.quantity * price;
+      rowTotals[item.id] = total;
+      grandTotal += total;
+    });
+    return { rowTotals, grandTotal };
+  }, [project.rfq?.items, rfqPrices]);
+
   const locationText = project.city
     ? [project.city.province?.name, project.city.name].filter(Boolean).join(', ')
     : null;
@@ -322,6 +350,9 @@ export default function ProyekTenderDetailPage() {
           <p className="text-sm md:text-base text-[#c2652a]/80 dark:text-[#fd904c]/90 text-center max-w-xl bg-white/50 dark:bg-black/20 px-6 py-3 rounded-2xl border border-[#fd904c]/20 backdrop-blur-sm">
             {project.category?.name ?? 'Proyek Tender'}
           </p>
+          <p className="text-sm font-medium text-[#c2652a]/90 dark:text-[#fd904c]/90 mt-2">
+            {offerCount} penawaran masuk
+          </p>
         </div>
         <div className="absolute bottom-0 left-0 right-0">
           <svg viewBox="0 0 1440 80" fill="none" className="w-full h-auto block">
@@ -330,7 +361,7 @@ export default function ProyekTenderDetailPage() {
         </div>
       </header>
 
-      <main className="max-w-[1280px] mx-auto px-4 sm:px-6 lg:px-8 -mt-5 relative z-20 pb-12">
+      <main className="w-full max-w-[100%] px-4 sm:px-6 lg:px-10 xl:px-12 -mt-5 relative z-20 pb-12">
         <Link href="/proyek-tender" className="inline-flex items-center gap-2 text-sm text-gray-500 hover:text-[#e57835] dark:hover:text-[#fd904c] mb-6 transition-colors">
           <ArrowLeft className="h-4 w-4" />
           Kembali ke daftar proyek
@@ -512,7 +543,10 @@ export default function ProyekTenderDetailPage() {
             <h2 className="text-xl md:text-2xl font-bold text-[#c2652a] dark:text-[#fd904c]">Diskusi Proyek</h2>
           </div>
 
-          <div className="h-[320px] overflow-y-auto pr-2 mb-4 space-y-4">
+          <div
+            ref={chatContainerRef}
+            className="h-[320px] overflow-y-auto pr-2 mb-4 space-y-4"
+          >
             {comments.map((c) => {
               const isVendor = c.user.role === 'VENDOR';
               return (
@@ -545,9 +579,15 @@ export default function ProyekTenderDetailPage() {
           {(user.role === 'VENDOR' || user.role === 'CLIENT') && (
             <div className="flex gap-3 pt-4 border-t border-gray-100 dark:border-gray-800">
               <Textarea
-                placeholder="Tulis pesan Anda..."
+                placeholder="Tulis pesan Anda... (Enter untuk kirim)"
                 value={commentText}
                 onChange={(e) => setCommentText(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    handleSubmitComment();
+                  }
+                }}
                 className="min-h-[50px] max-h-[100px] resize-none rounded-xl border-gray-200 dark:border-gray-700 focus:border-[#fd904c] focus:ring-[#fd904c]/20"
               />
               <Button
@@ -604,7 +644,8 @@ export default function ProyekTenderDetailPage() {
                           <th className="text-left p-3 bg-[#fd904c]/10 text-[#e57835] font-semibold">Item Pekerjaan</th>
                           <th className="text-center p-3 bg-[#fd904c]/10 text-[#e57835] font-semibold">Qty</th>
                           <th className="text-center p-3 bg-[#fd904c]/10 text-[#e57835] font-semibold">Satuan</th>
-                          <th className="text-right p-3 bg-[#fd904c]/10 text-[#e57835] font-semibold rounded-tr-xl">Harga/Unit (Rp)</th>
+                          <th className="text-right p-3 bg-[#fd904c]/10 text-[#e57835] font-semibold">Harga/Unit (Rp)</th>
+                          <th className="text-right p-3 bg-[#fd904c]/10 text-[#e57835] font-semibold rounded-tr-xl">Total (Rp)</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -620,14 +661,25 @@ export default function ProyekTenderDetailPage() {
                                 min={0}
                                 step="any"
                                 placeholder="0"
-                                value={rfqPrices[item.id] || ''}
+                                value={rfqPrices[item.id] ?? ''}
                                 onChange={(e) => setRfqPrices((prev) => ({ ...prev, [item.id]: Number(e.target.value) || 0 }))}
                                 className="w-28 text-right rounded-lg border-gray-200 focus:border-[#fd904c]"
                               />
                             </td>
+                            <td className="p-3 text-right font-medium text-gray-800 dark:text-gray-200 whitespace-nowrap">
+                              {rowTotals[item.id] > 0 ? `Rp ${rowTotals[item.id].toLocaleString('id-ID')}` : '-'}
+                            </td>
                           </tr>
                         ))}
                       </tbody>
+                      <tfoot>
+                        <tr className="bg-[#fd904c] text-white font-bold">
+                          <td colSpan={5} className="p-3 rounded-bl-xl">Total Penawaran</td>
+                          <td className="p-3 text-right rounded-br-xl whitespace-nowrap">
+                            Rp {grandTotal.toLocaleString('id-ID')}
+                          </td>
+                        </tr>
+                      </tfoot>
                     </table>
                   </div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 mt-4">Catatan Vendor</label>

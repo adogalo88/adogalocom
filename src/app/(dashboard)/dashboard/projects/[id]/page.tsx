@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useProject, useCreateApplication, useUpdateApplication, useDeleteProject, formatCurrency, formatDate, getProjectStatusConfig, getApplicationStatusConfig } from '@/hooks/api';
 import { useAuth } from '@/providers/AuthProvider';
@@ -59,8 +59,57 @@ export default function ProjectDetailPage() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [skillRatings, setSkillRatings] = useState<Record<string, { rating: number; comment: string }>>({});
   const [submittingSkillRatings, setSubmittingSkillRatings] = useState(false);
+  const [comments, setComments] = useState<{ id: string; content: string; createdAt: string; user: { id: string; name: string; role: string; avatar: string | null } }[]>([]);
+  const [commentText, setCommentText] = useState('');
+  const [submittingComment, setSubmittingComment] = useState(false);
+  const chatContainerRef = useRef<HTMLDivElement>(null);
 
   const { data, isLoading, error, refetch } = useProject(projectId);
+
+  const fetchComments = useCallback(async () => {
+    if (!projectId) return;
+    try {
+      const res = await fetch(`/api/projects/${projectId}/comments`, { credentials: 'include' });
+      const data = await res.json();
+      if (data?.data) setComments(data.data);
+    } catch (e) {
+      console.error(e);
+    }
+  }, [projectId]);
+
+  useEffect(() => {
+    if (project?.type === 'TENDER' && projectId) fetchComments();
+  }, [project?.type, projectId, fetchComments]);
+
+  useEffect(() => {
+    if (chatContainerRef.current) chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
+  }, [comments.length]);
+
+  const handleSubmitComment = async () => {
+    if (!projectId || !commentText.trim()) return;
+    setSubmittingComment(true);
+    try {
+      const res = await fetch(`/api/projects/${projectId}/comments`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ content: commentText.trim() }),
+      });
+      const data = await res.json();
+      if (data?.success && data?.data) {
+        setComments((prev) => [...prev, data.data]);
+        setCommentText('');
+        toast.success('Komentar terkirim');
+        setTimeout(() => chatContainerRef.current?.scrollTo({ top: chatContainerRef.current.scrollHeight, behavior: 'smooth' }), 100);
+      } else {
+        toast.error(data?.error || 'Gagal mengirim komentar');
+      }
+    } catch {
+      toast.error('Gagal mengirim komentar');
+    } finally {
+      setSubmittingComment(false);
+    }
+  };
   const createApplication = useCreateApplication();
   const updateApplication = useUpdateApplication(projectId);
   const deleteProject = useDeleteProject(projectId);
@@ -164,24 +213,30 @@ export default function ProjectDetailPage() {
     );
   }
 
-  return (
-    <div className="space-y-6">
-      {/* Back Button */}
-      <Button variant="ghost" onClick={() => router.back()} className="gap-2">
-        <ArrowLeft className="h-4 w-4" />
-        Kembali
-      </Button>
+  const applicationCount = project._count?.applications ?? project.applications?.length ?? 0;
 
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-3 mb-2">
-            <h1 className="text-2xl font-bold">{project.title}</h1>
+  return (
+    <div className="w-full max-w-[100%] space-y-0">
+      {/* Aurora-style header (full width) */}
+      <header className="relative overflow-hidden h-[200px] md:h-[240px] bg-gradient-to-br from-[#fff8f3] via-[#fff5f0] to-[#fff0e8] dark:from-[#2d1f18] dark:via-[#1f1510] dark:to-[#1a120d] -mx-4 sm:-mx-6 lg:-mx-8 mt-0">
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_60%_40%_at_30%_30%,rgba(253,144,76,0.15)_0%,transparent_50%)]" />
+        <div className="relative z-10 h-full flex flex-col justify-center px-4 sm:px-6 lg:px-8">
+          <Button variant="ghost" onClick={() => router.back()} className="gap-2 self-start -ml-2 mb-2 text-muted-foreground hover:text-foreground">
+            <ArrowLeft className="h-4 w-4" />
+            Kembali
+          </Button>
+          <div className="flex flex-wrap items-center gap-2 mb-2">
+            <h1 className="text-xl md:text-2xl font-bold text-[#c2652a] dark:text-[#fd904c]">{project.title}</h1>
             <Badge className={getProjectStatusConfig(project.status).className}>
               {getProjectStatusConfig(project.status).label}
             </Badge>
+            {project.type === 'TENDER' && (
+              <span className="text-sm font-medium text-muted-foreground">
+                {applicationCount} penawaran masuk
+              </span>
+            )}
           </div>
-          <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
+          <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
             {project.category && (
               <span className="px-2 py-1 rounded-full bg-muted">{project.category.name}</span>
             )}
@@ -196,7 +251,12 @@ export default function ProjectDetailPage() {
             <span>Dibuat {formatDate(project.createdAt)}</span>
           </div>
         </div>
-        <div className="flex gap-2 flex-wrap">
+        <div className="absolute bottom-0 left-0 right-0 h-8 bg-background rounded-t-2xl" />
+      </header>
+
+      <div className="relative -mt-2 px-4 sm:px-6 lg:px-8 space-y-6">
+      {/* Action buttons */}
+      <div className="flex flex-wrap gap-2 justify-end">
           {/* Vendor/Tukang Actions */}
           {canApply && !hasApplied && (
             <Button
@@ -259,7 +319,7 @@ export default function ProjectDetailPage() {
         </div>
       </div>
 
-      {/* Content */}
+      {/* Content - full width */}
       <div className="grid lg:grid-cols-3 gap-6">
         {/* Main Content */}
         <div className="lg:col-span-2 space-y-6">
@@ -409,6 +469,71 @@ export default function ProjectDetailPage() {
                     </Button>
                   </Link>
                 </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Diskusi Proyek (TENDER) - client bisa diskusi dengan vendor */}
+          {project.type === 'TENDER' && (
+            <Card className="glass-card">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <MessageSquare className="h-5 w-5 text-[#fd904c]" />
+                  Diskusi Proyek
+                </CardTitle>
+                <CardDescription>Diskusi dengan vendor yang tertarik atau yang sudah mengajukan penawaran</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div ref={chatContainerRef} className="h-[320px] overflow-y-auto pr-2 mb-4 space-y-4 rounded-lg bg-muted/30 p-3">
+                  {comments.length === 0 ? (
+                    <p className="text-sm text-muted-foreground text-center py-8">Belum ada diskusi. Mulai percakapan dengan vendor.</p>
+                  ) : (
+                    comments.map((c) => {
+                      const isVendor = c.user.role === 'VENDOR';
+                      return (
+                        <div key={c.id} className={`flex gap-3 ${isVendor ? 'flex-row-reverse' : ''}`}>
+                          <div className={`w-9 h-9 shrink-0 rounded-full flex items-center justify-center text-xs font-bold text-white ${isVendor ? 'bg-[#e57835]' : 'bg-[#fd904c]'}`}>
+                            {c.user.name?.charAt(0) ?? '?'}
+                          </div>
+                          <div className={`max-w-[75%] ${isVendor ? 'text-right' : ''}`}>
+                            <div className={`flex items-center gap-2 mb-1 ${isVendor ? 'justify-end' : ''}`}>
+                              <span className={`text-sm font-medium ${isVendor ? 'text-[#e57835]' : 'text-[#fd904c]'}`}>{c.user.name}</span>
+                              <span className="text-xs text-muted-foreground">
+                                {new Date(c.createdAt).toLocaleDateString('id-ID')}, {new Date(c.createdAt).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}
+                              </span>
+                            </div>
+                            <div className="inline-block px-4 py-3 rounded-2xl text-sm bg-[#fd904c]/10 border border-[#fd904c]/20 rounded-tl-md">
+                              {c.content}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+                {(user?.role === 'VENDOR' || user?.role === 'CLIENT') && (
+                  <div className="flex gap-3 pt-4 border-t">
+                    <Textarea
+                      placeholder="Tulis pesan... (Enter untuk kirim)"
+                      value={commentText}
+                      onChange={(e) => setCommentText(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && !e.shiftKey) {
+                          e.preventDefault();
+                          handleSubmitComment();
+                        }
+                      }}
+                      className="min-h-[50px] max-h-[100px] resize-none"
+                    />
+                    <Button
+                      onClick={handleSubmitComment}
+                      disabled={submittingComment || !commentText.trim()}
+                      className="self-end bg-[#fd904c] hover:bg-[#e57835]"
+                    >
+                      {submittingComment ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+                    </Button>
+                  </div>
+                )}
               </CardContent>
             </Card>
           )}
@@ -608,6 +733,7 @@ export default function ProjectDetailPage() {
             </Card>
           )}
         </div>
+      </div>
       </div>
 
       {/* Apply Dialog */}
