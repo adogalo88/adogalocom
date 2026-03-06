@@ -310,6 +310,10 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // Client submit → status Menunggu peninjauan; Admin can create as DRAFT or submit for review
+    const isClient = currentUser.role === 'CLIENT';
+    const initialStatus = isClient ? 'PENDING_VERIFICATION' : (projectData.status === 'DRAFT' ? 'DRAFT' : 'PENDING_VERIFICATION');
+
     // Create project with RFQ if needed
     const project = await db.project.create({
       data: {
@@ -317,7 +321,7 @@ export async function POST(request: NextRequest) {
         description: projectData.description,
         type: projectData.type,
         tenderSubtype: projectData.tenderSubtype,
-        status: projectData.status,
+        status: initialStatus,
         budget: projectData.budget,
         cityId: projectData.cityId,
         address: projectData.address,
@@ -392,8 +396,9 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      message: 'Proyek berhasil dibuat',
+      message: isClient ? 'Proyek berhasil diajukan. Menunggu peninjauan admin.' : 'Proyek berhasil dibuat',
       data: project,
+      project, // for hooks that expect result.project
     }, { status: 201 });
 
   } catch (error) {

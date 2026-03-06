@@ -169,8 +169,9 @@ export default function CreateProjectPage() {
   };
 
   const onSubmit = async (data: ProjectForm) => {
-    // Validate RFQ items if WITH_RFQ
-    if (data.type === 'TENDER' && data.tenderSubtype === 'WITH_RFQ') {
+    const type = data.type ?? 'TENDER';
+    const tenderSubtype = data.tenderSubtype ?? 'WITHOUT_RFQ';
+    if (type === 'TENDER' && tenderSubtype === 'WITH_RFQ') {
       if (!data.rfqItems || data.rfqItems.length === 0 || data.rfqItems.every(item => !item.itemName)) {
         toast.error('Harap isi minimal satu item RFQ');
         return;
@@ -181,27 +182,34 @@ export default function CreateProjectPage() {
     try {
       const result = await createProject.mutateAsync({
         ...data,
+        type,
+        tenderSubtype: type === 'TENDER' ? tenderSubtype : undefined,
         budget: data.budget || undefined,
         workerNeeded: data.workerNeeded || undefined,
         categoryId: data.categoryId || undefined,
-        skillIds: projectType === 'HARIAN' && selectedSkillIds.length > 0 ? selectedSkillIds : undefined,
+        skillIds: type === 'HARIAN' && selectedSkillIds.length > 0 ? selectedSkillIds : undefined,
         cityId: data.cityId || undefined,
         address: data.address || undefined,
         startDate: data.startDate ? new Date(data.startDate).toISOString() : undefined,
         endDate: data.endDate ? new Date(data.endDate).toISOString() : undefined,
-        tenderSubtype: data.type === 'TENDER' ? data.tenderSubtype : undefined,
-        rfqItems: data.type === 'TENDER' && data.tenderSubtype === 'WITH_RFQ' ? data.rfqItems : undefined,
+        rfqItems: type === 'TENDER' && tenderSubtype === 'WITH_RFQ' ? data.rfqItems : undefined,
         photos: photos.length > 0 ? JSON.stringify(photos.map(p => p.url)) : undefined,
         files: files.length > 0 ? JSON.stringify(files.map(f => f.url)) : undefined,
       });
-      
-      toast.success('Proyek berhasil dibuat!');
-      router.push(`/dashboard/projects/${result.project.id}`);
+      const projectId = (result as { project?: { id: string }; data?: { id: string } }).project?.id ?? (result as { data?: { id: string } }).data?.id;
+      toast.success(user?.role === 'CLIENT' ? 'Proyek berhasil diajukan. Menunggu peninjauan admin.' : 'Proyek berhasil dibuat!');
+      if (projectId) router.push(`/dashboard/projects/${projectId}`);
+      else router.push('/dashboard/projects');
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Gagal membuat proyek');
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const onValidationError = (errors: Record<string, { message?: string }>) => {
+    const first = Object.values(errors)[0]?.message;
+    toast.error(first ?? 'Lengkapi data yang wajib (judul, deskripsi, dll).');
   };
 
   return (
@@ -213,7 +221,7 @@ export default function CreateProjectPage() {
         </p>
       </div>
 
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+      <form onSubmit={handleSubmit(onSubmit, onValidationError)} className="space-y-6">
         {/* Basic Info Card */}
         <Card className="glass-card">
           <CardHeader>
@@ -254,7 +262,7 @@ export default function CreateProjectPage() {
             <div className="space-y-2">
               <Label>Tipe Proyek *</Label>
               <Select
-                value={watch('type')}
+                value={watch('type') ?? 'TENDER'}
                 onValueChange={(value) => {
                   setValue('type', value as 'TENDER' | 'HARIAN');
                   if (value === 'HARIAN') {
@@ -289,7 +297,7 @@ export default function CreateProjectPage() {
               <div className="space-y-2">
                 <Label>Subtipe Tender *</Label>
                 <Select
-                  value={watch('tenderSubtype')}
+                  value={watch('tenderSubtype') ?? 'WITHOUT_RFQ'}
                   onValueChange={(value) => setValue('tenderSubtype', value as 'WITH_RFQ' | 'WITHOUT_RFQ')}
                 >
                   <SelectTrigger>

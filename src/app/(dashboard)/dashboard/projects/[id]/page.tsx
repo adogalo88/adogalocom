@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { useProject, useCreateApplication, useUpdateApplication, formatCurrency, formatDate, getProjectStatusConfig, getApplicationStatusConfig } from '@/hooks/api';
+import { useProject, useCreateApplication, useUpdateApplication, useDeleteProject, formatCurrency, formatDate, getProjectStatusConfig, getApplicationStatusConfig } from '@/hooks/api';
 import { useAuth } from '@/providers/AuthProvider';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -55,6 +55,7 @@ export default function ProjectDetailPage() {
   const [showPublishDialog, setShowPublishDialog] = useState(false);
   const [showCompleteDialog, setShowCompleteDialog] = useState(false);
   const [showCancelDialog, setShowCancelDialog] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [skillRatings, setSkillRatings] = useState<Record<string, { rating: number; comment: string }>>({});
   const [submittingSkillRatings, setSubmittingSkillRatings] = useState(false);
@@ -62,6 +63,7 @@ export default function ProjectDetailPage() {
   const { data, isLoading, error, refetch } = useProject(projectId);
   const createApplication = useCreateApplication();
   const updateApplication = useUpdateApplication(projectId);
+  const deleteProject = useDeleteProject(projectId);
 
   const project = data?.project;
 
@@ -207,7 +209,8 @@ export default function ProjectDetailPage() {
           )}
 
           {/* Owner Actions */}
-          {isOwner && project.status === 'DRAFT' && (
+          {/* Client tidak bisa edit; hanya admin yang bisa publish dari draft. Proyek client submit langsung PENDING_VERIFICATION. */}
+          {isOwner && project.status === 'DRAFT' && isAdmin && (
             <Button
               className="bg-gradient-to-r from-[#fd904c] to-[#e57835]"
               onClick={() => setShowPublishDialog(true)}
@@ -238,10 +241,20 @@ export default function ProjectDetailPage() {
             </Button>
           )}
 
-          {isOwner && project.status === 'DRAFT' && (
-            <Link href={`/dashboard/projects/${project.id}/edit`}>
-              <Button variant="outline">Edit Proyek</Button>
-            </Link>
+          {/* Hanya admin yang bisa edit proyek */}
+          {isAdmin && (
+            <>
+              <Link href={`/dashboard/projects/${project.id}/edit`}>
+                <Button variant="outline">Edit Proyek</Button>
+              </Link>
+              <Button
+                variant="outline"
+                className="text-red-600 border-red-300 hover:bg-red-50"
+                onClick={() => setShowDeleteDialog(true)}
+              >
+                Hapus
+              </Button>
+            </>
           )}
         </div>
       </div>
@@ -759,6 +772,38 @@ export default function ProjectDetailPage() {
             >
               {isProcessing && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
               Ya, Batalkan
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Delete Dialog (Admin only) */}
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Hapus Proyek?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Proyek akan dihapus permanen. Tindakan ini tidak dapat dibatalkan.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Batal</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={async () => {
+                setShowDeleteDialog(false);
+                try {
+                  await deleteProject.mutateAsync();
+                  toast.success('Proyek telah dihapus');
+                  router.push('/dashboard/projects');
+                } catch {
+                  toast.error('Gagal menghapus proyek');
+                }
+              }}
+              disabled={deleteProject.isPending}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              {deleteProject.isPending && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+              Ya, Hapus
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

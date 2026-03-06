@@ -25,7 +25,7 @@ const projectUpdateSchema = z.object({
   startDate: z.string().datetime().optional().nullable().transform(val => val ? new Date(val) : null),
   endDate: z.string().datetime().optional().nullable().transform(val => val ? new Date(val) : null),
   categoryId: z.string().optional().nullable(),
-  status: z.enum(['DRAFT', 'PUBLISHED', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED']).optional(),
+  status: z.enum(['DRAFT', 'PENDING_VERIFICATION', 'PUBLISHED', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED', 'REJECTED']).optional(),
   vendorId: z.string().optional().nullable(),
 });
 
@@ -148,11 +148,9 @@ function canViewProject(user: any, project: any): boolean {
   }
 }
 
-// Check if user can edit/delete project
+// Hanya admin yang boleh edit/hapus proyek. Client tidak bisa edit.
 function canModifyProject(user: any, project: any): boolean {
-  if (user.role === UserRole.ADMIN) return true;
-  if (user.role === UserRole.CLIENT && project.clientId === user.id) return true;
-  return false;
+  return user.role === UserRole.ADMIN;
 }
 
 // GET - Get single project
@@ -353,20 +351,17 @@ export const PATCH = withAuth(async (user, request: NextRequest, context) => {
       return apiError('Tanggal selesai harus setelah tanggal mulai', 400);
     }
     
-    // Check status transitions
-    if (data.status) {
+    // Check status transitions (admin dapat mengubah ke status apa pun)
+    if (data.status && user.role !== UserRole.ADMIN) {
       const currentStatus = existingProject.status;
       const newStatus = data.status as ProjectStatus;
-      
-      // Define allowed transitions
-      const allowedTransitions: Record<ProjectStatus, ProjectStatus[]> = {
+      const allowedTransitions: Record<string, string[]> = {
         DRAFT: ['PUBLISHED', 'CANCELLED'],
         PUBLISHED: ['IN_PROGRESS', 'CANCELLED'],
         IN_PROGRESS: ['COMPLETED', 'CANCELLED'],
         COMPLETED: [],
         CANCELLED: [],
       };
-      
       if (!allowedTransitions[currentStatus]?.includes(newStatus)) {
         return apiError(`Tidak dapat mengubah status dari ${currentStatus} ke ${newStatus}`, 400);
       }

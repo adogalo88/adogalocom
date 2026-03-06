@@ -82,10 +82,12 @@ export default function ProjectsPage() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Semua Status</SelectItem>
+                <SelectItem value="PENDING_VERIFICATION">Menunggu peninjauan</SelectItem>
                 <SelectItem value="PUBLISHED">Dipublikasi</SelectItem>
                 <SelectItem value="IN_PROGRESS">Berjalan</SelectItem>
                 <SelectItem value="COMPLETED">Selesai</SelectItem>
                 <SelectItem value="CANCELLED">Dibatalkan</SelectItem>
+                <SelectItem value="REJECTED">Ditolak</SelectItem>
               </SelectContent>
             </Select>
             <Select value={typeFilter || 'all'} onValueChange={(v) => setTypeFilter(v === 'all' ? '' : v)}>

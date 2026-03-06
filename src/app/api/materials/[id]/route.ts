@@ -179,12 +179,10 @@ export async function PATCH(
       return apiNotFound('Material tidak ditemukan');
     }
 
-    // Check permissions
-    const isOwner = existingMaterial.clientId === user.id;
+    // Hanya admin yang boleh edit material. Client tidak bisa edit.
     const isAdmin = user.role === 'ADMIN';
-
-    if (!isOwner && !isAdmin) {
-      return apiForbidden('Anda tidak memiliki akses untuk mengubah material ini');
+    if (!isAdmin) {
+      return apiForbidden('Hanya admin yang dapat mengubah permintaan material');
     }
 
     const body = await request.json();
@@ -329,12 +327,10 @@ export async function DELETE(
       return apiNotFound('Material tidak ditemukan');
     }
 
-    // Check permissions
-    const isOwner = existingMaterial.clientId === user.id;
+    // Hanya admin yang boleh menghapus material
     const isAdmin = user.role === 'ADMIN';
-
-    if (!isOwner && !isAdmin) {
-      return apiForbidden('Anda tidak memiliki akses untuk menghapus material ini');
+    if (!isAdmin) {
+      return apiForbidden('Hanya admin yang dapat menghapus permintaan material');
     }
 
     // Business rules

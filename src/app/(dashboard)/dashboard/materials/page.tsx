@@ -78,10 +78,12 @@ export default function MaterialsPage() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Semua Status</SelectItem>
+                <SelectItem value="PENDING_VERIFICATION">Menunggu peninjauan</SelectItem>
                 <SelectItem value="PUBLISHED">Dipublikasi</SelectItem>
                 <SelectItem value="IN_PROGRESS">Proses</SelectItem>
                 <SelectItem value="FULFILLED">Terpenuhi</SelectItem>
                 <SelectItem value="CANCELLED">Dibatalkan</SelectItem>
+                <SelectItem value="REJECTED">Ditolak</SelectItem>
               </SelectContent>
             </Select>
             <Select value={provinceFilter || 'all'} onValueChange={(v) => { setProvinceFilter(v === 'all' ? '' : v); setCityFilter(''); }}>

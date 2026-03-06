@@ -255,10 +255,12 @@ export function getRelativeTime(date: string | Date): string {
 export function getProjectStatusConfig(status: string) {
   const configs: Record<string, { label: string; className: string }> = {
     DRAFT: { label: 'Draft', className: 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300' },
-    PUBLISHED: { label: 'Dipublikasi', className: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400' },
+    PENDING_VERIFICATION: { label: 'Menunggu peninjauan', className: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400' },
+    PUBLISHED: { label: 'Dipublikasi', className: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' },
     IN_PROGRESS: { label: 'Berjalan', className: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' },
     COMPLETED: { label: 'Selesai', className: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' },
     CANCELLED: { label: 'Dibatalkan', className: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' },
+    REJECTED: { label: 'Ditolak', className: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' },
   };
   return configs[status] || configs.DRAFT;
 }
@@ -266,10 +268,12 @@ export function getProjectStatusConfig(status: string) {
 export function getMaterialStatusConfig(status: string) {
   const configs: Record<string, { label: string; className: string }> = {
     DRAFT: { label: 'Draft', className: 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300' },
-    PUBLISHED: { label: 'Dipublikasi', className: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400' },
+    PENDING_VERIFICATION: { label: 'Menunggu peninjauan', className: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400' },
+    PUBLISHED: { label: 'Dipublikasi', className: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' },
     IN_PROGRESS: { label: 'Proses', className: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' },
     FULFILLED: { label: 'Terpenuhi', className: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' },
     CANCELLED: { label: 'Dibatalkan', className: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' },
+    REJECTED: { label: 'Ditolak', className: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' },
   };
   return configs[status] || configs.DRAFT;
 }

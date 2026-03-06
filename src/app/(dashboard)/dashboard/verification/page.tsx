@@ -230,6 +230,26 @@ export default function VerificationPage() {
     }
   };
 
+  const handleDelete = async (type: 'project' | 'material', id: string) => {
+    if (!confirm(`Yakin ingin menghapus ${type === 'project' ? 'proyek' : 'material'} ini?`)) return;
+    setIsSubmitting(true);
+    try {
+      const endpoint = type === 'project' ? `/api/projects/${id}` : `/api/materials/${id}`;
+      const response = await fetch(endpoint, { method: 'DELETE', credentials: 'include' });
+      const result = await response.json();
+      if (response.ok && result?.success !== false) {
+        toast.success(`${type === 'project' ? 'Proyek' : 'Material'} berhasil dihapus`);
+        fetchVerifications();
+      } else {
+        toast.error(result?.error || 'Gagal menghapus');
+      }
+    } catch {
+      toast.error('Terjadi kesalahan');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   const handleReject = async () => {
     if (!selectedItem || !rejectionReason.trim()) {
       toast.error('Alasan penolakan harus diisi');
@@ -658,6 +678,21 @@ export default function VerificationPage() {
                               </Button>
                             </>
                           )}
+                          <Button size="sm" variant="outline" asChild>
+                            <Link href={`/dashboard/projects/${project.id}/edit`}>
+                              <FileText className="h-4 w-4 mr-1" />
+                              Edit
+                            </Link>
+                          </Button>
+                          <Button 
+                            size="sm" 
+                            variant="outline" 
+                            className="text-red-600"
+                            onClick={() => handleDelete('project', project.id)}
+                            disabled={isSubmitting}
+                          >
+                            Hapus
+                          </Button>
                         </div>
                       </div>
                     </div>
@@ -813,6 +848,15 @@ export default function VerificationPage() {
                               </Button>
                             </>
                           )}
+                          <Button 
+                            size="sm" 
+                            variant="outline" 
+                            className="text-red-600"
+                            onClick={() => handleDelete('material', material.id)}
+                            disabled={isSubmitting}
+                          >
+                            Hapus
+                          </Button>
                         </div>
                       </div>
                     </div>

@@ -237,6 +237,10 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // Client/Vendor submit → status Menunggu peninjauan; Admin bisa set DRAFT atau PENDING_VERIFICATION
+    const isClientOrVendor = user.role === 'CLIENT' || user.role === 'VENDOR';
+    const initialStatus = isClientOrVendor ? 'PENDING_VERIFICATION' : (data.status || 'DRAFT');
+
     // Create material
     const material = await db.material.create({
       data: {
@@ -252,7 +256,7 @@ export async function POST(request: NextRequest) {
         deadline: data.deadline ? new Date(data.deadline) : null,
         projectId: data.projectId || null,
         clientId: user.id,
-        status: data.status || 'DRAFT',
+        status: initialStatus,
         ...(data.categoryIds?.length
           ? { categories: { connect: data.categoryIds.map((id) => ({ id })) } }
           : {}),
