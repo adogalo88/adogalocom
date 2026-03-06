@@ -184,8 +184,9 @@ function canModifyProject(user: any, project: any): boolean {
 // GET - Get single project
 export const GET = withAuth(async (user, request: NextRequest, context) => {
   try {
-    const projectId = context?.params?.id as string;
-    
+    const params = context?.params != null ? await (context.params as Promise<{ id?: string }>) : undefined;
+    const projectId = params?.id as string | undefined;
+
     if (!projectId) {
       return apiError('ID proyek tidak valid', 400);
     }
@@ -348,8 +349,9 @@ export const GET = withAuth(async (user, request: NextRequest, context) => {
 // PATCH - Update project
 export const PATCH = withAuth(async (user, request: NextRequest, context) => {
   try {
-    const projectId = context?.params?.id as string;
-    
+    const params = context?.params != null ? await (context.params as Promise<{ id?: string }>) : undefined;
+    const projectId = params?.id as string | undefined;
+
     if (!projectId) {
       return apiError('ID proyek tidak valid', 400);
     }
@@ -582,8 +584,9 @@ export const PATCH = withAuth(async (user, request: NextRequest, context) => {
 // DELETE - Delete project
 export const DELETE = withAuth(async (user, request: NextRequest, context) => {
   try {
-    const projectId = context?.params?.id as string;
-    
+    const params = context?.params != null ? await (context.params as Promise<{ id?: string }>) : undefined;
+    const projectId = params?.id as string | undefined;
+
     if (!projectId) {
       return apiError('ID proyek tidak valid', 400);
     }

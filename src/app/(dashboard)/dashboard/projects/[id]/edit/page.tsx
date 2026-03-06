@@ -20,7 +20,7 @@ import { toast } from 'sonner';
 const schema = z.object({
   title: z.string().min(5, 'Judul minimal 5 karakter'),
   description: z.string().min(20, 'Deskripsi minimal 20 karakter'),
-  status: z.enum(['DRAFT', 'PENDING_VERIFICATION', 'PUBLISHED', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED', 'REJECTED']),
+  status: z.enum(['DRAFT', 'PENDING_VERIFICATION', 'PUBLISHED', 'EXPIRED', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED', 'REJECTED']),
   budget: z.number().min(0).optional().nullable(),
 });
 
@@ -30,6 +30,7 @@ const statusLabels: Record<string, string> = {
   DRAFT: 'Draft',
   PENDING_VERIFICATION: 'Menunggu peninjauan',
   PUBLISHED: 'Dipublikasi',
+  EXPIRED: 'Kadaluarsa',
   IN_PROGRESS: 'Berjalan',
   COMPLETED: 'Selesai',
   CANCELLED: 'Dibatalkan',
@@ -41,7 +42,7 @@ export default function EditProjectPage() {
   const router = useRouter();
   const { user, isLoading: authLoading } = useAuth();
   const id = params?.id as string;
-  const { data, isLoading } = useProject(id);
+  const { data, isLoading, isError } = useProject(id);
   const updateProject = useUpdateProject(id);
 
   const project = data?.project;
@@ -87,6 +88,16 @@ export default function EditProjectPage() {
   };
 
   if (authLoading || !user || user.role !== 'ADMIN') return null;
+  if (isError || (!isLoading && !project)) {
+    return (
+      <div className="max-w-2xl mx-auto space-y-6 text-center py-12">
+        <p className="text-muted-foreground">Proyek tidak ditemukan atau Anda tidak memiliki akses.</p>
+        <Button asChild>
+          <Link href="/dashboard/projects">Kembali ke Daftar Proyek</Link>
+        </Button>
+      </div>
+    );
+  }
   if (isLoading || !project) {
     return (
       <div className="flex items-center justify-center min-h-[200px]">
