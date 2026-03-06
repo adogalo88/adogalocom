@@ -100,10 +100,13 @@ export default function RFQListPage() {
 
   const fetchRFQs = async () => {
     try {
-      const url = projectIdFromUrl
-        ? `/api/rfq?projectId=${encodeURIComponent(projectIdFromUrl)}`
-        : '/api/rfq';
-      const response = await fetch(url);
+      const params = new URLSearchParams();
+      if (projectIdFromUrl) {
+        params.set('projectId', projectIdFromUrl);
+        params.set('limit', '50');
+      }
+      const url = params.toString() ? `/api/rfq?${params}` : '/api/rfq';
+      const response = await fetch(url, { credentials: 'include' });
       const result = await response.json();
       if (result.success) {
         setRFQs(Array.isArray(result.data) ? result.data : []);

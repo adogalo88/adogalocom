@@ -102,32 +102,22 @@ export async function GET(
     const isAdmin = currentUser.role === 'ADMIN';
     const isVendor = currentUser.role === 'VENDOR';
     const isPublic = rfq.status === 'PUBLISHED' || rfq.status === 'CLOSED';
+    const vendorHasSubmission = isVendor && rfq.submissions.some(s => s.vendorId === currentUser.id);
 
-    if (!isClient && !isAdmin && !(isVendor && isPublic)) {
+    if (!isClient && !isAdmin && !(isVendor && (isPublic || vendorHasSubmission))) {
       return NextResponse.json(
         { error: 'Anda tidak memiliki akses ke RFQ ini' },
         { status: 403 }
       );
     }
 
-    // For vendors, only show their own submission details
+    // For vendors, only show their own submission (no other vendors' data)
     let responseData = rfq;
     if (isVendor && !isClient && !isAdmin) {
       const vendorSubmission = rfq.submissions.find(s => s.vendorId === currentUser.id);
-      const otherSubmissions = rfq.submissions
-        .filter(s => s.vendorId !== currentUser.id)
-        .map(s => ({
-          ...s,
-          prices: [], // Hide prices from other vendors
-          totalOffer: s.totalOffer,
-          status: s.status,
-        }));
-      
       responseData = {
         ...rfq,
-        submissions: vendorSubmission 
-          ? [vendorSubmission, ...otherSubmissions]
-          : otherSubmissions,
+        submissions: vendorSubmission ? [vendorSubmission] : [],
       };
     }
 

@@ -22,6 +22,7 @@ const projectFilterSchema = z.object({
   provinceId: z.string().optional(),
   search: z.string().optional(),
   skillIds: z.string().optional(), // comma-separated for proyek harian
+  vendorHasRfqSubmission: z.coerce.number().optional(), // 1 = only projects where vendor has submitted RFQ offer
 });
 
 const createProjectSchema = z.object({
@@ -81,15 +82,20 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const { page, limit, status, type, categoryId, clientId, vendorId, cityId, provinceId, search, skillIds: skillIdsParam } = validationResult.data;
+    const { page, limit, status, type, categoryId, clientId, vendorId, cityId, provinceId, search, skillIds: skillIdsParam, vendorHasRfqSubmission } = validationResult.data;
     const skillIds = skillIdsParam ? skillIdsParam.split(',').map((s) => s.trim()).filter(Boolean) : [];
     const skip = (page - 1) * limit;
 
     // Build filter based on role
     const where: Record<string, unknown> = {};
 
-    // Role-based filtering
-    if (currentUser.role === 'CLIENT') {
+    // Vendor: only projects where they have submitted an RFQ offer (for Penawaran Saya page)
+    if (currentUser.role === 'VENDOR' && vendorHasRfqSubmission === 1) {
+      where.type = 'TENDER';
+      where.rfq = {
+        submissions: { some: { vendorId: currentUser.id } },
+      };
+    } else if (currentUser.role === 'CLIENT') {
       // Clients can only see their own projects
       where.clientId = currentUser.id;
     } else if (currentUser.role === 'VENDOR' || currentUser.role === 'TUKANG') {
@@ -132,6 +138,18 @@ export async function GET(request: NextRequest) {
     if (skillIds.length > 0) {
       where.skills = { some: { id: { in: skillIds } } };
     }
+
+    const includeVendorRfqSubmission = currentUser.role === 'VENDOR' && vendorHasRfqSubmission === 1;
+    const rfqSelect = includeVendorRfqSubmission
+      ? {
+          id: true,
+          _count: { select: { submissions: true } },
+          submissions: {
+            where: { vendorId: currentUser.id },
+            select: { id: true, status: true, totalOffer: true, submittedAt: true },
+          },
+        }
+      : { id: true, _count: { select: { submissions: true } } };
 
     // Get projects with relations
     const [projects, total] = await Promise.all([
@@ -185,10 +203,7 @@ export async function GET(request: NextRequest) {
             select: { id: true, name: true },
           },
           rfq: {
-            select: {
-              id: true,
-              _count: { select: { submissions: true } },
-            },
+            select: rfqSelect,
           },
           _count: {
             select: {

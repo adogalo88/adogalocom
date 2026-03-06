@@ -16,9 +16,8 @@ import {
 } from 'lucide-react';
 import { useAuth } from '@/providers/AuthProvider';
 
-interface SubmissionRow {
+interface ProjectRow {
   id: string;
-  rfqId: string;
   projectTitle: string;
   projectCity: string | null;
   totalOffer: number | null;
@@ -51,7 +50,7 @@ function formatCurrency(amount: number) {
 export default function PenawaranSayaPage() {
   const router = useRouter();
   const { user } = useAuth();
-  const [rows, setRows] = useState<SubmissionRow[]>([]);
+  const [rows, setRows] = useState<ProjectRow[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -60,36 +59,37 @@ export default function PenawaranSayaPage() {
       router.replace('/dashboard');
       return;
     }
-    fetchOffers();
+    fetchProjects();
   }, [user, router]);
 
-  const fetchOffers = async () => {
+  const fetchProjects = async () => {
     try {
-      const res = await fetch('/api/rfq?limit=100', { credentials: 'include' });
+      const res = await fetch('/api/projects?vendorHasRfqSubmission=1&limit=100', { credentials: 'include' });
       const result = await res.json();
       if (!result.success || !Array.isArray(result.data)) {
         setRows([]);
         return;
       }
-      const rfqs = result.data as {
+      const projects = result.data as {
         id: string;
-        project: { title: string; city?: { name: string } | null; location?: string | null };
-        submissions: { id: string; status: string; totalOffer: number | null }[];
+        title: string;
+        city?: { name: string } | null;
+        rfq?: {
+          id: string;
+          submissions?: { status: string; totalOffer: number | null }[];
+        } | null;
       }[];
-      const flat: SubmissionRow[] = [];
-      for (const rfq of rfqs) {
-        for (const sub of rfq.submissions || []) {
-          flat.push({
-            id: sub.id,
-            rfqId: rfq.id,
-            projectTitle: rfq.project?.title ?? 'Proyek',
-            projectCity: rfq.project?.city?.name ?? rfq.project?.location ?? null,
-            totalOffer: sub.totalOffer ?? null,
-            status: sub.status,
-          });
-        }
-      }
-      setRows(flat);
+      const list: ProjectRow[] = projects.map((p) => {
+        const sub = p.rfq?.submissions?.[0];
+        return {
+          id: p.id,
+          projectTitle: p.title ?? 'Proyek',
+          projectCity: p.city?.name ?? null,
+          totalOffer: sub?.totalOffer ?? null,
+          status: sub?.status ?? 'DRAFT',
+        };
+      });
+      setRows(list);
     } catch (e) {
       console.error(e);
       setRows([]);
@@ -117,7 +117,7 @@ export default function PenawaranSayaPage() {
         <CardHeader>
           <CardTitle>Daftar Penawaran</CardTitle>
           <CardDescription>
-            Judul proyek, nilai penawaran, lokasi, dan status. Klik baris untuk ke detail RFQ.
+            Proyek yang sudah Anda buat penawarannya. Klik baris untuk membuka detail proyek (tampilan sama dengan client/admin). Di detail proyek, Lihat RFQ hanya menampilkan penawaran Anda.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -138,7 +138,7 @@ export default function PenawaranSayaPage() {
               {rows.map((row) => (
                 <li key={row.id}>
                   <Link
-                    href={`/dashboard/rfq/${row.rfqId}`}
+                    href={`/dashboard/projects/${row.id}`}
                     className="flex flex-col sm:flex-row sm:items-center gap-3 py-4 px-2 -mx-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors"
                   >
                     <div className="flex-1 min-w-0">

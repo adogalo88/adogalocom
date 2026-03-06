@@ -348,9 +348,13 @@ export const GET = withAuth(async (user, request: NextRequest, context) => {
     if (!project) {
       return apiNotFound('Proyek tidak ditemukan');
     }
-    
-    // Check access permission
-    if (!canViewProject(user, project)) {
+
+    // Check access permission (vendor can also view if they have an RFQ submission on this project)
+    let canView = canViewProject(user, project);
+    if (!canView && user.role === UserRole.VENDOR && project.rfq?.submissions?.length) {
+      canView = project.rfq.submissions.some((s: { vendorId: string }) => s.vendorId === user.id);
+    }
+    if (!canView) {
       return apiForbidden('Anda tidak memiliki akses untuk melihat proyek ini');
     }
     
