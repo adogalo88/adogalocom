@@ -639,6 +639,7 @@ model RFQItemPrice {
   itemId       String
   unitPrice    Float // Harga per satuan dari vendor
   totalPrice   Float // quantity * unitPrice
+  vendorNotes  String? // Catatan tambahan dari vendor
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 

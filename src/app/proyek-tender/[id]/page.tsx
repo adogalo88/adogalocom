@@ -104,6 +104,7 @@ export default function ProyekTenderDetailPage() {
   const [offerDialogOpen, setOfferDialogOpen] = useState(false);
   const [offerSubmitting, setOfferSubmitting] = useState(false);
   const [rfqPrices, setRfqPrices] = useState<Record<string, number>>({});
+  const [rfqVendorNotes, setRfqVendorNotes] = useState<Record<string, string>>({});
   const [rfqNotes, setRfqNotes] = useState('');
   const [offerFileUrl, setOfferFileUrl] = useState('');
   const [uploadingFile, setUploadingFile] = useState(false);
@@ -262,6 +263,7 @@ export default function ProyekTenderDetailPage() {
         const itemPrices = project.rfq.items.map((item) => ({
           itemId: item.id,
           unitPrice: rfqPrices[item.id] ?? 0,
+          vendorNotes: (rfqVendorNotes[item.id] ?? '').trim() || undefined,
         }));
         if (itemPrices.some((p) => !p.unitPrice || p.unitPrice <= 0)) {
           toast.error('Isi semua harga item RFQ');
@@ -774,6 +776,8 @@ export default function ProyekTenderDetailPage() {
                           <th className="text-left p-3 bg-[#fd904c]/10 text-[#e57835] font-semibold">Item Pekerjaan</th>
                           <th className="text-center p-3 bg-[#fd904c]/10 text-[#e57835] font-semibold">Qty</th>
                           <th className="text-center p-3 bg-[#fd904c]/10 text-[#e57835] font-semibold">Satuan</th>
+                          <th className="text-left p-3 bg-[#fd904c]/10 text-[#e57835] font-semibold">Spesifikasi Material</th>
+                          <th className="text-left p-3 bg-[#fd904c]/10 text-[#e57835] font-semibold">Catatan Tambahan</th>
                           <th className="text-right p-3 bg-[#fd904c]/10 text-[#e57835] font-semibold">Harga/Unit (Rp)</th>
                           <th className="text-right p-3 bg-[#fd904c]/10 text-[#e57835] font-semibold rounded-tr-xl">Total (Rp)</th>
                         </tr>
@@ -785,6 +789,15 @@ export default function ProyekTenderDetailPage() {
                             <td className="p-3 font-medium text-gray-800 dark:text-gray-200">{item.itemName}</td>
                             <td className="p-3 text-center text-gray-600">{item.quantity}</td>
                             <td className="p-3 text-center text-gray-600">{item.unit}</td>
+                            <td className="p-3 text-gray-600 dark:text-gray-400">{item.description || '–'}</td>
+                            <td className="p-3">
+                              <Input
+                                placeholder="Diisi oleh vendor"
+                                value={rfqVendorNotes[item.id] ?? ''}
+                                onChange={(e) => setRfqVendorNotes((prev) => ({ ...prev, [item.id]: e.target.value }))}
+                                className="w-full min-w-[120px] text-sm rounded-lg border-gray-200 focus:border-[#fd904c]"
+                              />
+                            </td>
                             <td className="p-3 text-right">
                               <Input
                                 type="number"
@@ -804,12 +817,12 @@ export default function ProyekTenderDetailPage() {
                       </tbody>
                       <tfoot>
                         <tr className="border-b border-gray-200 dark:border-gray-700">
-                          <td colSpan={5} className="p-3 text-right text-gray-600 dark:text-gray-400">Subtotal</td>
+                          <td colSpan={7} className="p-3 text-right text-gray-600 dark:text-gray-400">Subtotal</td>
                           <td className="p-3 text-right font-medium whitespace-nowrap">Rp {subtotal.toLocaleString('id-ID')}</td>
                         </tr>
                         {discountEnabled && (
                           <tr className="border-b border-gray-200 dark:border-gray-700">
-                            <td colSpan={5} className="p-3 text-right text-gray-600 dark:text-gray-400">
+                            <td colSpan={7} className="p-3 text-right text-gray-600 dark:text-gray-400">
                               Diskon {discountType === 'percent' ? `(${discountValue}%)` : '(Rp tetap)'}
                             </td>
                             <td className="p-3 text-right text-red-600 dark:text-red-400 whitespace-nowrap">
@@ -819,7 +832,7 @@ export default function ProyekTenderDetailPage() {
                         )}
                         {taxEnabled && (
                           <tr className="border-b border-gray-200 dark:border-gray-700">
-                            <td colSpan={5} className="p-3 text-right text-gray-600 dark:text-gray-400">
+                            <td colSpan={7} className="p-3 text-right text-gray-600 dark:text-gray-400">
                               {taxLabel} ({taxPercent}%)
                             </td>
                             <td className="p-3 text-right text-gray-700 dark:text-gray-300 whitespace-nowrap">
@@ -828,7 +841,7 @@ export default function ProyekTenderDetailPage() {
                           </tr>
                         )}
                         <tr className="bg-[#fd904c] text-white font-bold">
-                          <td colSpan={5} className="p-3 rounded-bl-xl">Total Penawaran</td>
+                          <td colSpan={7} className="p-3 rounded-bl-xl">Total Penawaran</td>
                           <td className="p-3 text-right rounded-br-xl whitespace-nowrap">
                             Rp {totalWithTaxDiscount.toLocaleString('id-ID')}
                           </td>

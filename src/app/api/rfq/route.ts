@@ -20,6 +20,7 @@ const createSubmissionSchema = z.object({
   itemPrices: z.array(z.object({
     itemId: z.string(),
     unitPrice: z.number().positive('Harga harus positif'),
+    vendorNotes: z.string().optional(),
   })),
   notes: z.string().optional(),
 });
@@ -275,6 +276,7 @@ export async function POST(request: NextRequest) {
         itemId: ip.itemId,
         unitPrice: ip.unitPrice,
         totalPrice,
+        vendorNotes: ip.vendorNotes?.trim() || null,
       };
     });
 
