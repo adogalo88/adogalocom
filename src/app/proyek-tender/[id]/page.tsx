@@ -58,6 +58,8 @@ interface Project {
     title: string;
     status: string;
     items: { id: string; itemName: string; description: string | null; quantity: number; unit: string; sortOrder: number }[];
+    submissions?: { id: string; vendorId?: string; vendor?: { id: string }; status: string }[];
+    _count?: { submissions: number };
   } | null;
   userApplication?: { id: string; status: string; offerFileUrl?: string | null } | null;
   _count?: { applications?: number; teamMembers?: number };
@@ -350,7 +352,15 @@ export default function ProyekTenderDetailPage() {
   const photos = parseJsonArray(project.photos);
   const files = parseJsonArray(project.files);
   const isExpired = project.status === 'EXPIRED';
-  const offerCount = project._count?.applications ?? (project as { applications?: unknown[] }).applications?.length ?? 0;
+  const offerCount = project.rfq
+    ? (project.rfq._count?.submissions ?? project.rfq.submissions?.length ?? 0)
+    : (project._count?.applications ?? (project as { applications?: unknown[] }).applications?.length ?? 0);
+  const hasVendorSubmittedRfq =
+    user?.role === 'VENDOR' &&
+    project.rfq?.submissions?.some(
+      (s: { vendorId?: string; vendor?: { id: string } }) =>
+        s.vendorId === user?.id || s.vendor?.id === user?.id
+    );
 
   // RFQ: auto hitung total per baris dan grand total (tanpa hook agar urutan hooks stabil)
   const rowTotals: Record<string, number> = {};
@@ -367,7 +377,9 @@ export default function ProyekTenderDetailPage() {
   const locationText = project.city
     ? [project.city.province?.name, project.city.name].filter(Boolean).join(', ')
     : null;
-  const canOffer = !project.userApplication && !isExpired;
+  const canOffer = project.rfq
+    ? !hasVendorSubmittedRfq && !isExpired
+    : !project.userApplication && !isExpired;
 
   // Pajak & diskon (hitung dari subtotal)
   const subtotal = grandTotal;
@@ -678,36 +690,46 @@ export default function ProyekTenderDetailPage() {
           )}
         </section>
 
-        {/* Card: Buat Penawaran (collapsible) */}
+        {/* Card: Buat Penawaran (collapsible) atau cap stempel jika vendor sudah submit */}
         <section className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl overflow-hidden mb-8 shadow-sm">
-          <button
-            type="button"
-            onClick={() => canOffer && setRfqOpen((o) => !o)}
-            className="w-full flex items-center justify-between p-6 md:p-8 text-left hover:bg-gray-50/50 dark:hover:bg-gray-800/30 transition-colors disabled:opacity-60"
-          >
-            <div className="flex items-center gap-3">
-              <div className="w-11 h-11 flex items-center justify-center rounded-xl bg-[#fd904c] text-white shadow-lg shadow-[#fd904c]/30">
-                <FileText className="w-5 h-5" />
-              </div>
-              <div>
-                <h2 className="text-xl font-bold text-[#c2652a] dark:text-[#fd904c]">Buat Penawaran</h2>
-                <p className="text-sm text-gray-500">
-                  {project.rfq?.items?.length ? 'Isi form RFQ untuk mengajukan penawaran Anda' : 'Upload file penawaran'}
+          {hasVendorSubmittedRfq ? (
+            <div className="p-8 md:p-10 flex flex-col items-center justify-center text-center border-2 border-red-300 dark:border-red-600 rounded-2xl bg-red-50/80 dark:bg-red-950/30">
+              <div className="inline-block px-6 py-4 rounded-xl border-2 border-red-400 dark:border-red-500 bg-white dark:bg-gray-900 shadow-lg">
+                <p className="text-lg md:text-xl font-bold text-red-600 dark:text-red-400 uppercase tracking-wide">
+                  Anda sudah berhasil membuat penawaran, mohon menunggu kabar baik dari client.
                 </p>
               </div>
             </div>
-            {canOffer && (
-              <div className={`w-10 h-10 flex items-center justify-center rounded-lg bg-[#fd904c]/10 text-[#e57835] transition-transform ${rfqOpen ? 'rotate-180' : ''}`}>
-                <ChevronDown className="w-5 h-5" />
-              </div>
-            )}
-          </button>
+          ) : (
+            <>
+              <button
+                type="button"
+                onClick={() => canOffer && setRfqOpen((o) => !o)}
+                className="w-full flex items-center justify-between p-6 md:p-8 text-left hover:bg-gray-50/50 dark:hover:bg-gray-800/30 transition-colors disabled:opacity-60"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-11 h-11 flex items-center justify-center rounded-xl bg-[#fd904c] text-white shadow-lg shadow-[#fd904c]/30">
+                    <FileText className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h2 className="text-xl font-bold text-[#c2652a] dark:text-[#fd904c]">Buat Penawaran</h2>
+                    <p className="text-sm text-gray-500">
+                      {project.rfq?.items?.length ? 'Isi form RFQ untuk mengajukan penawaran Anda' : 'Upload file penawaran'}
+                    </p>
+                  </div>
+                </div>
+                {canOffer && (
+                  <div className={`w-10 h-10 flex items-center justify-center rounded-lg bg-[#fd904c]/10 text-[#e57835] transition-transform ${rfqOpen ? 'rotate-180' : ''}`}>
+                    <ChevronDown className="w-5 h-5" />
+                  </div>
+                )}
+              </button>
 
-          {!canOffer && (
-            <div className="px-6 pb-6 text-gray-500">
-              {project.userApplication ? 'Anda sudah mengajukan penawaran.' : isExpired ? 'Batas akhir penawaran telah lewat. Proyek kadaluarsa.' : null}
-            </div>
-          )}
+              {!canOffer && (
+                <div className="px-6 pb-6 text-gray-500">
+                  {project.userApplication ? 'Anda sudah mengajukan penawaran.' : isExpired ? 'Batas akhir penawaran telah lewat. Proyek kadaluarsa.' : null}
+                </div>
+              )}
 
           {canOffer && rfqOpen && (
             <div className="border-t border-gray-100 dark:border-gray-800 p-6 md:p-8">
@@ -888,6 +910,8 @@ export default function ProyekTenderDetailPage() {
                 </>
               )}
             </div>
+          )}
+            </>
           )}
         </section>
 

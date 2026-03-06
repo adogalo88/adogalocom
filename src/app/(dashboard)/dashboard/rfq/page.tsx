@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -87,6 +87,8 @@ const submissionStatusColors: Record<string, string> = {
 
 export default function RFQListPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const projectIdFromUrl = searchParams.get('projectId');
   const { user } = useAuth();
   const [rfqs, setRFQs] = useState<RFQ[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -94,17 +96,23 @@ export default function RFQListPage() {
 
   useEffect(() => {
     fetchRFQs();
-  }, []);
+  }, [projectIdFromUrl]);
 
   const fetchRFQs = async () => {
     try {
-      const response = await fetch('/api/rfq');
+      const url = projectIdFromUrl
+        ? `/api/rfq?projectId=${encodeURIComponent(projectIdFromUrl)}`
+        : '/api/rfq';
+      const response = await fetch(url);
       const result = await response.json();
       if (result.success) {
-        setRFQs(result.data);
+        setRFQs(Array.isArray(result.data) ? result.data : []);
+      } else {
+        setRFQs([]);
       }
     } catch (error) {
       console.error('Error fetching RFQs:', error);
+      setRFQs([]);
     } finally {
       setIsLoading(false);
     }

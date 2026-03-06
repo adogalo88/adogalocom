@@ -243,7 +243,13 @@ export default function ProjectDetailPage() {
     );
   }
 
-  const applicationCount = project._count?.applications ?? project.applications?.length ?? 0;
+  const applicationCount =
+    project.tenderSubtype === 'WITH_RFQ' && project.rfq
+      ? (project.rfq._count?.submissions ?? project.rfq.submissions?.length ?? 0)
+      : (project._count?.applications ?? project.applications?.length ?? 0);
+  const offerList = project.tenderSubtype === 'WITH_RFQ' && project.rfq?.submissions
+    ? project.rfq.submissions
+    : project.applications ?? [];
 
   return (
     <div className="w-full max-w-[100%] space-y-0">
@@ -574,94 +580,135 @@ export default function ProjectDetailPage() {
             </Card>
           )}
 
-          {/* Applications Tab (for owner) */}
+          {/* Applications / RFQ Penawaran Tab (for owner) */}
           {isOwner && (
             <Card className="glass-card">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Users className="h-5 w-5" />
-                  Penawaran Masuk ({project.applications?.length || 0})
+                  Penawaran Masuk ({offerList.length})
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                {!project.applications || project.applications.length === 0 ? (
+                {offerList.length === 0 ? (
                   <p className="text-center text-muted-foreground py-8">
                     Belum ada penawaran masuk
                   </p>
                 ) : (
                   <div className="space-y-4">
-                    {project.applications.map((app) => (
-                      <div
-                        key={app.id}
-                        className={`p-4 rounded-lg border ${
-                          app.status === 'ACCEPTED'
-                            ? 'border-green-500 bg-green-50 dark:bg-green-950/20'
-                            : app.status === 'REJECTED'
-                            ? 'border-red-300 bg-red-50 dark:bg-red-950/20'
-                            : 'border-border bg-muted/30'
-                        }`}
-                      >
-                        <div className="flex items-start justify-between gap-4">
-                          <div className="flex items-center gap-3">
-                            <Avatar>
-                              <AvatarFallback className="bg-gradient-to-br from-[#fd904c] to-[#e57835] text-white">
-                                {app.user?.name?.charAt(0) || '?'}
-                              </AvatarFallback>
-                            </Avatar>
-                            <div>
-                              <p className="font-medium">{app.user?.name}</p>
-                              <p className="text-sm text-muted-foreground">{app.user?.email}</p>
-                              {app.user?.specialty && (
-                                <p className="text-xs text-[#fd904c]">{app.user.specialty}</p>
-                              )}
+                    {project.tenderSubtype === 'WITH_RFQ' && project.rfq?.submissions ? (
+                      offerList.map((sub: { id: string; status: string; totalOffer?: number | null; notes?: string | null; vendor?: { name?: string; email?: string }; submittedAt?: string | null }) => (
+                        <div
+                          key={sub.id}
+                          className={`p-4 rounded-lg border ${
+                            sub.status === 'ACCEPTED'
+                              ? 'border-green-500 bg-green-50 dark:bg-green-950/20'
+                              : sub.status === 'REJECTED'
+                              ? 'border-red-300 bg-red-50 dark:bg-red-950/20'
+                              : 'border-border bg-muted/30'
+                          }`}
+                        >
+                          <div className="flex items-start justify-between gap-4">
+                            <div className="flex items-center gap-3">
+                              <Avatar>
+                                <AvatarFallback className="bg-gradient-to-br from-[#fd904c] to-[#e57835] text-white">
+                                  {sub.vendor?.name?.charAt(0) || '?'}
+                                </AvatarFallback>
+                              </Avatar>
+                              <div>
+                                <p className="font-medium">{sub.vendor?.name ?? 'Vendor'}</p>
+                                <p className="text-sm text-muted-foreground">{sub.vendor?.email}</p>
+                              </div>
                             </div>
+                            <Badge className={
+                              sub.status === 'SUBMITTED' ? 'bg-blue-100 text-blue-800' :
+                              sub.status === 'ACCEPTED' ? 'bg-green-100 text-green-800' :
+                              sub.status === 'REJECTED' ? 'bg-red-100 text-red-800' : 'bg-muted'
+                            }>
+                              {sub.status === 'SUBMITTED' ? 'Menunggu' : sub.status === 'ACCEPTED' ? 'Diterima' : sub.status === 'REJECTED' ? 'Ditolak' : sub.status}
+                            </Badge>
                           </div>
-                          <Badge className={getApplicationStatusConfig(app.status).className}>
-                            {getApplicationStatusConfig(app.status).label}
-                          </Badge>
+                          {sub.totalOffer != null && (
+                            <p className="mt-2 text-sm">
+                              <span className="text-muted-foreground">Total penawaran: </span>
+                              <span className="font-semibold text-[#fd904c]">{formatCurrency(sub.totalOffer)}</span>
+                            </p>
+                          )}
+                          {sub.notes && <p className="mt-2 text-sm text-muted-foreground">{sub.notes}</p>}
+                          <Link href={`/dashboard/rfq/${project.rfq?.id}`} className="inline-block mt-3 text-sm text-[#fd904c] hover:underline">
+                            Kelola penawaran di halaman RFQ →
+                          </Link>
                         </div>
-                        
-                        {app.coverLetter && (
-                          <p className="mt-3 text-sm text-muted-foreground">{app.coverLetter}</p>
-                        )}
-                        
-                        {app.proposedBudget && (
-                          <p className="mt-2 text-sm">
-                            <span className="text-muted-foreground">Penawaran: </span>
-                            <span className="font-semibold text-[#fd904c]">
-                              {formatCurrency(app.proposedBudget)}
-                            </span>
-                          </p>
-                        )}
-                        
-                        {app.status === 'PENDING' && project.status === 'PUBLISHED' && (
-                          <div className="flex gap-2 mt-3">
-                            <Button
-                              size="sm"
-                              className="bg-green-600 hover:bg-green-700"
-                              onClick={() => {
-                                setSelectedApplication(app.id);
-                                setShowAcceptDialog(true);
-                              }}
-                            >
-                              <CheckCircle className="h-4 w-4 mr-1" />
-                              Terima
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="destructive"
-                              onClick={() => {
-                                setSelectedApplication(app.id);
-                                setShowRejectDialog(true);
-                              }}
-                            >
-                              <XCircle className="h-4 w-4 mr-1" />
-                              Tolak
-                            </Button>
+                      ))
+                    ) : (
+                      (offerList as { id: string; user?: { name?: string; email?: string; specialty?: string }; coverLetter?: string; proposedBudget?: number; status: string }[]).map((app) => (
+                        <div
+                          key={app.id}
+                          className={`p-4 rounded-lg border ${
+                            app.status === 'ACCEPTED'
+                              ? 'border-green-500 bg-green-50 dark:bg-green-950/20'
+                              : app.status === 'REJECTED'
+                              ? 'border-red-300 bg-red-50 dark:bg-red-950/20'
+                              : 'border-border bg-muted/30'
+                          }`}
+                        >
+                          <div className="flex items-start justify-between gap-4">
+                            <div className="flex items-center gap-3">
+                              <Avatar>
+                                <AvatarFallback className="bg-gradient-to-br from-[#fd904c] to-[#e57835] text-white">
+                                  {app.user?.name?.charAt(0) || '?'}
+                                </AvatarFallback>
+                              </Avatar>
+                              <div>
+                                <p className="font-medium">{app.user?.name}</p>
+                                <p className="text-sm text-muted-foreground">{app.user?.email}</p>
+                                {app.user?.specialty && (
+                                  <p className="text-xs text-[#fd904c]">{app.user.specialty}</p>
+                                )}
+                              </div>
+                            </div>
+                            <Badge className={getApplicationStatusConfig(app.status).className}>
+                              {getApplicationStatusConfig(app.status).label}
+                            </Badge>
                           </div>
-                        )}
-                      </div>
-                    ))}
+                          {app.coverLetter && (
+                            <p className="mt-3 text-sm text-muted-foreground">{app.coverLetter}</p>
+                          )}
+                          {app.proposedBudget != null && (
+                            <p className="mt-2 text-sm">
+                              <span className="text-muted-foreground">Penawaran: </span>
+                              <span className="font-semibold text-[#fd904c]">{formatCurrency(app.proposedBudget)}</span>
+                            </p>
+                          )}
+                          {app.status === 'PENDING' && project.status === 'PUBLISHED' && (
+                            <div className="flex gap-2 mt-3">
+                              <Button
+                                size="sm"
+                                className="bg-green-600 hover:bg-green-700"
+                                onClick={() => {
+                                  setSelectedApplication(app.id);
+                                  setShowAcceptDialog(true);
+                                }}
+                              >
+                                <CheckCircle className="h-4 w-4 mr-1" />
+                                Terima
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="destructive"
+                                onClick={() => {
+                                  setSelectedApplication(app.id);
+                                  setShowRejectDialog(true);
+                                }}
+                              >
+                                <XCircle className="h-4 w-4 mr-1" />
+                                Tolak
+                              </Button>
+                            </div>
+                          )}
+                        </div>
+                      ))
+                    )}
                   </div>
                 )}
               </CardContent>

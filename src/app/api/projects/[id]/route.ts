@@ -39,7 +39,45 @@ const projectUpdateSchema = z.object({
 });
 
 // Helper to format project response with full details
-function formatProjectResponse(project: any, userApplication?: any) {
+function formatProjectResponse(project: any, userApplication?: any, currentUser?: { id: string; role: string } | null) {
+  const rfqPayload = project.rfq ? (() => {
+    const submissions = project.rfq.submissions ?? [];
+    const filteredSubmissions = (currentUser?.role === 'VENDOR')
+      ? submissions.filter((s: { vendorId: string }) => s.vendorId === currentUser?.id)
+      : submissions;
+    return {
+      id: project.rfq.id,
+      title: project.rfq.title,
+      status: project.rfq.status,
+      items: project.rfq.items?.map((item: any) => ({
+        id: item.id,
+        itemName: item.itemName,
+        description: item.description,
+        quantity: item.quantity,
+        unit: item.unit,
+        sortOrder: item.sortOrder,
+      })) ?? [],
+      submissions: filteredSubmissions.map((s: any) => ({
+        id: s.id,
+        status: s.status,
+        notes: s.notes,
+        totalOffer: s.totalOffer,
+        submittedAt: s.submittedAt,
+        vendorId: s.vendorId,
+        vendor: s.vendor ? {
+          id: s.vendor.id,
+          name: s.vendor.name,
+          email: s.vendor.email,
+          avatar: s.vendor.avatar,
+          rating: s.vendor.rating,
+          phone: s.vendor.phone,
+        } : undefined,
+        prices: s.prices,
+      })),
+      _count: project.rfq._count ? { submissions: project.rfq._count.submissions } : { submissions: submissions.length },
+    };
+  })() : null;
+
   return {
     id: project.id,
     title: project.title,
@@ -95,19 +133,7 @@ function formatProjectResponse(project: any, userApplication?: any) {
       icon: project.category.icon,
     } : null,
     skills: project.skills?.map((s: { id: string; name: string }) => ({ id: s.id, name: s.name })) || [],
-    rfq: project.rfq ? {
-      id: project.rfq.id,
-      title: project.rfq.title,
-      status: project.rfq.status,
-      items: project.rfq.items?.map((item: any) => ({
-        id: item.id,
-        itemName: item.itemName,
-        description: item.description,
-        quantity: item.quantity,
-        unit: item.unit,
-        sortOrder: item.sortOrder,
-      })) || [],
-    } : null,
+    rfq: rfqPayload,
     applications: project.applications?.map((app: any) => ({
       id: app.id,
       coverLetter: app.coverLetter,
@@ -246,6 +272,22 @@ export const GET = withAuth(async (user, request: NextRequest, context) => {
         rfq: {
           include: {
             items: { orderBy: { sortOrder: 'asc' } },
+            submissions: {
+              include: {
+                vendor: {
+                  select: {
+                    id: true,
+                    name: true,
+                    email: true,
+                    avatar: true,
+                    rating: true,
+                    phone: true,
+                  },
+                },
+                prices: { include: { item: true } },
+              },
+              orderBy: { submittedAt: 'desc' },
+            },
           },
         },
         applications: {
@@ -343,7 +385,7 @@ export const GET = withAuth(async (user, request: NextRequest, context) => {
       };
     }
 
-    return apiSuccess({ project: formatProjectResponse(responseData, userApplication) });
+    return apiSuccess({ project: formatProjectResponse(responseData, userApplication, user) });
     
   } catch (error) {
     console.error('Get project error:', error);
