@@ -358,13 +358,16 @@ export default function RFQDetailPage({ params }: { params: Promise<{ id: string
         : 0,
   };
 
-  const city = rfq.project.city as { name?: string; province?: { name: string } } | null | undefined;
-  const locationStr = rfq.project.address || city?.name || city?.province?.name || '–';
+  const locationStr =
+    rfq.project.address ||
+    rfq.project.city?.name ||
+    (rfq.project.city?.province && rfq.project.city.province.name) ||
+    '-';
   const deadlineStr = rfq.project.offerDeadline
     ? new Date(rfq.project.offerDeadline).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })
     : rfq.deadline
       ? new Date(rfq.deadline).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })
-      : '–';
+      : '-';
 
   return (
     <div className="space-y-6">
@@ -624,10 +627,10 @@ export default function RFQDetailPage({ params }: { params: Promise<{ id: string
                                   <TableCell className="text-center">{price.item.quantity}</TableCell>
                                   <TableCell className="text-center">{price.item.unit}</TableCell>
                                   <TableCell className="text-xs text-slate-600 max-w-[200px]">
-                                    {price.item.description || '–'}
+                                    {price.item.description || '-'}
                                   </TableCell>
                                   <TableCell className="text-xs text-[#1e5a8c] max-w-[180px]">
-                                    {price.vendorNotes || '–'}
+                                    {price.vendorNotes || '-'}
                                   </TableCell>
                                   <TableCell className="text-right">{formatCurrency(price.unitPrice)}</TableCell>
                                   <TableCell className="text-right font-semibold">{formatCurrency(price.totalPrice || 0)}</TableCell>
@@ -639,8 +642,8 @@ export default function RFQDetailPage({ params }: { params: Promise<{ id: string
                                   <TableCell className="font-medium">{ex.itemName}</TableCell>
                                   <TableCell className="text-center">{ex.quantity}</TableCell>
                                   <TableCell className="text-center">{ex.unit}</TableCell>
-                                  <TableCell className="text-xs text-slate-600">{ex.spesifikasi || '–'}</TableCell>
-                                  <TableCell className="text-xs">{ex.vendorNotes || '–'}</TableCell>
+                                  <TableCell className="text-xs text-slate-600">{ex.spesifikasi || '-'}</TableCell>
+                                  <TableCell className="text-xs">{ex.vendorNotes || '-'}</TableCell>
                                   <TableCell className="text-right">{formatCurrency(ex.unitPrice)}</TableCell>
                                   <TableCell className="text-right font-semibold">{formatCurrency(ex.totalPrice || 0)}</TableCell>
                                 </TableRow>
