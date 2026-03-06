@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/providers/AuthProvider';
@@ -306,19 +306,17 @@ export default function ProyekTenderDetailPage() {
   const isExpired = project.status === 'EXPIRED';
   const offerCount = project._count?.applications ?? (project as { applications?: unknown[] }).applications?.length ?? 0;
 
-  // RFQ: auto hitung total per baris dan grand total
-  const { rowTotals, grandTotal } = useMemo(() => {
-    if (!project.rfq?.items?.length) return { rowTotals: {} as Record<string, number>, grandTotal: 0 };
-    const rowTotals: Record<string, number> = {};
-    let grandTotal = 0;
+  // RFQ: auto hitung total per baris dan grand total (tanpa hook agar urutan hooks stabil)
+  const rowTotals: Record<string, number> = {};
+  let grandTotal = 0;
+  if (project.rfq?.items?.length) {
     project.rfq.items.forEach((item) => {
       const price = rfqPrices[item.id] ?? 0;
       const total = item.quantity * price;
       rowTotals[item.id] = total;
       grandTotal += total;
     });
-    return { rowTotals, grandTotal };
-  }, [project.rfq?.items, rfqPrices]);
+  }
 
   const locationText = project.city
     ? [project.city.province?.name, project.city.name].filter(Boolean).join(', ')
