@@ -358,8 +358,8 @@ export default function RFQDetailPage({ params }: { params: Promise<{ id: string
         : 0,
   };
 
-  const locationStr =
-    rfq.project.address || rfq.project.city?.name || (rfq.project.city as { province?: { name: string } }?.province?.name) || '–';
+  const city = rfq.project.city as { name?: string; province?: { name: string } } | null | undefined;
+  const locationStr = rfq.project.address || city?.name || city?.province?.name || '–';
   const deadlineStr = rfq.project.offerDeadline
     ? new Date(rfq.project.offerDeadline).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })
     : rfq.deadline
