@@ -118,8 +118,9 @@ model User {
   boqs              BOQ[]
   teamMemberships   TeamMember[]
   portfolio         Portfolio[]
-  reviewsGiven      Review[]           @relation("ReviewsGiven")
-  reviewsReceived   Review[]           @relation("ReviewsReceived")
+  reviewsGiven           Review[]           @relation("ReviewsGiven")
+  reviewsReceived        Review[]           @relation("ReviewsReceived")
+  portfolioReviewsGiven  PortfolioReview[] @relation("PortfolioReviewsGiven")
   skillRatingsGiven SkillRating[]      @relation("SkillRatingsGiven")
   skillRatingsReceived SkillRating[]   @relation("SkillRatingsReceived")
   sentMessages      Message[]          @relation("SentMessages")
@@ -791,9 +792,26 @@ model Portfolio {
   user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   city    City?    @relation(fields: [cityId], references: [id], onDelete: SetNull)
   project Project? @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  reviews PortfolioReview[]
 
   @@index([userId])
   @@map("portfolios")
+}
+
+model PortfolioReview {
+  id          String   @id @default(cuid())
+  portfolioId String
+  userId      String
+  rating      Int
+  comment     String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  portfolio Portfolio @relation(fields: [portfolioId], references: [id], onDelete: Cascade)
+  user      User      @relation("PortfolioReviewsGiven", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([portfolioId, userId])
+  @@map("portfolio_reviews")
 }
 
 // =====================

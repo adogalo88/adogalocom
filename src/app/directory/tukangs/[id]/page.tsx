@@ -183,17 +183,19 @@ export default function DirectoryTukangProfilePage() {
                 {portfolio.map((item) => {
                   const imgs = parseImages(item.images);
                   return (
-                    <Card key={item.id} className="border-white/20 bg-white/60 dark:bg-gray-900/60 backdrop-blur-xl overflow-hidden">
-                      {imgs[0] && (
-                        <div className="aspect-video bg-muted">
-                          <img src={imgs[0]} alt={item.title} className="w-full h-full object-cover" />
-                        </div>
-                      )}
-                      <CardContent className="p-4">
-                        <h3 className="font-semibold">{item.title}</h3>
-                        <p className="text-sm text-muted-foreground line-clamp-2 mt-1">{item.description}</p>
-                      </CardContent>
-                    </Card>
+                    <Link key={item.id} href={`/directory/portfolio/${item.id}`}>
+                      <Card className="border-white/20 bg-white/60 dark:bg-gray-900/60 backdrop-blur-xl overflow-hidden transition-all hover:border-emerald-500/40 hover:shadow-lg cursor-pointer">
+                        {imgs[0] && (
+                          <div className="aspect-video bg-muted">
+                            <img src={imgs[0]} alt={item.title} className="w-full h-full object-cover" />
+                          </div>
+                        )}
+                        <CardContent className="p-4">
+                          <h3 className="font-semibold">{item.title}</h3>
+                          <p className="text-sm text-muted-foreground line-clamp-2 mt-1">{item.description}</p>
+                        </CardContent>
+                      </Card>
+                    </Link>
                   );
                 })}
               </div>
