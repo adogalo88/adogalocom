@@ -191,10 +191,15 @@ export default function ProjectsPage() {
                         <span className="text-muted-foreground truncate">{project.client.name}</span>
                       </div>
                     )}
-                    {project._count && (
+                    {(project._count || project.rfq?._count) && (
                       <div className="flex items-center gap-1 text-muted-foreground">
                         <Users className="h-4 w-4" />
-                        <span>{project._count.applications}</span>
+                        <span>
+                          {project.tenderSubtype === 'WITH_RFQ' && project.rfq?._count != null
+                            ? project.rfq._count.submissions
+                            : project._count?.applications ?? 0}
+                        </span>
+                        <span className="text-xs">{project.tenderSubtype === 'WITH_RFQ' ? ' penawaran' : ' lamaran'}</span>
                       </div>
                     )}
                   </div>

@@ -29,12 +29,33 @@ export interface User {
   updatedAt: string;
 }
 
+export interface RFQSubmission {
+  id: string;
+  status: string;
+  notes?: string | null;
+  totalOffer?: number | null;
+  submittedAt?: string | null;
+  vendorId?: string;
+  vendor?: { id: string; name?: string; email?: string; avatar?: string | null; rating?: number; phone?: string | null };
+  prices?: unknown[];
+}
+
+export interface ProjectRFQ {
+  id: string;
+  title: string;
+  status: string;
+  items?: { id: string; itemName: string; quantity: number; unit: string; sortOrder?: number }[];
+  submissions?: RFQSubmission[];
+  _count?: { submissions: number };
+}
+
 export interface Project {
   id: string;
   title: string;
   description: string;
   type: 'TENDER' | 'HARIAN';
-  status: 'DRAFT' | 'PUBLISHED' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED';
+  tenderSubtype?: string | null;
+  status: string;
   budget: number | null;
   location: string | null;
   workerNeeded: number | null;
@@ -48,10 +69,12 @@ export interface Project {
   completedAt: string | null;
   createdAt: string;
   updatedAt: string;
-  client?: User;
+  client?: User & { rating?: number; totalReviews?: number };
   vendor?: User | null;
   category?: { id: string; name: string } | null;
+  city?: { id: string; name: string; province?: { name: string } } | null;
   applications?: Application[];
+  rfq?: ProjectRFQ | null;
   _count?: { applications: number; teamMembers: number };
 }
 

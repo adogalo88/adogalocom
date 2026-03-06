@@ -184,6 +184,12 @@ export async function GET(request: NextRequest) {
           skills: {
             select: { id: true, name: true },
           },
+          rfq: {
+            select: {
+              id: true,
+              _count: { select: { submissions: true } },
+            },
+          },
           _count: {
             select: {
               applications: true,

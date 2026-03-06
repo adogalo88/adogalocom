@@ -23,12 +23,14 @@ interface Project {
   title: string;
   description: string;
   type: string;
+  tenderSubtype?: string | null;
   status: string;
   budget: number | null;
   offerDeadline?: string | null;
   city?: { id: string; name: string; province?: { name: string } } | null;
   category?: { id: string; name: string } | null;
   _count?: { applications: number };
+  rfq?: { id: string; _count?: { submissions: number } } | null;
 }
 
 export default function ProyekTenderPage() {
@@ -214,8 +216,12 @@ export default function ProyekTenderPage() {
                             </span>
                           )}
                         </div>
-                        {p._count?.applications != null && (
-                          <p className="text-xs text-muted-foreground mt-2">{p._count.applications} lamaran</p>
+                        {(p.rfq?._count != null || p._count?.applications != null) && (
+                          <p className="text-xs text-muted-foreground mt-2">
+                            {p.tenderSubtype === 'WITH_RFQ' && p.rfq?._count != null
+                              ? `${p.rfq._count.submissions} penawaran`
+                              : `${p._count?.applications ?? 0} lamaran`}
+                          </p>
                         )}
                       </CardContent>
                     </Card>

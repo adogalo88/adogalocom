@@ -30,6 +30,8 @@ import {
   Building2,
   Hash,
   Layers,
+  Star,
+  User,
   ChevronDown,
   Download,
   Trash2,
@@ -37,6 +39,12 @@ import {
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
+
+function maskClientName(name: string | null | undefined): string {
+  if (!name || name.length === 0) return '**';
+  if (name.length <= 2) return name.slice(0, 2) + '**';
+  return name.slice(0, 2) + '**';
+}
 
 interface Project {
   id: string;
@@ -53,6 +61,7 @@ interface Project {
   files: string | null;
   city?: { id: string; name: string; province?: { id: string; name: string } } | null;
   category?: { id: string; name: string } | null;
+  client?: { name?: string | null; rating?: number; totalReviews?: number; completedTenderCount?: number } | null;
   rfq?: {
     id: string;
     title: string;
@@ -537,6 +546,29 @@ export default function ProyekTenderDetailPage() {
                     </div>
                   </div>
                 )}
+                {/* Pemilik proyek: nama (masked), rating bintang, proyek tender selesai */}
+                <div className="flex items-center gap-3 p-3 rounded-xl bg-gray-50 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-700">
+                  <div className="w-9 h-9 flex items-center justify-center rounded-lg bg-gray-200 dark:bg-gray-700 text-gray-500">
+                    <User className="w-4 h-4" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs text-gray-500">Pemilik Proyek</p>
+                    <p className="text-sm font-semibold text-gray-800 dark:text-gray-200">
+                      {maskClientName(project.client?.name)}
+                    </p>
+                    <div className="flex items-center gap-3 mt-1.5 flex-wrap">
+                      <span className="flex items-center gap-1 text-amber-500">
+                        <Star className="w-4 h-4 fill-amber-500" />
+                        <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                          {project.client?.rating != null ? Number(project.client.rating).toFixed(1) : '0'}
+                        </span>
+                      </span>
+                      <span className="text-sm text-muted-foreground">
+                        {project.client?.completedTenderCount ?? 0} proyek tender/kontrak selesai
+                      </span>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           </div>

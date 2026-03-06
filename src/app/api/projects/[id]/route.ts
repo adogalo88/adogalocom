@@ -385,7 +385,18 @@ export const GET = withAuth(async (user, request: NextRequest, context) => {
       };
     }
 
-    return apiSuccess({ project: formatProjectResponse(responseData, userApplication, user) });
+    let formatted = formatProjectResponse(responseData, userApplication, user);
+    if (formatted.client && project.clientId) {
+      const clientCompletedTenderCount = await db.project.count({
+        where: { clientId: project.clientId, type: 'TENDER', status: 'COMPLETED' },
+      });
+      formatted = {
+        ...formatted,
+        client: { ...formatted.client, completedTenderCount: clientCompletedTenderCount },
+      };
+    }
+
+    return apiSuccess({ project: formatted });
     
   } catch (error) {
     console.error('Get project error:', error);

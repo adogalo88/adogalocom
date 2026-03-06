@@ -92,6 +92,10 @@ export async function GET(request: NextRequest) {
               title: true,
               location: true,
               budget: true,
+              cityId: true,
+              city: {
+                select: { id: true, name: true, province: { select: { name: true } } },
+              },
               client: {
                 select: {
                   id: true,
