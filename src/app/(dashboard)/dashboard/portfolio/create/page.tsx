@@ -78,7 +78,8 @@ export default function CreatePortfolioPage() {
   useEffect(() => {
     fetch('/api/cities?activeOnly=true')
       .then((r) => r.json())
-      .then((d) => (d?.success && d?.data && setCities(d.data)));
+      .then((d) => setCities(Array.isArray(d?.data) ? d.data : []))
+      .catch(() => setCities([]));
   }, []);
 
   const currentYear = new Date().getFullYear();
@@ -322,14 +323,14 @@ export default function CreatePortfolioPage() {
               <div className="space-y-2">
                 <Label>Tahun Selesai (Opsional)</Label>
                 <Select
-                  value={watch('completedYear') != null ? String(watch('completedYear')) : ''}
-                  onValueChange={(v) => setValue('completedYear', v ? parseInt(v, 10) : null)}
+                  value={watch('completedYear') != null && watch('completedYear') !== undefined ? String(watch('completedYear')) : '__none__'}
+                  onValueChange={(v) => setValue('completedYear', v === '__none__' ? null : parseInt(v, 10))}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Pilih tahun" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">—</SelectItem>
+                    <SelectItem value="__none__">—</SelectItem>
                     {yearOptions.map((y) => (
                       <SelectItem key={y} value={String(y)}>{y}</SelectItem>
                     ))}
@@ -339,15 +340,15 @@ export default function CreatePortfolioPage() {
               <div className="space-y-2">
                 <Label>Kota (Opsional)</Label>
                 <Select
-                  value={watch('cityId') ?? ''}
-                  onValueChange={(v) => setValue('cityId', v || null)}
+                  value={watch('cityId') && watch('cityId') !== '' ? watch('cityId')! : '__none__'}
+                  onValueChange={(v) => setValue('cityId', v === '__none__' ? null : v)}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Pilih kota" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">—</SelectItem>
-                    {cities.map((c) => (
+                    <SelectItem value="__none__">—</SelectItem>
+                    {(cities || []).map((c) => (
                       <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
                     ))}
                   </SelectContent>
