@@ -317,6 +317,7 @@ export async function POST(request: NextRequest) {
         status: 'SUBMITTED',
         notes,
         totalOffer,
+        originalTotalOffer: totalOffer,
         submittedAt: new Date(),
         prices: {
           create: pricesData,

@@ -616,10 +616,19 @@ model RFQSubmission {
   vendorId    String
   status      RFQSubmissionStatus @default(DRAFT)
   notes       String? // Catatan dari vendor
-  totalOffer  Float? // Total penawaran (dihitung dari item prices)
+  totalOffer  Float? // Total penawaran saat ini (dapat berubah setelah negosiasi)
   submittedAt DateTime? // Waktu submit
   createdAt   DateTime            @default(now())
   updatedAt   DateTime            @updatedAt
+
+  // Negosiasi (client 1x nego, vendor 1x respond)
+  originalTotalOffer        Float?
+  negotiationRequestedTotal Float?
+  negotiationMessage        String?
+  negotiationStatus         String?
+  negotiationDiscountAmount Float?
+  vendorCounterTotal        Float?
+  vendorCounterMessage      String?
 
   // Relations
   rfq         RFQ                      @relation(fields: [rfqId], references: [id], onDelete: Cascade)

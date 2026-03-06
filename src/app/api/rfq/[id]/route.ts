@@ -31,10 +31,12 @@ export async function GET(
             id: true,
             title: true,
             description: true,
-            location: true,
+            address: true,
             budget: true,
             startDate: true,
             endDate: true,
+            offerDeadline: true,
+            clientId: true,
             client: {
               select: {
                 id: true,
@@ -43,6 +45,9 @@ export async function GET(
                 avatar: true,
                 phone: true,
               },
+            },
+            city: {
+              select: { id: true, name: true, province: { select: { name: true } } },
             },
           },
         },
@@ -77,6 +82,8 @@ export async function GET(
                 email: true,
                 avatar: true,
                 rating: true,
+                totalProjects: true,
+                isVerified: true,
               },
             },
             prices: {

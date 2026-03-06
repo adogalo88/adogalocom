@@ -596,10 +596,19 @@ model RFQSubmission {
   vendorId    String
   status      RFQSubmissionStatus @default(DRAFT)
   notes       String? // Catatan dari vendor
-  totalOffer  Float? // Total penawaran (dihitung dari item prices)
+  totalOffer  Float? // Total penawaran saat ini (dapat berubah setelah negosiasi)
   submittedAt DateTime? // Waktu submit
   createdAt   DateTime            @default(now())
   updatedAt   DateTime            @updatedAt
+
+  // Negosiasi (client 1x nego, vendor 1x respond)
+  originalTotalOffer       Float?   // Snapshot total saat pertama submit (untuk batas counter)
+  negotiationRequestedTotal Float?  // Harga yang diminta client
+  negotiationMessage       String?  // Pesan negosiasi client
+  negotiationStatus        String?  // NONE | PENDING | ACCEPTED | REJECTED | COUNTERED
+  negotiationDiscountAmount Float?  // Potongan negosiasi (original - total setelah disetujui)
+  vendorCounterTotal       Float?   // Jika vendor counter (harus <= originalTotalOffer)
+  vendorCounterMessage     String?
 
   // Relations
   rfq         RFQ                      @relation(fields: [rfqId], references: [id], onDelete: Cascade)
