@@ -26,6 +26,7 @@ import {
   MessageSquare,
   Send,
   Ban,
+  Trash2,
 } from 'lucide-react';
 import Link from 'next/link';
 import { toast } from 'sonner';
@@ -123,6 +124,24 @@ export default function ProjectDetailPage() {
       setSubmittingComment(false);
     }
   };
+
+  const handleDeleteComment = async (commentId: string) => {
+    if (!projectId || user?.role !== 'ADMIN') return;
+    if (!confirm('Hapus komentar ini? (untuk pesan tidak pantas/spam)')) return;
+    try {
+      const res = await fetch(`/api/projects/${projectId}/comments/${commentId}`, { method: 'DELETE', credentials: 'include' });
+      const data = await res.json();
+      if (res.ok && data?.success) {
+        setComments((prev) => prev.filter((c) => c.id !== commentId));
+        toast.success('Komentar telah dihapus');
+      } else {
+        toast.error(data?.error || 'Gagal menghapus komentar');
+      }
+    } catch {
+      toast.error('Gagal menghapus komentar');
+    }
+  };
+
   const createApplication = useCreateApplication();
   const updateApplication = useUpdateApplication(selectedApplication ?? '');
   const deleteProject = useDeleteProject(projectId);
@@ -501,19 +520,25 @@ export default function ProjectDetailPage() {
                   ) : (
                     comments.map((c) => {
                       const isVendor = c.user.role === 'VENDOR';
+                      const isAdminRole = c.user.role === 'ADMIN';
                       return (
-                        <div key={c.id} className={`flex gap-3 ${isVendor ? 'flex-row-reverse' : ''}`}>
-                          <div className={`w-9 h-9 shrink-0 rounded-full flex items-center justify-center text-xs font-bold text-white ${isVendor ? 'bg-[#e57835]' : 'bg-[#fd904c]'}`}>
+                        <div key={c.id} className={`flex gap-3 ${isVendor || isAdminRole ? 'flex-row-reverse' : ''}`}>
+                          <div className={`w-9 h-9 shrink-0 rounded-full flex items-center justify-center text-xs font-bold text-white ${isAdminRole ? 'bg-slate-600' : isVendor ? 'bg-[#e57835]' : 'bg-[#fd904c]'}`}>
                             {c.user.name?.charAt(0) ?? '?'}
                           </div>
-                          <div className={`max-w-[75%] ${isVendor ? 'text-right' : ''}`}>
-                            <div className={`flex items-center gap-2 mb-1 ${isVendor ? 'justify-end' : ''}`}>
-                              <span className={`text-sm font-medium ${isVendor ? 'text-[#e57835]' : 'text-[#fd904c]'}`}>{c.user.name}</span>
+                          <div className={`max-w-[75%] ${isVendor || isAdminRole ? 'text-right' : ''}`}>
+                            <div className={`flex items-center gap-2 mb-1 ${isVendor || isAdminRole ? 'justify-end' : ''}`}>
+                              <span className={`text-sm font-medium ${isAdminRole ? 'text-slate-600' : isVendor ? 'text-[#e57835]' : 'text-[#fd904c]'}`}>{c.user.name}</span>
                               <span className="text-xs text-muted-foreground">
                                 {new Date(c.createdAt).toLocaleDateString('id-ID')}, {new Date(c.createdAt).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}
                               </span>
+                              {user?.role === 'ADMIN' && (
+                                <Button type="button" variant="ghost" size="icon" className="h-7 w-7 text-red-500 hover:text-red-700 hover:bg-red-50" onClick={() => handleDeleteComment(c.id)} title="Hapus komentar">
+                                  <Trash2 className="h-3.5 w-3.5" />
+                                </Button>
+                              )}
                             </div>
-                            <div className="inline-block px-4 py-3 rounded-2xl text-sm bg-[#fd904c]/10 border border-[#fd904c]/20 rounded-tl-md">
+                            <div className={`inline-block px-4 py-3 rounded-2xl text-sm border ${isAdminRole ? 'bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700 rounded-tr-md' : 'bg-[#fd904c]/10 border-[#fd904c]/20 rounded-tl-md'}`}>
                               {c.content}
                             </div>
                           </div>
@@ -522,7 +547,7 @@ export default function ProjectDetailPage() {
                     })
                   )}
                 </div>
-                {(user?.role === 'VENDOR' || user?.role === 'CLIENT') && (
+                {(user?.role === 'VENDOR' || user?.role === 'CLIENT' || user?.role === 'ADMIN') && (
                   <div className="flex gap-3 pt-4 border-t">
                     <Textarea
                       placeholder="Tulis pesan... (Enter untuk kirim)"

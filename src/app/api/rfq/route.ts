@@ -194,7 +194,7 @@ export async function POST(request: NextRequest) {
       where: { id: rfqId },
       include: { 
         items: true,
-        project: { select: { clientId: true, offerDeadline: true } },
+        project: { select: { clientId: true, offerDeadline: true, status: true } },
       },
     });
 
@@ -205,10 +205,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check RFQ status
-    if (rfq.status !== 'PUBLISHED' && rfq.status !== 'CLOSED') {
+    // Allow submission when project is PUBLISHED and offer deadline not passed.
+    // (RFQ record may still be DRAFT when project is approved; treat as open.)
+    if (rfq.project.status !== 'PUBLISHED') {
       return NextResponse.json(
-        { error: 'RFQ tidak menerima penawaran lagi' },
+        { error: 'Proyek belum dipublikasi atau tidak menerima penawaran' },
         { status: 400 }
       );
     }

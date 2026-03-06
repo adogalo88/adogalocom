@@ -31,6 +31,11 @@ const projectUpdateSchema = z.object({
   applicationDeadline: z.string().datetime().optional().nullable().transform((v) => (v ? new Date(v) : null)),
   minSalary: z.number().min(0).optional().nullable(),
   maxSalary: z.number().min(0).optional().nullable(),
+  address: z.string().max(500).optional().nullable(),
+  photos: z.string().optional().nullable(),
+  files: z.string().optional().nullable(),
+  tenderSubtype: z.enum(['WITH_RFQ', 'WITHOUT_RFQ']).optional().nullable(),
+  cityId: z.string().optional().nullable(),
 });
 
 // Helper to format project response with full details
@@ -449,6 +454,11 @@ export const PATCH = withAuth(async (user, request: NextRequest, context) => {
     if (data.applicationDeadline !== undefined) updateData.applicationDeadline = data.applicationDeadline;
     if (data.minSalary !== undefined) updateData.minSalary = data.minSalary;
     if (data.maxSalary !== undefined) updateData.maxSalary = data.maxSalary;
+    if (data.address !== undefined) updateData.address = data.address;
+    if (data.photos !== undefined) updateData.photos = data.photos;
+    if (data.files !== undefined) updateData.files = data.files;
+    if (data.tenderSubtype !== undefined) updateData.tenderSubtype = data.tenderSubtype;
+    if (data.cityId !== undefined) updateData.cityId = data.cityId;
 
     // Handle status changes
     if (data.status) {
@@ -522,6 +532,17 @@ export const PATCH = withAuth(async (user, request: NextRequest, context) => {
       }
     }
     
+    // Notify client when admin edits project
+    if (user.role === UserRole.ADMIN && existingProject.clientId) {
+      await createNotification(
+        existingProject.clientId,
+        'PROJECT_APPLICATION',
+        'Proyek Diperbarui oleh Admin',
+        `Admin telah memperbarui informasi proyek "${existingProject.title}". Silakan cek di dashboard proyek Anda.`,
+        { projectId }
+      );
+    }
+
     // Update project
     const updatedProject = await db.project.update({
       where: { id: projectId },

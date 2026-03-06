@@ -59,7 +59,7 @@ export async function GET(
         ? { id: c.user.id, name: c.user.name, role: c.user.role, avatar: c.user.avatar }
         : {
             id: c.user.id,
-            name: c.user.role === UserRole.VENDOR ? 'Vendor' : c.user.role === UserRole.CLIENT ? 'Client' : c.user.name,
+            name: c.user.role === UserRole.VENDOR ? 'Vendor' : c.user.role === UserRole.CLIENT ? 'Client' : c.user.role === UserRole.ADMIN ? 'Admin' : c.user.name,
             role: c.user.role,
             avatar: c.user.avatar,
           },
@@ -82,8 +82,8 @@ export async function POST(
     if (!currentUser) {
       return NextResponse.json({ error: 'Anda harus login untuk berkomentar' }, { status: 401 });
     }
-    if (currentUser.role !== UserRole.VENDOR && currentUser.role !== UserRole.CLIENT) {
-      return NextResponse.json({ error: 'Hanya Vendor atau Client yang dapat berkomentar' }, { status: 403 });
+    if (currentUser.role !== UserRole.VENDOR && currentUser.role !== UserRole.CLIENT && currentUser.role !== UserRole.ADMIN) {
+      return NextResponse.json({ error: 'Hanya Vendor, Client, atau Admin yang dapat berkomentar' }, { status: 403 });
     }
 
     const params = await context.params;
@@ -135,7 +135,7 @@ export async function POST(
       ? comment.user
       : {
           ...comment.user,
-          name: comment.user.role === UserRole.VENDOR ? 'Vendor' : comment.user.role === UserRole.CLIENT ? 'Client' : comment.user.name,
+          name: comment.user.role === UserRole.VENDOR ? 'Vendor' : comment.user.role === UserRole.CLIENT ? 'Client' : comment.user.role === UserRole.ADMIN ? 'Admin' : comment.user.name,
         };
 
     return NextResponse.json({
