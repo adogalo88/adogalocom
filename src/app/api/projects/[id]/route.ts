@@ -287,7 +287,7 @@ export const GET = withAuth(async (user, request: NextRequest, context) => {
       };
     }
     
-    return apiSuccess(formatProjectResponse(responseData, userApplication));
+    return apiSuccess({ project: formatProjectResponse(responseData, userApplication) });
     
   } catch (error) {
     console.error('Get project error:', error);

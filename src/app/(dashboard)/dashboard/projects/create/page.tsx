@@ -39,7 +39,24 @@ const projectSchema = z.object({
   skillIds: z.array(z.string()).optional(),
   startDate: z.string().optional(),
   endDate: z.string().optional(),
-  rfqItems: z.array(rfqItemSchema).optional(),
+  // RFQ hanya wajib divalidasi saat subtipe WITH_RFQ; kalau WITHOUT_RFQ abaikan
+  rfqItems: z.array(z.object({
+    itemName: z.string(),
+    description: z.string().optional(),
+    quantity: z.number(),
+    unit: z.string(),
+  })).optional(),
+}).superRefine((data, ctx) => {
+  if (data.type === 'TENDER' && data.tenderSubtype === 'WITH_RFQ') {
+    if (!data.rfqItems || data.rfqItems.length === 0 || data.rfqItems.every(i => !(i.itemName || '').trim())) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Harap isi minimal satu item RFQ (nama item)', path: ['rfqItems'] });
+    } else {
+      const firstInvalid = data.rfqItems.findIndex(i => !(i.itemName || '').trim() || !(i.unit || '').trim() || (i.quantity ?? 0) <= 0);
+      if (firstInvalid >= 0) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Setiap item RFQ wajib: nama, satuan, jumlah > 0', path: ['rfqItems'] });
+      }
+    }
+  }
 });
 
 type ProjectForm = z.infer<typeof projectSchema>;
@@ -94,7 +111,7 @@ export default function CreateProjectPage() {
     defaultValues: {
       type: 'TENDER',
       tenderSubtype: 'WITHOUT_RFQ',
-      rfqItems: [{ itemName: '', description: '', quantity: 1, unit: 'm' }],
+      rfqItems: [], // Hanya diisi saat subtipe WITH_RFQ dipilih
     },
   });
 
@@ -297,8 +314,12 @@ export default function CreateProjectPage() {
               <div className="space-y-2">
                 <Label>Subtipe Tender *</Label>
                 <Select
-                  value={watch('tenderSubtype') ?? 'WITHOUT_RFQ'}
-                  onValueChange={(value) => setValue('tenderSubtype', value as 'WITH_RFQ' | 'WITHOUT_RFQ')}
+                value={watch('tenderSubtype') ?? 'WITHOUT_RFQ'}
+                  onValueChange={(value) => {
+                    setValue('tenderSubtype', value as 'WITH_RFQ' | 'WITHOUT_RFQ');
+                    if (value === 'WITHOUT_RFQ') setValue('rfqItems', []);
+                    else setValue('rfqItems', [{ itemName: '', description: '', quantity: 1, unit: 'm' }]);
+                  }}
                 >
                   <SelectTrigger>
                     <SelectValue />

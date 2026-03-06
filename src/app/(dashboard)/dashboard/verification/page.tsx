@@ -64,6 +64,10 @@ interface Project {
   };
   category: { id: string; name: string } | null;
   _count: { applications: number };
+  rfq?: {
+    id: string;
+    items: Array<{ id: string; itemName: string; description: string | null; quantity: number; unit: string; sortOrder: number }>;
+  } | null;
 }
 
 interface Material {
@@ -193,8 +197,8 @@ export default function VerificationPage() {
       });
 
       const result = await response.json();
-      if (result.success) {
-        toast.success(`${type === 'project' ? 'Proyek' : 'Material'} berhasil diverifikasi`);
+      if (response.ok && !result.error) {
+        toast.success(result.message || `${type === 'project' ? 'Proyek' : 'Material'} berhasil diverifikasi`);
         fetchVerifications();
       } else {
         toast.error(result.error || 'Gagal memverifikasi');
@@ -955,6 +959,36 @@ export default function VerificationPage() {
                   <p className="font-medium">{selectedProject._count.applications}</p>
                 </div>
               </div>
+
+              {selectedProject.rfq?.items && selectedProject.rfq.items.length > 0 && (
+                <div className="border-t pt-4">
+                  <p className="text-sm font-medium text-muted-foreground mb-2">Tabel RFQ (Item Pekerjaan)</p>
+                  <div className="rounded-lg border overflow-hidden">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="bg-muted/50">
+                          <th className="text-left p-2 font-medium">No</th>
+                          <th className="text-left p-2 font-medium">Nama Item</th>
+                          <th className="text-left p-2 font-medium">Deskripsi</th>
+                          <th className="text-right p-2 font-medium">Jumlah</th>
+                          <th className="text-left p-2 font-medium">Satuan</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {selectedProject.rfq.items.map((item, idx) => (
+                          <tr key={item.id} className="border-t">
+                            <td className="p-2">{idx + 1}</td>
+                            <td className="p-2 font-medium">{item.itemName}</td>
+                            <td className="p-2 text-muted-foreground">{item.description || '-'}</td>
+                            <td className="p-2 text-right">{item.quantity}</td>
+                            <td className="p-2">{item.unit}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </DialogContent>

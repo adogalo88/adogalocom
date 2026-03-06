@@ -26,6 +26,11 @@ export const GET = withRole(['ADMIN'], async (user: SafeUser, request: NextReque
           },
           category: { select: { id: true, name: true } },
           _count: { select: { applications: true } },
+          rfq: {
+            include: {
+              items: { orderBy: { sortOrder: 'asc' } },
+            },
+          },
         },
         orderBy: { createdAt: 'desc' },
       });

@@ -57,6 +57,7 @@ export const PATCH = withRole(['ADMIN'], async (user: SafeUser, request: NextReq
       });
 
       return apiSuccess({
+        success: true,
         message: 'Proyek berhasil diverifikasi dan dipublikasikan',
         project: updatedProject,
       });
@@ -87,6 +88,7 @@ export const PATCH = withRole(['ADMIN'], async (user: SafeUser, request: NextReq
       });
 
       return apiSuccess({
+        success: true,
         message: 'Proyek telah ditolak',
         project: updatedProject,
       });
