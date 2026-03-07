@@ -141,11 +141,11 @@ export default function ProjectDetailPage() {
   };
 
   const fetchRecommendedVendors = useCallback(async () => {
-    if (!project?.categoryId) return;
     setRecommendVendorsLoading(true);
     try {
       const params = new URLSearchParams();
-      params.set('categoryIds', project.categoryId);
+      const catId = project?.category?.id ?? project?.categoryId;
+      if (catId) params.set('categoryIds', catId);
       params.set('limit', '8');
       params.set('sortBy', 'rating');
       params.set('sortOrder', 'desc');
@@ -162,13 +162,13 @@ export default function ProjectDetailPage() {
     } finally {
       setRecommendVendorsLoading(false);
     }
-  }, [project?.categoryId]);
+  }, [project?.category?.id, project?.categoryId]);
 
   useEffect(() => {
-    if (projectTab === 'rekomendasi-vendor' && project?.categoryId) {
+    if (projectTab === 'rekomendasi-vendor' && project?.type === 'TENDER' && project?.status === 'PUBLISHED') {
       fetchRecommendedVendors();
     }
-  }, [projectTab, project?.categoryId, fetchRecommendedVendors]);
+  }, [projectTab, project?.type, project?.status, fetchRecommendedVendors]);
 
   const handleDeleteComment = async (commentId: string) => {
     if (!projectId || user?.role !== 'ADMIN') return;
@@ -427,7 +427,7 @@ export default function ProjectDetailPage() {
               ) : project.type === 'TENDER' && isOwner ? (
                 <TabsTrigger value="penawaran">Penawaran</TabsTrigger>
               ) : null}
-              {project.type === 'TENDER' && isOwner && project.status === 'PUBLISHED' && project.categoryId && (
+              {project.type === 'TENDER' && isOwner && project.status === 'PUBLISHED' && !(project.offerDeadline && new Date(project.offerDeadline) < new Date()) && (
                 <TabsTrigger value="rekomendasi-vendor">Rekomendasi Vendor</TabsTrigger>
               )}
             </TabsList>
@@ -888,7 +888,7 @@ export default function ProjectDetailPage() {
             </TabsContent>
           )}
 
-            {project.type === 'TENDER' && isOwner && project.status === 'PUBLISHED' && project.categoryId && (
+            {project.type === 'TENDER' && isOwner && project.status === 'PUBLISHED' && !(project.offerDeadline && new Date(project.offerDeadline) < new Date()) && (
             <TabsContent value="rekomendasi-vendor" className="mt-4 space-y-4">
               <Card className="glass-card">
                 <CardHeader>
@@ -1069,7 +1069,7 @@ export default function ProjectDetailPage() {
             </CardContent>
           </Card>
 
-          {/* Dana Komitmen - hanya untuk Client & Admin, proyek Tender PUBLISHED */}
+          {/* Dana Komitmen - Client & Admin, proyek TENDER, status PUBLISHED */}
           {(isOwner || isAdmin) && project.type === 'TENDER' && project.status === 'PUBLISHED' && (
             <Card className="glass-card border-emerald-500/50 bg-emerald-50/50 dark:bg-emerald-950/20 dark:border-emerald-500/30">
               <CardHeader>

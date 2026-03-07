@@ -90,6 +90,7 @@ function formatProjectResponse(project: any, userApplication?: any, currentUser?
     budget: project.budget,
     location: project.location,
     cityId: project.cityId,
+    categoryId: project.categoryId ?? project.category?.id ?? null,
     city: project.city,
     address: project.address,
     workerNeeded: project.workerNeeded,
