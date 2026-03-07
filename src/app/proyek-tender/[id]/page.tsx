@@ -110,6 +110,7 @@ export default function ProyekTenderDetailPage() {
   const [rfqExtraRows, setRfqExtraRows] = useState<Array<{ id: string; itemName: string; spesifikasi: string; quantity: number; unit: string; unitPrice: number; vendorNotes: string }>>([]);
   const [rfqNotes, setRfqNotes] = useState('');
   const [offerFileUrl, setOfferFileUrl] = useState('');
+  const [proposedBudget, setProposedBudget] = useState<string>('');
   const [uploadingFile, setUploadingFile] = useState(false);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
   const [previewCaption, setPreviewCaption] = useState('');
@@ -323,8 +324,14 @@ export default function ProyekTenderDetailPage() {
           toast.error(data?.error || 'Gagal mengirim penawaran');
         }
       } else {
+        const nominal = proposedBudget.trim() ? Number(proposedBudget.replace(/\D/g, '')) : 0;
         if (!offerFileUrl.trim()) {
           toast.error('Unggah file penawaran terlebih dahulu');
+          setOfferSubmitting(false);
+          return;
+        }
+        if (!nominal || nominal <= 0) {
+          toast.error('Masukkan nominal total penawaran');
           setOfferSubmitting(false);
           return;
         }
@@ -335,6 +342,7 @@ export default function ProyekTenderDetailPage() {
           body: JSON.stringify({
             projectId: project.id,
             offerFileUrl: offerFileUrl.trim(),
+            proposedBudget: nominal,
           }),
         });
         const data = await res.json();
@@ -342,6 +350,7 @@ export default function ProyekTenderDetailPage() {
           toast.success('Penawaran berhasil dikirim');
           setOfferDialogOpen(false);
           setOfferFileUrl('');
+          setProposedBudget('');
           fetchProject();
         } else {
           toast.error(data?.error || 'Gagal mengirim penawaran');
@@ -1071,16 +1080,32 @@ export default function ProyekTenderDetailPage() {
                 </>
               ) : (
                 <>
-                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">Unggah file penawaran (PDF/dokumen).</p>
+                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">Unggah file penawaran (PDF/dokumen) dan isi nominal total penawaran. Nilai ini dapat dinegosiasikan atau disetujui oleh client.</p>
                   <div className="flex items-center gap-3 mb-4">
                     <Input type="file" accept=".pdf,.doc,.docx" onChange={handleUploadOfferFile} disabled={uploadingFile} className="flex-1" />
                     {uploadingFile && <Loader2 className="w-5 h-5 animate-spin text-[#fd904c]" />}
                   </div>
-                  {offerFileUrl && <p className="text-sm text-green-600 dark:text-green-400 mb-4">File terunggah. Klik Kirim untuk mengajukan penawaran.</p>}
+                  <div className="mb-4">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Nominal total penawaran (Rp) *</label>
+                    <Input
+                      type="text"
+                      inputMode="numeric"
+                      placeholder="Contoh: 150000000"
+                      value={proposedBudget}
+                      onChange={(e) => setProposedBudget(e.target.value.replace(/\D/g, ''))}
+                      className="max-w-xs"
+                    />
+                    {proposedBudget && (
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Rp {Number(proposedBudget.replace(/\D/g, '')).toLocaleString('id-ID')}
+                      </p>
+                    )}
+                  </div>
+                  {offerFileUrl && <p className="text-sm text-green-600 dark:text-green-400 mb-4">File terunggah. Isi nominal total lalu Kirim untuk mengajukan penawaran.</p>}
                   <div className="flex justify-end">
                     <Button
                       onClick={handleSubmitOffer}
-                      disabled={offerSubmitting || !offerFileUrl}
+                      disabled={offerSubmitting || !offerFileUrl || !proposedBudget.trim() || Number(proposedBudget.replace(/\D/g, '')) <= 0}
                       className="bg-[#fd904c] hover:bg-[#e57835] text-white shadow-lg shadow-[#fd904c]/30"
                     >
                       {offerSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
@@ -1128,12 +1153,26 @@ export default function ProyekTenderDetailPage() {
           ) : (
             <div className="space-y-4">
               <Input type="file" accept=".pdf,.doc,.docx" onChange={handleUploadOfferFile} disabled={uploadingFile} />
+              <div>
+                <label className="block text-sm font-medium mb-2">Nominal total penawaran (Rp) *</label>
+                <Input
+                  type="text"
+                  inputMode="numeric"
+                  placeholder="Contoh: 150000000"
+                  value={proposedBudget}
+                  onChange={(e) => setProposedBudget(e.target.value.replace(/\D/g, ''))}
+                />
+              </div>
               {offerFileUrl && <p className="text-sm text-green-600">File terunggah.</p>}
             </div>
           )}
           <div className="flex justify-end gap-2 pt-4">
             <Button variant="outline" onClick={() => setOfferDialogOpen(false)}>Batal</Button>
-            <Button onClick={handleSubmitOffer} disabled={offerSubmitting} className="bg-[#fd904c] hover:bg-[#e57835]">
+            <Button
+              onClick={handleSubmitOffer}
+              disabled={offerSubmitting || (project.rfq?.items?.length ? false : (!offerFileUrl || !proposedBudget.trim() || Number(proposedBudget.replace(/\D/g, '')) <= 0))}
+              className="bg-[#fd904c] hover:bg-[#e57835]"
+            >
               {offerSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Kirim'}
             </Button>
           </div>

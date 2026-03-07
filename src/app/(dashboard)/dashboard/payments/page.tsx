@@ -26,14 +26,14 @@ export default function PaymentsPage() {
 
   const transactions = data?.data || [];
 
-  // Calculate stats
+  // Calculate stats (pakai total agar sinkron dengan card Pendapatan di dashboard vendor)
   const totalCompleted = transactions
     .filter(t => t.status === 'COMPLETED')
-    .reduce((sum, t) => sum + t.amount, 0);
+    .reduce((sum, t) => sum + ((t as { total?: number }).total ?? t.amount ?? 0), 0);
   
   const totalPending = transactions
-    .filter(t => t.status === 'PENDING')
-    .reduce((sum, t) => sum + t.amount, 0);
+    .filter(t => t.status === 'PENDING' || t.status === 'PROCESSING')
+    .reduce((sum, t) => sum + ((t as { total?: number }).total ?? t.amount ?? 0), 0);
 
   const isAdmin = user?.role === 'ADMIN';
 

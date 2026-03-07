@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { db } from '@/lib/db';
 import { getCurrentUser } from '@/lib/auth';
 import { ApplicationStatus, UserRole } from '@prisma/client';
+import { TransactionType } from '@prisma/client';
 
 // Validation schema for updating application status
 const updateApplicationSchema = z.object({
@@ -293,6 +294,24 @@ export async function PATCH(
         }),
       },
     });
+
+    // If accepted (tender): buat transaksi pembayaran proyek sebagai dasar pendapatan vendor
+    if (newStatus === ApplicationStatus.ACCEPTED && application.user.role === UserRole.VENDOR) {
+      const amount = application.proposedBudget ?? 0;
+      if (amount > 0) {
+        await db.transaction.create({
+          data: {
+            userId: application.project.clientId,
+            projectId: application.projectId,
+            type: TransactionType.PROJECT_PAYMENT,
+            amount,
+            fee: 0,
+            total: amount,
+            status: 'PENDING',
+          },
+        });
+      }
+    }
 
     // If accepted, also create team member record for TUKANG role
     if (newStatus === ApplicationStatus.ACCEPTED && application.user.role === UserRole.TUKANG) {

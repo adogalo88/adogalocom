@@ -228,6 +228,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Tender tanpa RFQ: jika kirim offerFileUrl, nominal total penawaran (proposedBudget) wajib
+    const isTenderWithoutRfq = project.type === 'TENDER' && (project as { tenderSubtype?: string }).tenderSubtype === 'WITHOUT_RFQ';
+    if (isTenderWithoutRfq && offerFileUrl && (!proposedBudget || proposedBudget <= 0)) {
+      return NextResponse.json(
+        { error: 'Nominal total penawaran wajib diisi untuk penawaran tender tanpa RFQ' },
+        { status: 400 }
+      );
+    }
+
     // Check project status
     if (project.status !== 'PUBLISHED') {
       return NextResponse.json(

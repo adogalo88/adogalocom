@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { getCurrentUser } from '@/lib/auth';
-import { MaterialStatus, ProjectStatus, TransactionStatus } from '@prisma/client';
+import { MaterialStatus, ProjectStatus, TransactionStatus, TransactionType } from '@prisma/client';
 
 export async function GET() {
   try {
@@ -34,7 +34,11 @@ export async function GET() {
           db.project.count({ where: { vendorId: user.id, status: ProjectStatus.IN_PROGRESS } }),
           db.teamMember.count({ where: { project: { vendorId: user.id } } }),
           db.transaction.aggregate({
-            where: { userId: user.id, status: TransactionStatus.COMPLETED },
+            where: {
+              project: { vendorId: user.id },
+              status: TransactionStatus.COMPLETED,
+              type: TransactionType.PROJECT_PAYMENT,
+            },
             _sum: { total: true },
           }),
         ]);

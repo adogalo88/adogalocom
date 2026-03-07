@@ -308,6 +308,22 @@ export async function PUT(
               },
             });
           }
+
+          // Buat transaksi pembayaran proyek (nilai penawaran menang) sebagai dasar pendapatan vendor
+          const offerAmount = submissionToAccept.totalOffer ?? 0;
+          if (offerAmount > 0 && rfq.project.clientId) {
+            await tx.transaction.create({
+              data: {
+                userId: rfq.project.clientId,
+                projectId: rfq.projectId,
+                type: 'PROJECT_PAYMENT',
+                amount: offerAmount,
+                fee: 0,
+                total: offerAmount,
+                status: 'PENDING',
+              },
+            });
+          }
         });
 
         return NextResponse.json({
