@@ -612,6 +612,7 @@ export default function ProjectDetailPage() {
                 )}
               </CardContent>
             </Card>
+            )}
             </TabsContent>
             )}
 
