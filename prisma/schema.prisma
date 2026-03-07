@@ -373,6 +373,13 @@ model Application {
   createdAt      DateTime          @default(now())
   updatedAt      DateTime          @updatedAt
 
+  // Negosiasi (client 1x nego, vendor 1x respond) - sama seperti RFQ
+  negotiationRequestedTotal Float?   // Harga yang diminta client
+  negotiationMessage       String?  // Pesan negosiasi client
+  negotiationStatus        String?  // NONE | PENDING | ACCEPTED | REJECTED | COUNTERED
+  vendorCounterTotal       Float?   // Jika vendor counter
+  vendorCounterMessage     String?
+
   // Relations
   project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
   user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)

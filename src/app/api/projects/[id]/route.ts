@@ -146,6 +146,11 @@ function formatProjectResponse(project: any, userApplication?: any, currentUser?
       offerFileUrl: app.offerFileUrl,
       status: app.status,
       createdAt: app.createdAt,
+      negotiationRequestedTotal: app.negotiationRequestedTotal ?? null,
+      negotiationMessage: app.negotiationMessage ?? null,
+      negotiationStatus: app.negotiationStatus ?? null,
+      vendorCounterTotal: app.vendorCounterTotal ?? null,
+      vendorCounterMessage: app.vendorCounterMessage ?? null,
       user: {
         id: app.user.id,
         name: app.user.name,
@@ -154,6 +159,7 @@ function formatProjectResponse(project: any, userApplication?: any, currentUser?
         role: app.user.role,
         rating: app.user.rating,
         totalReviews: app.user.totalReviews,
+        totalProjects: app.user.totalProjects ?? 0,
         isVerified: app.user.isVerified,
         specialty: app.user.specialty,
         experience: app.user.experience,
@@ -187,6 +193,11 @@ function formatProjectResponse(project: any, userApplication?: any, currentUser?
       offerFileUrl: userApplication.offerFileUrl,
       status: userApplication.status,
       createdAt: userApplication.createdAt,
+      negotiationRequestedTotal: userApplication.negotiationRequestedTotal ?? null,
+      negotiationMessage: userApplication.negotiationMessage ?? null,
+      negotiationStatus: userApplication.negotiationStatus ?? null,
+      vendorCounterTotal: userApplication.vendorCounterTotal ?? null,
+      vendorCounterMessage: userApplication.vendorCounterMessage ?? null,
     } : null,
   };
 }
@@ -304,6 +315,11 @@ export const GET = withAuth(async (user, request: NextRequest, context) => {
             offerFileUrl: true,
             status: true,
             createdAt: true,
+            negotiationRequestedTotal: true,
+            negotiationMessage: true,
+            negotiationStatus: true,
+            vendorCounterTotal: true,
+            vendorCounterMessage: true,
             user: {
               select: {
                 id: true,
@@ -313,6 +329,7 @@ export const GET = withAuth(async (user, request: NextRequest, context) => {
                 role: true,
                 rating: true,
                 totalReviews: true,
+                totalProjects: true,
                 isVerified: true,
                 specialty: true,
                 experience: true,

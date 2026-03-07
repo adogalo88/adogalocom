@@ -32,6 +32,7 @@ import {
   Star,
   ExternalLink,
   Copy,
+  Download,
   Settings2,
   UserPlus,
 } from 'lucide-react';
@@ -90,6 +91,14 @@ export default function ProjectDetailPage() {
   const [recommendedVendors, setRecommendedVendors] = useState<Array<{ id: string; name: string; avatar: string | null; rating: number; totalProjects?: number }>>([]);
   const [recommendVendorsLoading, setRecommendVendorsLoading] = useState(false);
   const [invitingVendorId, setInvitingVendorId] = useState<string | null>(null);
+  const [openNegoAppId, setOpenNegoAppId] = useState<string | null>(null);
+  const [negoRequestedTotal, setNegoRequestedTotal] = useState('');
+  const [negoMessage, setNegoMessage] = useState('');
+  const [submittingNego, setSubmittingNego] = useState(false);
+  const [respondAction, setRespondAction] = useState<'ACCEPT' | 'REJECT' | 'COUNTER'>('ACCEPT');
+  const [counterTotal, setCounterTotal] = useState('');
+  const [counterMessage, setCounterMessage] = useState('');
+  const [submittingRespond, setSubmittingRespond] = useState(false);
   const chatContainerRef = useRef<HTMLDivElement>(null);
 
   const { data, isLoading, error, refetch } = useProject(projectId);
@@ -191,7 +200,7 @@ export default function ProjectDetailPage() {
   const updateApplication = useUpdateApplication(selectedApplication ?? '');
   const deleteProject = useDeleteProject(projectId);
 
-  const isOwner = project?.clientId === user?.id;
+  const isOwner = project?.clientId != null && user?.id != null && String(project.clientId) === String(user.id);
   const isVendor = user?.role === 'VENDOR';
   const isTukang = user?.role === 'TUKANG';
   const isAdmin = user?.role === 'ADMIN';
@@ -238,6 +247,81 @@ export default function ProjectDetailPage() {
       refetch();
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Gagal menolak penawaran');
+    }
+  };
+
+  const handleSendAppNego = async (applicationId: string) => {
+    const req = parseFloat(negoRequestedTotal.replace(/\D/g, ''));
+    if (!Number.isFinite(req) || req <= 0) {
+      toast.error('Masukkan harga negosiasi yang valid');
+      return;
+    }
+    setSubmittingNego(true);
+    try {
+      const res = await fetch(`/api/applications/${applicationId}/negotiate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ requestedTotal: req, message: negoMessage.trim() || undefined }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        toast.success(data.message);
+        setOpenNegoAppId(null);
+        setNegoRequestedTotal('');
+        setNegoMessage('');
+        refetch();
+      } else {
+        toast.error(data.error || 'Gagal mengirim negosiasi');
+      }
+    } catch {
+      toast.error('Gagal mengirim negosiasi');
+    } finally {
+      setSubmittingNego(false);
+    }
+  };
+
+  const handleRespondAppNego = async () => {
+    const ua = project?.userApplication as { id?: string; proposedBudget?: number; negotiationRequestedTotal?: number } | null;
+    if (!ua?.id) return;
+    if (respondAction === 'COUNTER') {
+      const c = parseFloat(counterTotal.replace(/\D/g, ''));
+      if (!Number.isFinite(c) || c <= 0) {
+        toast.error('Masukkan nilai counter yang valid');
+        return;
+      }
+      const orig = ua.proposedBudget ?? 0;
+      if (c > orig) {
+        toast.error('Harga counter tidak boleh melebihi total penawaran awal');
+        return;
+      }
+    }
+    setSubmittingRespond(true);
+    try {
+      const body: { action: string; counterTotal?: number; counterMessage?: string } = { action: respondAction };
+      if (respondAction === 'COUNTER') {
+        body.counterTotal = parseFloat(counterTotal.replace(/\D/g, ''));
+        body.counterMessage = counterMessage.trim() || undefined;
+      }
+      const res = await fetch(`/api/applications/${ua.id}/negotiate/respond`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(body),
+      });
+      const data = await res.json();
+      if (data.success) {
+        toast.success(data.message);
+        setCounterTotal('');
+        setCounterMessage('');
+        refetch();
+      } else {
+        toast.error(data.error || 'Gagal mengirim respons');
+      }
+    } catch {
+      toast.error('Gagal mengirim respons');
+    } finally {
+      setSubmittingRespond(false);
     }
   };
 
@@ -813,73 +897,171 @@ export default function ProjectDetailPage() {
                         </div>
                       ))
                     ) : (
-                      (offerList as { id: string; user?: { name?: string; email?: string; specialty?: string }; coverLetter?: string; proposedBudget?: number; status: string }[]).map((app) => (
-                        <div
-                          key={app.id}
-                          className={`p-4 rounded-lg border ${
-                            app.status === 'ACCEPTED'
-                              ? 'border-green-500 bg-green-50 dark:bg-green-950/20'
-                              : app.status === 'REJECTED'
-                              ? 'border-red-300 bg-red-50 dark:bg-red-950/20'
-                              : 'border-border bg-muted/30'
-                          }`}
-                        >
-                          <div className="flex items-start justify-between gap-4">
-                            <div className="flex items-center gap-3">
-                              <Avatar>
-                                <AvatarFallback className="bg-gradient-to-br from-[#fd904c] to-[#e57835] text-white">
-                                  {app.user?.name?.charAt(0) || '?'}
-                                </AvatarFallback>
-                              </Avatar>
-                              <div>
-                                <p className="font-medium">{app.user?.name}</p>
-                                <p className="text-sm text-muted-foreground">{app.user?.email}</p>
-                                {app.user?.specialty && (
-                                  <p className="text-xs text-[#fd904c]">{app.user.specialty}</p>
-                                )}
+                      <div className="space-y-4">
+                        {(offerList as { id: string; user?: { id?: string; name?: string; email?: string; specialty?: string; rating?: number; totalProjects?: number }; coverLetter?: string; proposedBudget?: number; offerFileUrl?: string | null; status: string; negotiationRequestedTotal?: number | null; negotiationStatus?: string | null }[]).map((app) => {
+                          const displayTotal = app.proposedBudget ?? 0;
+                          const canNego = app.status === 'PENDING' && project.status === 'PUBLISHED' && app.negotiationRequestedTotal == null;
+                          const canAccept = app.status === 'PENDING' && project.status === 'PUBLISHED';
+                          return (
+                            <div
+                              key={app.id}
+                              className={`p-4 rounded-lg border ${
+                                app.status === 'ACCEPTED'
+                                  ? 'border-green-500 bg-green-50 dark:bg-green-950/20'
+                                  : app.status === 'REJECTED'
+                                  ? 'border-red-300 bg-red-50 dark:bg-red-950/20'
+                                  : 'border-border bg-muted/30'
+                              }`}
+                            >
+                              {/* List baris: Nama vendor | Rating | Proyek selesai | Nilai penawaran | Lampiran */}
+                              <div className="flex flex-wrap items-center gap-4 mb-3">
+                                <div className="flex items-center gap-3 min-w-0">
+                                  <Avatar className="h-10 w-10 shrink-0">
+                                    <AvatarFallback className="bg-gradient-to-br from-[#fd904c] to-[#e57835] text-white text-sm">
+                                      {app.user?.name?.charAt(0) || '?'}
+                                    </AvatarFallback>
+                                  </Avatar>
+                                  <div>
+                                    <p className="font-medium">{app.user?.name ?? 'Vendor'}</p>
+                                    <p className="text-xs text-muted-foreground">{app.user?.email}</p>
+                                  </div>
+                                </div>
+                                <div className="flex items-center gap-1 text-amber-600">
+                                  <Star className="h-4 w-4 fill-amber-400" />
+                                  <span className="text-sm font-medium">{(app.user as { rating?: number })?.rating?.toFixed(1) ?? '0'}</span>
+                                </div>
+                                <div className="text-sm text-muted-foreground">
+                                  <span className="font-medium text-foreground">{(app.user as { totalProjects?: number })?.totalProjects ?? 0}</span> proyek selesai
+                                </div>
+                                <div>
+                                  <span className="text-sm text-muted-foreground">Nilai: </span>
+                                  <span className="font-semibold text-[#fd904c]">{formatCurrency(displayTotal)}</span>
+                                  {app.negotiationStatus === 'PENDING' && (
+                                    <span className="ml-2 text-xs text-amber-600">(Negosiasi menunggu respons vendor)</span>
+                                  )}
+                                  {app.negotiationStatus === 'COUNTERED' && (
+                                    <span className="ml-2 text-xs text-slate-600">(Counter dari vendor)</span>
+                                  )}
+                                </div>
+                                <div>
+                                  {app.offerFileUrl ? (
+                                    <a
+                                      href={app.offerFileUrl}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="inline-flex items-center gap-1 text-sm text-[#fd904c] hover:underline"
+                                    >
+                                      <Download className="h-4 w-4" />
+                                      Unduh lampiran
+                                    </a>
+                                  ) : (
+                                    <span className="text-xs text-muted-foreground">-</span>
+                                  )}
+                                </div>
+                                <Badge className={getApplicationStatusConfig(app.status).className}>
+                                  {getApplicationStatusConfig(app.status).label}
+                                </Badge>
                               </div>
+                              {app.coverLetter && (
+                                <p className="text-sm text-muted-foreground mb-3">{app.coverLetter}</p>
+                              )}
+                              {/* Tombol Negosiasi & Setujui */}
+                              {canAccept && (
+                                <div className="flex flex-wrap gap-2 pt-2 border-t">
+                                  {canNego && (
+                                    <Button
+                                      size="sm"
+                                      className="bg-[#fd904c] hover:bg-[#e57835]"
+                                      onClick={() => {
+                                        setOpenNegoAppId(openNegoAppId === app.id ? null : app.id);
+                                        setNegoRequestedTotal('');
+                                        setNegoMessage('');
+                                      }}
+                                    >
+                                      <MessageSquare className="h-4 w-4 mr-1" />
+                                      Negosiasi
+                                    </Button>
+                                  )}
+                                  {app.negotiationStatus === 'PENDING' && (
+                                    <Badge variant="secondary">Menunggu respons vendor</Badge>
+                                  )}
+                                  <Button
+                                    size="sm"
+                                    className="bg-green-600 hover:bg-green-700"
+                                    onClick={() => {
+                                      setSelectedApplication(app.id);
+                                      setShowAcceptDialog(true);
+                                    }}
+                                  >
+                                    <CheckCircle className="h-4 w-4 mr-1" />
+                                    Setujui Penawaran
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="destructive"
+                                    onClick={() => {
+                                      setSelectedApplication(app.id);
+                                      setShowRejectDialog(true);
+                                    }}
+                                  >
+                                    <XCircle className="h-4 w-4 mr-1" />
+                                    Tolak
+                                  </Button>
+                                </div>
+                              )}
+                              {/* Form negosiasi inline */}
+                              {openNegoAppId === app.id && canNego && (
+                                <div className="mt-4 p-4 rounded-xl bg-orange-50/80 dark:bg-orange-950/20 border border-orange-200/60 dark:border-orange-800/40">
+                                  <div className="font-semibold text-slate-800 dark:text-slate-200 mb-3 flex items-center gap-2">
+                                    <MessageSquare className="h-4 w-4 text-[#fd904c]" />
+                                    Form Negosiasi Harga
+                                  </div>
+                                  <div className="space-y-4">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                      <div>
+                                        <Label className="text-xs">Harga Penawaran Awal</Label>
+                                        <Input value={formatCurrency(app.proposedBudget ?? 0)} disabled className="bg-muted mt-1" />
+                                      </div>
+                                      <div>
+                                        <Label className="text-xs">Harga Negosiasi yang Diinginkan (angka saja)</Label>
+                                        <Input
+                                          placeholder="Contoh: 26000000"
+                                          value={negoRequestedTotal}
+                                          onChange={(e) => setNegoRequestedTotal(e.target.value.replace(/\D/g, ''))}
+                                          className="mt-1"
+                                        />
+                                      </div>
+                                    </div>
+                                    <div>
+                                      <Label className="text-xs">Pesan Negosiasi</Label>
+                                      <Textarea
+                                        placeholder="Jelaskan alasan atau pertimbangan negosiasi harga..."
+                                        value={negoMessage}
+                                        onChange={(e) => setNegoMessage(e.target.value)}
+                                        className="mt-1 min-h-[80px]"
+                                      />
+                                    </div>
+                                    <div className="flex gap-2">
+                                      <Button
+                                        size="sm"
+                                        className="bg-[#fd904c] hover:bg-[#e57835]"
+                                        onClick={() => handleSendAppNego(app.id)}
+                                        disabled={submittingNego}
+                                      >
+                                        {submittingNego ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+                                        <span className="ml-2">Kirim Negosiasi</span>
+                                      </Button>
+                                      <Button size="sm" variant="outline" onClick={() => setOpenNegoAppId(null)}>
+                                        Batal
+                                      </Button>
+                                    </div>
+                                  </div>
+                                </div>
+                              )}
                             </div>
-                            <Badge className={getApplicationStatusConfig(app.status).className}>
-                              {getApplicationStatusConfig(app.status).label}
-                            </Badge>
-                          </div>
-                          {app.coverLetter && (
-                            <p className="mt-3 text-sm text-muted-foreground">{app.coverLetter}</p>
-                          )}
-                          {app.proposedBudget != null && (
-                            <p className="mt-2 text-sm">
-                              <span className="text-muted-foreground">Penawaran: </span>
-                              <span className="font-semibold text-[#fd904c]">{formatCurrency(app.proposedBudget)}</span>
-                            </p>
-                          )}
-                          {app.status === 'PENDING' && project.status === 'PUBLISHED' && (
-                            <div className="flex gap-2 mt-3">
-                              <Button
-                                size="sm"
-                                className="bg-green-600 hover:bg-green-700"
-                                onClick={() => {
-                                  setSelectedApplication(app.id);
-                                  setShowAcceptDialog(true);
-                                }}
-                              >
-                                <CheckCircle className="h-4 w-4 mr-1" />
-                                Terima
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="destructive"
-                                onClick={() => {
-                                  setSelectedApplication(app.id);
-                                  setShowRejectDialog(true);
-                                }}
-                              >
-                                <XCircle className="h-4 w-4 mr-1" />
-                                Tolak
-                              </Button>
-                            </div>
-                          )}
-                        </div>
-                      ))
+                          );
+                        })}
+                      </div>
                     )}
                   </div>
                 )}
@@ -1068,6 +1250,85 @@ export default function ProjectDetailPage() {
               </div>
             </CardContent>
           </Card>
+
+          {/* Vendor/Tukang: Respond to negotiation request */}
+          {(isVendor || isTukang) && (project.userApplication as { negotiationStatus?: string; negotiationRequestedTotal?: number; proposedBudget?: number } | null)?.negotiationStatus === 'PENDING' && (
+            <Card className="glass-card border-amber-500/50 bg-amber-50/50 dark:bg-amber-950/20 dark:border-amber-500/30">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-amber-800 dark:text-amber-200 text-base">
+                  <MessageSquare className="h-5 w-5" />
+                  Permintaan Negosiasi
+                </CardTitle>
+                <CardDescription>
+                  Client meminta negosiasi harga. Pilih terima, tolak, atau ajukan counter.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-2 text-sm">
+                  <p><span className="text-muted-foreground">Harga diminta: </span><span className="font-semibold text-[#fd904c]">{formatCurrency((project.userApplication as { negotiationRequestedTotal?: number })?.negotiationRequestedTotal ?? 0)}</span></p>
+                  {(project.userApplication as { negotiationMessage?: string })?.negotiationMessage && (
+                    <p className="text-muted-foreground italic">&quot;{(project.userApplication as { negotiationMessage?: string }).negotiationMessage}&quot;</p>
+                  )}
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    size="sm"
+                    variant={respondAction === 'ACCEPT' ? 'default' : 'outline'}
+                    className={respondAction === 'ACCEPT' ? 'bg-green-600 hover:bg-green-700' : ''}
+                    onClick={() => setRespondAction('ACCEPT')}
+                  >
+                    Terima
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant={respondAction === 'REJECT' ? 'destructive' : 'outline'}
+                    onClick={() => setRespondAction('REJECT')}
+                  >
+                    Tolak
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant={respondAction === 'COUNTER' ? 'default' : 'outline'}
+                    className={respondAction === 'COUNTER' ? 'bg-[#fd904c] hover:bg-[#e57835]' : ''}
+                    onClick={() => setRespondAction('COUNTER')}
+                  >
+                    Counter
+                  </Button>
+                </div>
+                {respondAction === 'COUNTER' && (
+                  <div className="space-y-3 pt-2 border-t">
+                    <div>
+                      <Label className="text-xs">Harga Counter (max: {formatCurrency((project.userApplication as { proposedBudget?: number })?.proposedBudget ?? 0)})</Label>
+                      <Input
+                        placeholder="Contoh: 28000000"
+                        value={counterTotal}
+                        onChange={(e) => setCounterTotal(e.target.value.replace(/\D/g, ''))}
+                        className="mt-1"
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-xs">Pesan</Label>
+                      <Textarea
+                        placeholder="Opsional"
+                        value={counterMessage}
+                        onChange={(e) => setCounterMessage(e.target.value)}
+                        className="mt-1 min-h-[60px]"
+                      />
+                    </div>
+                  </div>
+                )}
+                <Button
+                  size="sm"
+                  className="w-full bg-[#fd904c] hover:bg-[#e57835]"
+                  onClick={handleRespondAppNego}
+                  disabled={submittingRespond || (respondAction === 'COUNTER' && !counterTotal.replace(/\D/g, ''))}
+                >
+                  {submittingRespond ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                  Kirim Respons
+                </Button>
+              </CardContent>
+            </Card>
+          )}
 
           {/* Dana Komitmen - Client & Admin, proyek TENDER, status PUBLISHED */}
           {(isOwner || isAdmin) && project.type === 'TENDER' && project.status === 'PUBLISHED' && (
