@@ -33,6 +33,7 @@ import {
   ExternalLink,
   Copy,
   Settings2,
+  UserPlus,
 } from 'lucide-react';
 import Link from 'next/link';
 import { toast } from 'sonner';
@@ -86,6 +87,9 @@ export default function ProjectDetailPage() {
   const [managementId, setManagementId] = useState('');
   const [savingManagement, setSavingManagement] = useState(false);
   const [submittingComment, setSubmittingComment] = useState(false);
+  const [recommendedVendors, setRecommendedVendors] = useState<Array<{ id: string; name: string; avatar: string | null; rating: number; totalProjects?: number }>>([]);
+  const [recommendVendorsLoading, setRecommendVendorsLoading] = useState(false);
+  const [invitingVendorId, setInvitingVendorId] = useState<string | null>(null);
   const chatContainerRef = useRef<HTMLDivElement>(null);
 
   const { data, isLoading, error, refetch } = useProject(projectId);
@@ -135,6 +139,36 @@ export default function ProjectDetailPage() {
       setSubmittingComment(false);
     }
   };
+
+  const fetchRecommendedVendors = useCallback(async () => {
+    if (!project?.categoryId) return;
+    setRecommendVendorsLoading(true);
+    try {
+      const params = new URLSearchParams();
+      params.set('categoryIds', project.categoryId);
+      params.set('limit', '8');
+      params.set('sortBy', 'rating');
+      params.set('sortOrder', 'desc');
+      const res = await fetch(`/api/directory/vendors?${params}`, { credentials: 'include' });
+      const data = await res.json();
+      if (data?.success && Array.isArray(data.data)) {
+        setRecommendedVendors(data.data);
+      } else {
+        setRecommendedVendors([]);
+      }
+    } catch {
+      setRecommendedVendors([]);
+      toast.error('Gagal memuat rekomendasi vendor');
+    } finally {
+      setRecommendVendorsLoading(false);
+    }
+  }, [project?.categoryId]);
+
+  useEffect(() => {
+    if (projectTab === 'rekomendasi-vendor' && project?.categoryId) {
+      fetchRecommendedVendors();
+    }
+  }, [projectTab, project?.categoryId, fetchRecommendedVendors]);
 
   const handleDeleteComment = async (commentId: string) => {
     if (!projectId || user?.role !== 'ADMIN') return;
@@ -393,6 +427,9 @@ export default function ProjectDetailPage() {
               ) : project.type === 'TENDER' && isOwner ? (
                 <TabsTrigger value="penawaran">Penawaran</TabsTrigger>
               ) : null}
+              {project.type === 'TENDER' && isOwner && project.status === 'PUBLISHED' && project.categoryId && (
+                <TabsTrigger value="rekomendasi-vendor">Rekomendasi Vendor</TabsTrigger>
+              )}
             </TabsList>
 
             {(isAdmin || (project.managementProjectUrl && project.managementProjectId)) && (
@@ -850,6 +887,101 @@ export default function ProjectDetailPage() {
             </Card>
             </TabsContent>
           )}
+
+            {project.type === 'TENDER' && isOwner && project.status === 'PUBLISHED' && project.categoryId && (
+            <TabsContent value="rekomendasi-vendor" className="mt-4 space-y-4">
+              <Card className="glass-card">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <UserPlus className="h-5 w-5 text-[#fd904c]" />
+                    Rekomendasi Vendor
+                  </CardTitle>
+                  <CardDescription>
+                    Vendor yang sesuai kategori proyek Anda, diurutkan berdasarkan rating tertinggi. Klik vendor untuk melihat profil lengkap atau undang ke proyek ini.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {recommendVendorsLoading ? (
+                    <div className="flex justify-center py-12">
+                      <Loader2 className="h-8 w-8 animate-spin text-[#fd904c]" />
+                    </div>
+                  ) : recommendedVendors.length === 0 ? (
+                    <div className="py-12 text-center text-muted-foreground">
+                      <UserPlus className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                      <p>Tidak ada vendor yang sesuai kategori proyek ini.</p>
+                    </div>
+                  ) : (
+                    <ul className="divide-y divide-border">
+                      {recommendedVendors.map((vendor) => (
+                        <li key={vendor.id} className="py-4 first:pt-0">
+                          <div className="flex flex-wrap items-center justify-between gap-4">
+                            <Link
+                              href={`/directory/vendors/${vendor.id}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="flex items-center gap-3 min-w-0 flex-1 hover:opacity-80 transition-opacity"
+                            >
+                              <Avatar className="h-10 w-10 shrink-0">
+                                <AvatarImage src={vendor.avatar || undefined} />
+                                <AvatarFallback className="bg-gradient-to-br from-[#fd904c] to-[#e57835] text-white text-sm">
+                                  {vendor.name?.slice(0, 2).toUpperCase() || '?'}
+                                </AvatarFallback>
+                              </Avatar>
+                              <div className="min-w-0">
+                                <p className="font-semibold">{vendor.name}</p>
+                                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                  <span className="flex items-center gap-1 text-amber-600">
+                                    <Star className="h-3.5 w-3.5 fill-amber-400" />
+                                    {vendor.rating?.toFixed(1) || '0'}
+                                  </span>
+                                  <span>{vendor.totalProjects ?? 0} proyek</span>
+                                </div>
+                              </div>
+                              <ExternalLink className="h-4 w-4 text-muted-foreground shrink-0" />
+                            </Link>
+                            <Button
+                              size="sm"
+                              className="bg-[#fd904c] hover:bg-[#e57835] shrink-0"
+                              disabled={!!invitingVendorId}
+                              onClick={async (e) => {
+                                e.preventDefault();
+                                setInvitingVendorId(vendor.id);
+                                try {
+                                  const res = await fetch(`/api/projects/${projectId}/invite-vendor`, {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    credentials: 'include',
+                                    body: JSON.stringify({ vendorId: vendor.id }),
+                                  });
+                                  const data = await res.json();
+                                  if (data?.success) {
+                                    toast.success(`Undangan berhasil dikirim ke ${vendor.name}`);
+                                  } else {
+                                    toast.error(data?.error || 'Gagal mengirim undangan');
+                                  }
+                                } catch {
+                                  toast.error('Gagal mengirim undangan');
+                                } finally {
+                                  setInvitingVendorId(null);
+                                }
+                              }}
+                            >
+                              {invitingVendorId === vendor.id ? (
+                                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                              ) : (
+                                <UserPlus className="h-4 w-4 mr-2" />
+                              )}
+                              Undang vendor untuk proyek ini
+                            </Button>
+                          </div>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
+            )}
           </Tabs>
         </div>
 
@@ -937,8 +1069,8 @@ export default function ProjectDetailPage() {
             </CardContent>
           </Card>
 
-          {/* Dana Komitmen - hanya untuk Client & Admin, proyek Tender/Kontrak */}
-          {(isOwner || isAdmin) && project.type === 'TENDER' && (
+          {/* Dana Komitmen - hanya untuk Client & Admin, proyek Tender PUBLISHED */}
+          {(isOwner || isAdmin) && project.type === 'TENDER' && project.status === 'PUBLISHED' && (
             <Card className="glass-card border-emerald-500/50 bg-emerald-50/50 dark:bg-emerald-950/20 dark:border-emerald-500/30">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-emerald-800 dark:text-emerald-200 text-base">
