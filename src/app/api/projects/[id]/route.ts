@@ -458,12 +458,15 @@ export const PATCH = withAuth(async (user, request: NextRequest, context) => {
       return apiNotFound('Proyek tidak ditemukan');
     }
     
-    // Check permission
-    if (!canModifyProject(user, existingProject)) {
+    const body = await request.json();
+    
+    // Vendor dapat menyelesaikan proyek yang ditugaskan ke mereka
+    const isVendorCompleting = user.role === UserRole.VENDOR && existingProject.vendorId === user.id && body.status === 'COMPLETED';
+    const canModify = canModifyProject(user, existingProject) || isVendorCompleting;
+    
+    if (!canModify) {
       return apiForbidden('Anda tidak memiliki akses untuk mengubah proyek ini');
     }
-    
-    const body = await request.json();
     
     // Validate input
     const validationResult = projectUpdateSchema.safeParse(body);

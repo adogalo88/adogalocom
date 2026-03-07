@@ -81,6 +81,9 @@ export default function ProjectDetailPage() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [skillRatings, setSkillRatings] = useState<Record<string, { rating: number; comment: string }>>({});
   const [submittingSkillRatings, setSubmittingSkillRatings] = useState(false);
+  const [vendorRating, setVendorRating] = useState(0);
+  const [vendorReviewComment, setVendorReviewComment] = useState('');
+  const [submittingVendorReview, setSubmittingVendorReview] = useState(false);
   const [comments, setComments] = useState<{ id: string; content: string; createdAt: string; user: { id: string; name: string; role: string; avatar: string | null } }[]>([]);
   const [commentText, setCommentText] = useState('');
   const [projectTab, setProjectTab] = useState('info');
@@ -446,7 +449,8 @@ export default function ProjectDetailPage() {
             </Button>
           )}
 
-          {isOwner && project.status === 'IN_PROGRESS' && (
+          {/* Tombol Selesaikan Proyek - hanya Vendor yang mengerjakan atau Admin */}
+          {project.status === 'IN_PROGRESS' && project.vendorId && (isAdmin || (isVendor && String(project.vendorId) === String(user?.id))) && (
             <Button
               className="bg-green-600 hover:bg-green-700"
               onClick={() => setShowCompleteDialog(true)}
@@ -681,6 +685,73 @@ export default function ProjectDetailPage() {
                     </a>
                   ))}
                 </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Rating Vendor (proyek tender selesai - client memberi rating ke vendor) */}
+          {isOwner && project.status === 'COMPLETED' && project.type === 'TENDER' && project.vendorId && project.vendor && (
+            <Card className="glass-card border-emerald-500/30">
+              <CardHeader>
+                <CardTitle>Beri Rating ke Vendor</CardTitle>
+                <CardDescription>
+                  Berikan rating dan ulasan untuk vendor yang menyelesaikan proyek ini (minimal 10 karakter)
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center gap-3 p-3 rounded-lg border">
+                  <span className="font-medium sm:w-32">{(project.vendor as { name?: string }).name ?? 'Vendor'}</span>
+                  <div className="flex gap-2">
+                    {[1, 2, 3, 4, 5].map((star) => (
+                      <button
+                        key={star}
+                        type="button"
+                        onClick={() => setVendorRating(star)}
+                        className="text-xl text-muted-foreground hover:text-amber-500 focus:outline-none"
+                      >
+                        {vendorRating >= star ? '★' : '☆'}
+                      </button>
+                    ))}
+                  </div>
+                  <Textarea
+                    placeholder="Tulis ulasan Anda (minimal 10 karakter)..."
+                    className="flex-1 min-h-[80px]"
+                    value={vendorReviewComment}
+                    onChange={(e) => setVendorReviewComment(e.target.value)}
+                  />
+                </div>
+                <Button
+                  disabled={submittingVendorReview || vendorRating < 1 || vendorReviewComment.trim().length < 10}
+                  onClick={async () => {
+                    setSubmittingVendorReview(true);
+                    try {
+                      const res = await fetch('/api/reviews', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                          projectId,
+                          revieweeId: project.vendorId,
+                          rating: vendorRating,
+                          comment: vendorReviewComment.trim(),
+                        }),
+                        credentials: 'include',
+                      });
+                      const data = await res.json().catch(() => ({}));
+                      if (!res.ok) throw new Error(data.error || 'Gagal menyimpan');
+                      toast.success('Rating berhasil dikirim');
+                      setVendorRating(0);
+                      setVendorReviewComment('');
+                      refetch();
+                    } catch (e) {
+                      toast.error(e instanceof Error ? e.message : 'Gagal menyimpan rating');
+                    } finally {
+                      setSubmittingVendorReview(false);
+                    }
+                  }}
+                >
+                  {submittingVendorReview && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+                  Kirim Rating
+                </Button>
               </CardContent>
             </Card>
           )}
@@ -1478,7 +1549,7 @@ export default function ProjectDetailPage() {
           <AlertDialogHeader>
             <AlertDialogTitle>Selesaikan Proyek?</AlertDialogTitle>
             <AlertDialogDescription>
-              Proyek akan ditandai sebagai selesai. Vendor/Tukang tidak dapat mengirim penawaran lagi.
+              Proyek akan ditandai sebagai selesai. Client akan dapat memberikan rating dan ulasan kepada vendor melalui halaman detail proyek.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

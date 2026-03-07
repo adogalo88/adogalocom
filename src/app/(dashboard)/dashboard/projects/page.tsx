@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { useProjects, useCategories, formatCurrency, formatDate, getProjectStatusConfig } from '@/hooks/api';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -12,8 +13,15 @@ import Link from 'next/link';
 import { useAuth } from '@/providers/AuthProvider';
 
 export default function ProjectsPage() {
+  const router = useRouter();
   const { user } = useAuth();
   const [search, setSearch] = useState('');
+
+  useEffect(() => {
+    if (user && !['CLIENT', 'ADMIN'].includes(user.role)) {
+      router.replace('/dashboard');
+    }
+  }, [user, router]);
   const [statusFilter, setStatusFilter] = useState<string>('');
   const [typeFilter, setTypeFilter] = useState<string>('');
   const [provinceFilter, setProvinceFilter] = useState<string>('');
@@ -38,6 +46,14 @@ export default function ProjectsPage() {
   const { data: categoriesData } = useCategories();
 
   const projects = data?.data || [];
+
+  if (user && !['CLIENT', 'ADMIN'].includes(user.role)) {
+    return (
+      <div className="flex items-center justify-center min-h-[40vh]">
+        <p className="text-muted-foreground">Mengalihkan...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
