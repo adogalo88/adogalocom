@@ -16,6 +16,7 @@ import {
   ArrowRight,
   Plus,
   Inbox,
+  Briefcase,
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -236,10 +237,29 @@ function VendorDashboard() {
     },
   });
 
+  const { data: projectsData } = useQuery({
+    queryKey: ['dashboard', 'vendor', 'available-projects'],
+    queryFn: async () => {
+      const res = await fetch('/api/projects?type=TENDER&status=PUBLISHED&page=1&limit=5');
+      if (!res.ok) throw new Error('Failed to load projects');
+      return res.json() as Promise<{ data: Array<{ id: string; title: string; budget: number | null; city?: { name: string } | null; location?: string | null }> }>;
+    },
+  });
+
+  const { data: notificationsData } = useQuery({
+    queryKey: ['dashboard', 'vendor', 'notifications'],
+    queryFn: async () => {
+      const res = await fetch('/api/notifications?page=1&limit=5');
+      if (!res.ok) throw new Error('Failed to load notifications');
+      return res.json() as Promise<{ data: Array<{ id: string; title: string; message: string; readAt: string | null; createdAt: string }> }>;
+    },
+  });
+
   const projectsCompleted = stats?.projectsCompleted ?? 0;
   const projectsActive = stats?.projectsActive ?? 0;
-  const teamMembers = stats?.teamMembers ?? 0;
   const revenue = stats?.revenue ?? 0;
+  const availableProjects = projectsData?.data ?? [];
+  const notifications = notificationsData?.data ?? [];
 
   return (
     <>
@@ -256,69 +276,93 @@ function VendorDashboard() {
           description="Sedang dikerjakan"
         />
         <StatsCard
-          title="Tim Kerja"
-          value={isLoading ? '...' : String(teamMembers)}
-          icon={<Users className="h-5 w-5" />}
-          description="Tukang aktif"
-        />
-        <StatsCard
           title="Pendapatan"
           value={isLoading ? '...' : formatRupiah(revenue)}
           icon={<TrendingUp className="h-5 w-5" />}
+        />
+        <StatsCard
+          title="Proyek Tersedia"
+          value={String(availableProjects.length)}
+          icon={<Briefcase className="h-5 w-5" />}
+          description="Proyek tender terbuka"
         />
       </div>
 
       <div className="grid lg:grid-cols-2 gap-6">
         <Card className="glass-card">
-          <CardHeader>
-            <CardTitle>Proyek Tersedia</CardTitle>
-            <CardDescription>Proyek yang bisa Anda tawarkan</CardDescription>
+          <CardHeader className="flex flex-row items-center justify-between">
+            <div>
+              <CardTitle>Proyek Tersedia</CardTitle>
+              <CardDescription>Proyek tender yang bisa Anda tawarkan</CardDescription>
+            </div>
+            <Link href="/proyek-tender">
+              <Button variant="ghost" size="sm" className="gap-1">
+                Lihat Semua <ArrowRight className="h-4 w-4" />
+              </Button>
+            </Link>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {[
-                { name: 'Renovasi Rumah 2 Lantai', budget: 'Rp 150 Jt', location: 'Jakarta Selatan' },
-                { name: 'Pembangunan Kolam Renang', budget: 'Rp 80 Jt', location: 'Bekasi' },
-                { name: 'Renovasi Kantor', budget: 'Rp 200 Jt', location: 'Jakarta Pusat' },
-              ].map((project, index) => (
-                <div key={index} className="flex items-center gap-4 p-3 rounded-lg bg-muted/50">
-                  <div className="flex-1">
-                    <p className="font-medium">{project.name}</p>
-                    <p className="text-sm text-muted-foreground">{project.location}</p>
-                  </div>
-                  <div className="text-right">
-                    <p className="font-semibold text-[#fd904c]">{project.budget}</p>
-                    <Button size="sm" className="mt-1">Tawarkan</Button>
-                  </div>
+              {availableProjects.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  <FolderKanban className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                  <p className="text-sm">Belum ada proyek tender tersedia. Cek halaman Proyek Tender untuk daftar lengkap.</p>
+                  <Link href="/proyek-tender">
+                    <Button size="sm" className="mt-2">Buka Proyek Tender</Button>
+                  </Link>
                 </div>
-              ))}
+              ) : (
+                availableProjects.map((project) => (
+                  <Link key={project.id} href={`/proyek-tender/${project.id}`}>
+                    <div className="flex items-center gap-4 p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors">
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium truncate">{project.title}</p>
+                        <p className="text-sm text-muted-foreground">{project.city?.name ?? project.location ?? '-'}</p>
+                      </div>
+                      <div className="text-right shrink-0">
+                        <p className="font-semibold text-[#fd904c]">{formatRupiah(project.budget ?? 0)}</p>
+                        <span className="inline-flex items-center justify-center rounded-md text-sm font-medium px-3 py-1.5 mt-1 border border-input bg-background hover:bg-accent">Tawarkan</span>
+                      </div>
+                    </div>
+                  </Link>
+                ))
+              )}
             </div>
           </CardContent>
         </Card>
 
         <Card className="glass-card">
-          <CardHeader>
-            <CardTitle>Tim Saya</CardTitle>
-            <CardDescription>Tukang yang bekerja dengan Anda</CardDescription>
+          <CardHeader className="flex flex-row items-center justify-between">
+            <CardTitle>Notifikasi Terbaru</CardTitle>
+            <Link href="/dashboard/notifications">
+              <Button variant="ghost" size="sm" className="gap-1 text-[#fd904c]">
+                Lihat semua <ArrowRight className="h-4 w-4" />
+              </Button>
+            </Link>
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
-              {[
-                { name: 'Ahmad', role: 'Tukang Batu', status: 'Aktif' },
-                { name: 'Budi', role: 'Tukang Kayu', status: 'Aktif' },
-                { name: 'Candra', role: 'Mandor', status: 'Proyek A' },
-              ].map((member, index) => (
-                <div key={index} className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50">
-                  <div className="h-10 w-10 rounded-full bg-gradient-to-br from-[#fd904c] to-[#e57835] flex items-center justify-center text-white font-medium">
-                    {member.name.charAt(0)}
-                  </div>
-                  <div className="flex-1">
-                    <p className="font-medium">{member.name}</p>
-                    <p className="text-sm text-muted-foreground">{member.role}</p>
-                  </div>
-                  <span className="text-xs px-2 py-1 rounded-full bg-green-100 text-green-700">{member.status}</span>
+              {notifications.length === 0 ? (
+                <div className="text-center py-6 text-muted-foreground">
+                  <Inbox className="h-10 w-10 mx-auto mb-2 opacity-50" />
+                  <p className="text-sm">Belum ada notifikasi</p>
                 </div>
-              ))}
+              ) : (
+                notifications.map((notif) => (
+                  <Link key={notif.id} href="/dashboard/notifications">
+                    <div className="flex gap-3 p-3 rounded-lg hover:bg-muted/50 transition-colors">
+                      <div className="h-9 w-9 rounded-full bg-[#fd904c]/20 flex items-center justify-center shrink-0">
+                        <Inbox className="h-4 w-4 text-[#fd904c]" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-sm truncate">{notif.title}</p>
+                        <p className="text-xs text-muted-foreground line-clamp-2">{notif.message}</p>
+                        <p className="text-xs text-muted-foreground mt-1">{notif.createdAt ? new Date(notif.createdAt).toLocaleString('id-ID') : ''}</p>
+                      </div>
+                    </div>
+                  </Link>
+                ))
+              )}
             </div>
           </CardContent>
         </Card>
