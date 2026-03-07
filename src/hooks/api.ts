@@ -196,6 +196,8 @@ export interface Review {
   rating: number;
   comment: string;
   createdAt: string;
+  reviewType?: string | null;
+  dimensionRatings?: Record<string, number> | null;
   reviewer?: User;
   reviewee?: User;
   project?: Project;

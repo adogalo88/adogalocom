@@ -91,12 +91,34 @@ const DIMENSION_LABELS: Record<string, Record<string, string>> = {
   },
 };
 
+// Infer reviewType dari dimension keys jika reviewType null (fallback untuk data lama/migration)
+function inferReviewType(dims: Record<string, number>): 'CLIENT_TO_VENDOR' | 'VENDOR_TO_CLIENT' | null {
+  const keys = Object.keys(dims);
+  if (keys.some((k) => k === 'quality' || k === 'specMatch')) return 'CLIENT_TO_VENDOR';
+  if (keys.some((k) => k === 'clarity' || k === 'consistency' || k === 'coordination')) return 'VENDOR_TO_CLIENT';
+  return null;
+}
+
 // Review Card Component
 function ReviewCard({ review, type }: { review: any; type: 'given' | 'received' }) {
   const user = type === 'given' ? review.reviewee : review.reviewer;
   const actionText = type === 'given' ? 'Anda review' : 'mereview Anda';
-  const dims = (review.dimensionRatings || null) as Record<string, number> | null;
-  const labels = review.reviewType ? DIMENSION_LABELS[review.reviewType as keyof typeof DIMENSION_LABELS] : null;
+  const rawDims = review.dimensionRatings;
+  const dims: Record<string, number> | null =
+    rawDims && typeof rawDims === 'object' && !Array.isArray(rawDims)
+      ? (rawDims as Record<string, number>)
+      : typeof rawDims === 'string'
+        ? (() => {
+            try {
+              const parsed = JSON.parse(rawDims) as Record<string, number>;
+              return typeof parsed === 'object' && parsed !== null ? parsed : null;
+            } catch {
+              return null;
+            }
+          })()
+        : null;
+  const reviewType = (review.reviewType as string) || (dims ? inferReviewType(dims) : null);
+  const labels = reviewType ? DIMENSION_LABELS[reviewType as keyof typeof DIMENSION_LABELS] : null;
 
   return (
     <Card className="glass-card">

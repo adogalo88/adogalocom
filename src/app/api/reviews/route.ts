@@ -123,8 +123,28 @@ export const GET = withAuth(async (user: SafeUser, request: NextRequest) => {
       db.review.count({ where }),
     ]);
 
+    // Pastikan dimensionRatings dan reviewType selalu dikembalikan (Prisma Json bisa serial berbeda)
+    const normalizedData = reviews.map((r) => {
+      const base = { ...r } as typeof r & { dimensionRatings?: Record<string, number> | null; reviewType?: string | null };
+      if (r.dimensionRatings != null) {
+        base.dimensionRatings =
+          typeof r.dimensionRatings === 'object' && !Array.isArray(r.dimensionRatings)
+            ? (r.dimensionRatings as Record<string, number>)
+            : typeof r.dimensionRatings === 'string'
+              ? (() => {
+                  try {
+                    return JSON.parse(r.dimensionRatings as unknown as string) as Record<string, number>;
+                  } catch {
+                    return null;
+                  }
+                })()
+              : null;
+      }
+      return base;
+    });
+
     const response: PaginatedResponse<typeof reviews[0]> = {
-      data: reviews,
+      data: normalizedData,
       pagination: {
         page: pageNum,
         limit: limitNum,
