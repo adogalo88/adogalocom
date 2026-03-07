@@ -166,64 +166,81 @@ export default function ProjectsPage() {
           </CardContent>
         </Card>
       ) : (
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {projects.map((project) => (
-            <Link key={project.id} href={`/dashboard/projects/${project.id}`}>
-              <Card className="glass-card hover:shadow-lg transition-all h-full cursor-pointer">
-                <CardHeader className="pb-3">
-                  <div className="flex items-start justify-between gap-2">
-                    <CardTitle className="text-lg line-clamp-2">{project.title}</CardTitle>
-                    <Badge className={getProjectStatusConfig(project.status).className}>
-                      {getProjectStatusConfig(project.status).label}
-                    </Badge>
-                  </div>
-                  <CardDescription className="line-clamp-2">{project.description}</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                    {project.budget && (
-                      <span className="font-semibold text-[#fd904c]">
-                        {formatCurrency(project.budget)}
-                      </span>
-                    )}
-                    <Badge variant="outline" className="text-xs">
-                      {project.type === 'TENDER' ? 'Tender' : 'Harian'}
-                    </Badge>
-                  </div>
-                  
-                  {project.location && (
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <MapPin className="h-4 w-4" />
-                      <span className="truncate">{project.location}</span>
-                    </div>
-                  )}
-                  
-                  <div className="flex items-center justify-between text-sm">
-                    {project.client && (
-                      <div className="flex items-center gap-2">
-                        <div className="h-6 w-6 rounded-full bg-gradient-to-br from-[#fd904c] to-[#e57835] flex items-center justify-center text-white text-xs">
-                          {project.client.name.charAt(0)}
-                        </div>
-                        <span className="text-muted-foreground truncate">{project.client.name}</span>
-                      </div>
-                    )}
-                    {(project._count || project.rfq?._count) && (
-                      <div className="flex items-center gap-1 text-muted-foreground">
-                        <Users className="h-4 w-4" />
-                        <span>
-                          {project.tenderSubtype === 'WITH_RFQ' && project.rfq?._count != null
-                            ? project.rfq._count.submissions
-                            : project._count?.applications ?? 0}
-                        </span>
-                        <span className="text-xs">{project.tenderSubtype === 'WITH_RFQ' ? ' penawaran' : ' lamaran'}</span>
-                      </div>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            </Link>
-          ))}
-        </div>
+        <Card className="glass-card">
+          <CardContent className="p-0">
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b bg-muted/50">
+                    <th className="text-left py-3 px-4 font-medium text-sm">Judul</th>
+                    <th className="text-left py-3 px-4 font-medium text-sm">Status</th>
+                    <th className="text-left py-3 px-4 font-medium text-sm">Tipe</th>
+                    <th className="text-left py-3 px-4 font-medium text-sm">RFQ</th>
+                    <th className="text-left py-3 px-4 font-medium text-sm">Budget</th>
+                    <th className="text-left py-3 px-4 font-medium text-sm">Lokasi</th>
+                    <th className="text-left py-3 px-4 font-medium text-sm">Klien</th>
+                    <th className="text-left py-3 px-4 font-medium text-sm">Penawaran</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {projects.map((project) => (
+                    <tr key={project.id} className="border-b last:border-0 hover:bg-muted/30">
+                      <td className="py-3 px-4">
+                        <Link href={`/dashboard/projects/${project.id}`} className="font-medium text-[#fd904c] hover:underline line-clamp-2">
+                          {project.title}
+                        </Link>
+                        {project.description && (
+                          <p className="text-xs text-muted-foreground line-clamp-1 mt-0.5">{project.description}</p>
+                        )}
+                      </td>
+                      <td className="py-3 px-4">
+                        <Badge className={getProjectStatusConfig(project.status).className}>
+                          {getProjectStatusConfig(project.status).label}
+                        </Badge>
+                      </td>
+                      <td className="py-3 px-4 text-sm">
+                        {project.type === 'TENDER' ? 'Tender' : 'Harian'}
+                      </td>
+                      <td className="py-3 px-4 text-sm">
+                        {project.type === 'TENDER' ? (
+                          project.tenderSubtype === 'WITH_RFQ' ? (
+                            <Badge variant="outline" className="text-xs border-[#fd904c] text-[#fd904c]">Dengan RFQ</Badge>
+                          ) : (
+                            <Badge variant="outline" className="text-xs">Tanpa RFQ</Badge>
+                          )
+                        ) : (
+                          <span className="text-muted-foreground">-</span>
+                        )}
+                      </td>
+                      <td className="py-3 px-4 text-sm">
+                        {project.budget ? formatCurrency(project.budget) : '-'}
+                      </td>
+                      <td className="py-3 px-4 text-sm text-muted-foreground max-w-[140px] truncate" title={project.location || ''}>
+                        {project.location || '-'}
+                      </td>
+                      <td className="py-3 px-4 text-sm">
+                        {project.client ? (
+                          <span className="truncate block max-w-[120px]" title={project.client.name}>{project.client.name}</span>
+                        ) : '-'}
+                      </td>
+                      <td className="py-3 px-4 text-sm text-muted-foreground">
+                        {(project._count || project.rfq?._count) ? (
+                          <>
+                            <Users className="h-3.5 w-3.5 inline-block mr-1 align-middle" />
+                            {project.tenderSubtype === 'WITH_RFQ' && project.rfq?._count != null
+                              ? project.rfq._count.submissions
+                              : project._count?.applications ?? 0}
+                            <span className="text-xs ml-0.5">{project.tenderSubtype === 'WITH_RFQ' ? ' penawaran' : ' lamaran'}</span>
+                          </>
+                        ) : '0'}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </CardContent>
+        </Card>
       )}
     </div>
   );

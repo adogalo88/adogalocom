@@ -450,7 +450,7 @@ export default function ProjectDetailPage() {
           )}
 
           {/* Tombol Selesaikan Proyek - hanya Vendor yang mengerjakan atau Admin */}
-          {project.status === 'IN_PROGRESS' && project.vendorId && (isAdmin || (isVendor && String(project.vendorId) === String(user?.id))) && (
+          {project.status === 'IN_PROGRESS' && (project.vendorId ?? (project.vendor as { id?: string })?.id) && (isAdmin || (isVendor && String(project.vendorId ?? (project.vendor as { id?: string })?.id ?? '') === String(user?.id))) && (
             <Button
               className="bg-green-600 hover:bg-green-700"
               onClick={() => setShowCompleteDialog(true)}
