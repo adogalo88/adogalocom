@@ -517,30 +517,6 @@ export default function ProjectDetailPage() {
             </CardContent>
           </Card>
 
-          {/* Dana Komitmen - hanya untuk Client & Admin, proyek Tender/Kontrak */}
-          {(isOwner || isAdmin) && project.type === 'TENDER' && (
-            <Card className="glass-card border-emerald-500/50 bg-emerald-50/50 dark:bg-emerald-950/20 dark:border-emerald-500/30">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-emerald-800 dark:text-emerald-200">
-                  <ShieldCheck className="h-5 w-5" />
-                  Dana Komitmen Proyek
-                </CardTitle>
-                <CardDescription>
-                  Dana ini akan dikembalikan 100% setelah proyek selesai dan Anda memberi rating ke vendor
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <div className="flex items-center justify-between p-4 rounded-lg bg-white/80 dark:bg-slate-900/50 border border-emerald-200/60 dark:border-emerald-800/40">
-                  <span className="text-sm text-muted-foreground">Nilai Dana Komitmen</span>
-                  <span className="text-xl font-bold text-emerald-700 dark:text-emerald-300">Rp200.000</span>
-                </div>
-                <p className="text-sm text-emerald-800/90 dark:text-emerald-200/90">
-                  ✓ Bukan biaya layanan — dana disimpan dan dikembalikan 100% setelah proyek selesai dikerjakan dan Anda memberikan rating serta ulasan kepada Vendor. Admin akan mengirimkan link pembayaran melalui WhatsApp atau kontak terdaftar.
-                </p>
-              </CardContent>
-            </Card>
-          )}
-
           {/* Photos */}
           {parseJsonArray(project.photos).length > 0 && (
             <Card className="glass-card">
@@ -961,20 +937,26 @@ export default function ProjectDetailPage() {
             </CardContent>
           </Card>
 
-          {/* Stats */}
-          {project._count && (
-            <Card className="glass-card">
-              <CardContent className="p-4">
-                <div className="grid grid-cols-2 gap-4 text-center">
-                  <div>
-                    <p className="text-2xl font-bold text-[#fd904c]">{project._count.applications}</p>
-                    <p className="text-sm text-muted-foreground">Penawaran</p>
-                  </div>
-                  <div>
-                    <p className="text-2xl font-bold text-[#e57835]">{project._count.teamMembers}</p>
-                    <p className="text-sm text-muted-foreground">Tim</p>
-                  </div>
+          {/* Dana Komitmen - hanya untuk Client & Admin, proyek Tender/Kontrak */}
+          {(isOwner || isAdmin) && project.type === 'TENDER' && (
+            <Card className="glass-card border-emerald-500/50 bg-emerald-50/50 dark:bg-emerald-950/20 dark:border-emerald-500/30">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-emerald-800 dark:text-emerald-200 text-base">
+                  <ShieldCheck className="h-5 w-5" />
+                  Dana Komitmen Proyek
+                </CardTitle>
+                <CardDescription>
+                  Dana ini akan dikembalikan 100% setelah proyek selesai dan Anda memberi rating ke vendor
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="flex items-center justify-between p-4 rounded-lg bg-white/80 dark:bg-slate-900/50 border border-emerald-200/60 dark:border-emerald-800/40">
+                  <span className="text-sm text-muted-foreground">Nilai Dana Komitmen</span>
+                  <span className="text-xl font-bold text-emerald-700 dark:text-emerald-300">Rp200.000</span>
                 </div>
+                <p className="text-sm text-emerald-800/90 dark:text-emerald-200/90">
+                  ✓ Bukan biaya layanan — dana disimpan dan dikembalikan 100% setelah proyek selesai dikerjakan dan Anda memberikan rating serta ulasan kepada Vendor. Admin akan mengirimkan link pembayaran melalui WhatsApp atau kontak terdaftar.
+                </p>
               </CardContent>
             </Card>
           )}

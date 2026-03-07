@@ -318,6 +318,8 @@ model Project {
   verifiedAt            DateTime?
   verifiedBy            String?
   rejectionReason       String?
+  managementProjectUrl  String?   // URL aplikasi manajemen proyek
+  managementProjectId   String?   // ID proyek di aplikasi eksternal
   createdAt             DateTime      @default(now())
   updatedAt             DateTime      @updatedAt
 
