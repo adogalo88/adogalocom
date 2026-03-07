@@ -18,11 +18,16 @@ const reviewFilterSchema = z.object({
   maxRating: z.string().regex(/^[1-5]$/).optional(),
 });
 
+const CLIENT_TO_VENDOR_KEYS = ['quality', 'timeliness', 'communication', 'professionalism', 'specMatch'] as const;
+const VENDOR_TO_CLIENT_KEYS = ['clarity', 'communication', 'consistency', 'professionalism', 'coordination'] as const;
+
 const createReviewSchema = z.object({
   projectId: z.string().min(1, 'ID proyek wajib diisi'),
   revieweeId: z.string().min(1, 'ID yang direview wajib diisi'),
-  rating: z.number().int().min(1, 'Rating minimal 1').max(5, 'Rating maksimal 5'),
+  rating: z.number().int().min(1, 'Rating minimal 1').max(5, 'Rating maksimal 5').optional(),
   comment: z.string().min(10, 'Komentar minimal 10 karakter').max(1000, 'Komentar maksimal 1000 karakter'),
+  reviewType: z.enum(['CLIENT_TO_VENDOR', 'VENDOR_TO_CLIENT']).optional(),
+  dimensionRatings: z.record(z.string(), z.number().int().min(1).max(5)).optional(),
 });
 
 // =====================
@@ -148,7 +153,33 @@ export const POST = withAuth(async (user: SafeUser, request: NextRequest) => {
       return apiError('Validasi gagal', 400, validationResult.error.flatten());
     }
 
-    const data = validationResult.data;
+    let data = validationResult.data;
+
+    // Jika ada dimensionRatings, validasi key dan hitung rating overall
+    let finalRating = data.rating;
+    let dimensionRatingsJson: Record<string, number> | null = null;
+    let reviewType: string | null = null;
+
+    if (data.dimensionRatings && Object.keys(data.dimensionRatings).length > 0) {
+      reviewType = data.reviewType ?? null;
+      const dims = data.dimensionRatings as Record<string, number>;
+      const keys = reviewType === 'VENDOR_TO_CLIENT' ? VENDOR_TO_CLIENT_KEYS : CLIENT_TO_VENDOR_KEYS;
+      const requiredKeys = keys as unknown as string[];
+      const missing = requiredKeys.filter((k) => dims[k] == null || typeof dims[k] !== 'number');
+      if (missing.length > 0) {
+        return apiError(`Dimension rating wajib: ${requiredKeys.join(', ')}`, 400);
+      }
+      const values = requiredKeys.map((k) => dims[k]);
+      dimensionRatingsJson = requiredKeys.reduce((acc, k) => ({ ...acc, [k]: dims[k] }), {} as Record<string, number>);
+      finalRating = Math.round((values.reduce((a, b) => a + b, 0) / values.length) * 100) / 100;
+      if (finalRating < 1 || finalRating > 5) finalRating = Math.min(5, Math.max(1, finalRating));
+    }
+
+    if (finalRating == null || finalRating < 1 || finalRating > 5) {
+      return apiError('Rating wajib (1-5) atau berikan dimensionRatings dengan reviewType', 400);
+    }
+
+    data = { ...data, rating: Math.round(finalRating) } as typeof data;
 
     // Verify project exists and is completed
     const project = await db.project.findUnique({
@@ -234,6 +265,8 @@ export const POST = withAuth(async (user: SafeUser, request: NextRequest) => {
           revieweeId: data.revieweeId,
           rating: data.rating,
           comment: data.comment,
+          reviewType: reviewType ?? undefined,
+          dimensionRatings: dimensionRatingsJson ?? undefined,
         },
         include: {
           reviewer: {

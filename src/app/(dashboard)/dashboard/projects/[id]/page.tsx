@@ -81,9 +81,16 @@ export default function ProjectDetailPage() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [skillRatings, setSkillRatings] = useState<Record<string, { rating: number; comment: string }>>({});
   const [submittingSkillRatings, setSubmittingSkillRatings] = useState(false);
-  const [vendorRating, setVendorRating] = useState(0);
+  const [vendorRatingDims, setVendorRatingDims] = useState<Record<string, number>>({
+    quality: 0, timeliness: 0, communication: 0, professionalism: 0, specMatch: 0,
+  });
   const [vendorReviewComment, setVendorReviewComment] = useState('');
   const [submittingVendorReview, setSubmittingVendorReview] = useState(false);
+  const [clientRatingDims, setClientRatingDims] = useState<Record<string, number>>({
+    clarity: 0, communication: 0, consistency: 0, professionalism: 0, coordination: 0,
+  });
+  const [clientReviewComment, setClientReviewComment] = useState('');
+  const [submittingClientReview, setSubmittingClientReview] = useState(false);
   const [comments, setComments] = useState<{ id: string; content: string; createdAt: string; user: { id: string; name: string; role: string; avatar: string | null } }[]>([]);
   const [commentText, setCommentText] = useState('');
   const [projectTab, setProjectTab] = useState('info');
@@ -690,39 +697,50 @@ export default function ProjectDetailPage() {
             </Card>
           )}
 
-          {/* Rating Vendor (proyek tender selesai - client memberi rating ke vendor) */}
+          {/* Rating Vendor (proyek tender selesai - client memberi rating ke vendor dengan 5 metrik) */}
           {isOwner && project.status === 'COMPLETED' && project.type === 'TENDER' && project.vendorId && project.vendor && (
             <Card className="glass-card border-emerald-500/30">
               <CardHeader>
                 <CardTitle>Beri Rating ke Vendor</CardTitle>
                 <CardDescription>
-                  Berikan rating dan ulasan untuk vendor yang menyelesaikan proyek ini (minimal 10 karakter)
+                  Berikan penilaian per aspek untuk {(project.vendor as { name?: string }).name ?? 'Vendor'} (minimal 10 karakter untuk ulasan)
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="flex flex-col sm:flex-row sm:items-center gap-3 p-3 rounded-lg border">
-                  <span className="font-medium sm:w-32">{(project.vendor as { name?: string }).name ?? 'Vendor'}</span>
-                  <div className="flex gap-2">
-                    {[1, 2, 3, 4, 5].map((star) => (
-                      <button
-                        key={star}
-                        type="button"
-                        onClick={() => setVendorRating(star)}
-                        className="text-xl text-muted-foreground hover:text-amber-500 focus:outline-none"
-                      >
-                        {vendorRating >= star ? '★' : '☆'}
-                      </button>
-                    ))}
+                {[
+                  { key: 'quality', label: 'Kualitas pekerjaan' },
+                  { key: 'timeliness', label: 'Ketepatan waktu' },
+                  { key: 'communication', label: 'Komunikasi' },
+                  { key: 'professionalism', label: 'Profesionalitas' },
+                  { key: 'specMatch', label: 'Kesesuaian hasil dengan spesifikasi' },
+                ].map(({ key, label }) => (
+                  <div key={key} className="flex flex-col sm:flex-row sm:items-center gap-2 p-3 rounded-lg border">
+                    <span className="font-medium sm:w-56 text-sm">{label}</span>
+                    <div className="flex gap-1">
+                      {[1, 2, 3, 4, 5].map((star) => (
+                        <button
+                          key={star}
+                          type="button"
+                          onClick={() => setVendorRatingDims((p) => ({ ...p, [key]: star }))}
+                          className="text-lg text-muted-foreground hover:text-amber-500 focus:outline-none"
+                        >
+                          {(vendorRatingDims[key] ?? 0) >= star ? '★' : '☆'}
+                        </button>
+                      ))}
+                    </div>
                   </div>
+                ))}
+                <div>
+                  <Label className="text-sm">Ulasan (min. 10 karakter)</Label>
                   <Textarea
-                    placeholder="Tulis ulasan Anda (minimal 10 karakter)..."
-                    className="flex-1 min-h-[80px]"
+                    placeholder="Tulis ulasan Anda..."
+                    className="mt-1 min-h-[80px]"
                     value={vendorReviewComment}
                     onChange={(e) => setVendorReviewComment(e.target.value)}
                   />
                 </div>
                 <Button
-                  disabled={submittingVendorReview || vendorRating < 1 || vendorReviewComment.trim().length < 10}
+                  disabled={submittingVendorReview || Object.values(vendorRatingDims).some((v) => v < 1) || vendorReviewComment.trim().length < 10}
                   onClick={async () => {
                     setSubmittingVendorReview(true);
                     try {
@@ -732,7 +750,8 @@ export default function ProjectDetailPage() {
                         body: JSON.stringify({
                           projectId,
                           revieweeId: project.vendorId,
-                          rating: vendorRating,
+                          reviewType: 'CLIENT_TO_VENDOR',
+                          dimensionRatings: vendorRatingDims,
                           comment: vendorReviewComment.trim(),
                         }),
                         credentials: 'include',
@@ -740,7 +759,7 @@ export default function ProjectDetailPage() {
                       const data = await res.json().catch(() => ({}));
                       if (!res.ok) throw new Error(data.error || 'Gagal menyimpan');
                       toast.success('Rating berhasil dikirim');
-                      setVendorRating(0);
+                      setVendorRatingDims({ quality: 0, timeliness: 0, communication: 0, professionalism: 0, specMatch: 0 });
                       setVendorReviewComment('');
                       refetch();
                     } catch (e) {
@@ -751,6 +770,88 @@ export default function ProjectDetailPage() {
                   }}
                 >
                   {submittingVendorReview && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+                  Kirim Rating
+                </Button>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Rating Client (proyek tender selesai - vendor memberi rating ke client dengan 5 metrik) */}
+          {isVendor && project.status === 'COMPLETED' && project.type === 'TENDER' && project.vendorId && String(project.vendorId) === String(user?.id) && project.client && (
+            <Card className="glass-card border-amber-500/30">
+              <CardHeader>
+                <CardTitle>Beri Rating ke Client</CardTitle>
+                <CardDescription>
+                  Berikan penilaian per aspek untuk {(project.client as { name?: string }).name ?? 'Client'} (minimal 10 karakter untuk ulasan)
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {[
+                  { key: 'clarity', label: 'Kejelasan Proyek', desc: 'Spesifikasi jelas dan mudah dipahami sejak awal' },
+                  { key: 'communication', label: 'Komunikasi', desc: 'Mudah dihubungi dan responsif selama proyek' },
+                  { key: 'consistency', label: 'Konsistensi Kesepakatan', desc: 'Menghormati kesepakatan harga, spesifikasi, jadwal' },
+                  { key: 'professionalism', label: 'Profesionalitas', desc: 'Bersikap profesional dalam bekerja sama' },
+                  { key: 'coordination', label: 'Kemudahan Koordinasi Lapangan', desc: 'Akses lokasi, izin kerja, tidak menghambat pekerjaan' },
+                ].map(({ key, label, desc }) => (
+                  <div key={key} className="flex flex-col gap-1 p-3 rounded-lg border">
+                    <span className="font-medium text-sm">{label}</span>
+                    {desc && <span className="text-xs text-muted-foreground">{desc}</span>}
+                    <div className="flex gap-1 mt-1">
+                      {[1, 2, 3, 4, 5].map((star) => (
+                        <button
+                          key={star}
+                          type="button"
+                          onClick={() => setClientRatingDims((p) => ({ ...p, [key]: star }))}
+                          className="text-lg text-muted-foreground hover:text-amber-500 focus:outline-none"
+                        >
+                          {(clientRatingDims[key] ?? 0) >= star ? '★' : '☆'}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+                <div>
+                  <Label className="text-sm">Ulasan (min. 10 karakter)</Label>
+                  <Textarea
+                    placeholder="Tulis ulasan Anda..."
+                    className="mt-1 min-h-[80px]"
+                    value={clientReviewComment}
+                    onChange={(e) => setClientReviewComment(e.target.value)}
+                  />
+                </div>
+                <Button
+                  disabled={submittingClientReview || Object.values(clientRatingDims).some((v) => v < 1) || clientReviewComment.trim().length < 10}
+                  onClick={async () => {
+                    setSubmittingClientReview(true);
+                    try {
+                      const clientId = project.clientId ?? (project.client as { id?: string })?.id;
+                      if (!clientId) throw new Error('Client tidak ditemukan');
+                      const res = await fetch('/api/reviews', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                          projectId,
+                          revieweeId: clientId,
+                          reviewType: 'VENDOR_TO_CLIENT',
+                          dimensionRatings: clientRatingDims,
+                          comment: clientReviewComment.trim(),
+                        }),
+                        credentials: 'include',
+                      });
+                      const data = await res.json().catch(() => ({}));
+                      if (!res.ok) throw new Error(data.error || 'Gagal menyimpan');
+                      toast.success('Rating berhasil dikirim');
+                      setClientRatingDims({ clarity: 0, communication: 0, consistency: 0, professionalism: 0, coordination: 0 });
+                      setClientReviewComment('');
+                      refetch();
+                    } catch (e) {
+                      toast.error(e instanceof Error ? e.message : 'Gagal menyimpan rating');
+                    } finally {
+                      setSubmittingClientReview(false);
+                    }
+                  }}
+                >
+                  {submittingClientReview && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
                   Kirim Rating
                 </Button>
               </CardContent>

@@ -859,8 +859,10 @@ model Review {
   projectId  String
   reviewerId String
   revieweeId String
-  rating     Int // 1-5
+  rating     Int // 1-5 (overall; bisa rata-rata dari dimensionRatings)
   comment    String
+  reviewType String?  // CLIENT_TO_VENDOR | VENDOR_TO_CLIENT
+  dimensionRatings Json? // Skor per dimensi 1-5
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 
