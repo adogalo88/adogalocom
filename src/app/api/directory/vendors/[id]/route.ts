@@ -81,7 +81,15 @@ export async function GET(
       return NextResponse.json({ error: 'Vendor tidak ditemukan' }, { status: 404 });
     }
 
-    return NextResponse.json({ success: true, data: user });
+    // Hitung jumlah proyek selesai secara real-time (lebih akurat dari totalProjects)
+    const completedProjectsCount = await db.project.count({
+      where: { vendorId: id, status: 'COMPLETED' },
+    });
+
+    return NextResponse.json({
+      success: true,
+      data: { ...user, totalProjects: completedProjectsCount },
+    });
   } catch (error) {
     console.error('Directory vendor profile error:', error);
     return NextResponse.json(

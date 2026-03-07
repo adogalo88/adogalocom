@@ -105,9 +105,25 @@ export async function GET(request: NextRequest) {
       db.user.count({ where }),
     ]);
 
+    // Hitung jumlah proyek selesai secara real-time (lebih akurat dari totalProjects)
+    const vendorIds = vendors.map((v) => v.id);
+    const projectCounts = vendorIds.length > 0
+      ? await db.project.groupBy({
+          by: ['vendorId'],
+          where: { vendorId: { in: vendorIds }, status: 'COMPLETED' },
+          _count: { id: true },
+        })
+      : [];
+    const countMap = Object.fromEntries(projectCounts.map((p) => [p.vendorId, p._count.id]));
+
+    const vendorsWithCount = vendors.map((v) => ({
+      ...v,
+      totalProjects: countMap[v.id] ?? 0,
+    }));
+
     return NextResponse.json({
       success: true,
-      data: vendors,
+      data: vendorsWithCount,
       pagination: {
         page,
         limit,
