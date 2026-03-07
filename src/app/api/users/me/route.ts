@@ -15,6 +15,7 @@ const updateProfileSchema = z.object({
   specialty: z.string().optional(),
   experience: z.number().optional(),
   materialCategoryIds: z.array(z.string()).optional(),
+  vendorCategoryIds: z.array(z.string()).optional(),
   verificationEntityType: z.enum(['PERORANGAN', 'BADAN_USAHA']).optional().nullable(),
   picName: z.string().optional().nullable(),
   picPhone: z.string().optional().nullable(),
@@ -53,8 +54,10 @@ export async function PATCH(request: NextRequest) {
 
     const updateData = { ...validationResult.data };
     const materialCategoryIds = updateData.materialCategoryIds;
+    const vendorCategoryIds = updateData.vendorCategoryIds;
     const skillIds = updateData.skillIds;
     delete (updateData as Record<string, unknown>).materialCategoryIds;
+    delete (updateData as Record<string, unknown>).vendorCategoryIds;
     delete (updateData as Record<string, unknown>).skillIds;
 
     // Remove undefined values
@@ -67,6 +70,9 @@ export async function PATCH(request: NextRequest) {
     const data: Parameters<typeof db.user.update>[0]['data'] = { ...updateData };
     if (currentUser.role === 'SUPPLIER' && Array.isArray(materialCategoryIds)) {
       data.materialCategories = { set: materialCategoryIds.map((id) => ({ id })) };
+    }
+    if (currentUser.role === 'VENDOR' && Array.isArray(vendorCategoryIds)) {
+      data.vendorCategories = { set: vendorCategoryIds.map((id) => ({ id })) };
     }
     if (currentUser.role === 'TUKANG' && Array.isArray(skillIds)) {
       data.skills = { set: skillIds.map((id) => ({ id })) };

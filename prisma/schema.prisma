@@ -133,6 +133,7 @@ model User {
   verifiedProjects  Project[]          @relation("ProjectVerifier") // Projects verified by this admin
   verifiedMaterials Material[]         @relation("MaterialVerifier") // Materials verified by this admin
   materialCategories MaterialCategory[] // Kategori material yang dipilih supplier (profil)
+  vendorCategories   Category[]        @relation("VendorCategories") // Kategori spesialis vendor (proyek tender)
   skills             Skill[] // Keahlian (untuk TUKANG)
 
   @@map("users")
@@ -241,7 +242,8 @@ model Category {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  projects Project[]
+  projects      Project[]
+  vendorUsers   User[]  @relation("VendorCategories") // Vendor yang memilih kategori ini sebagai spesialisasi
 
   @@map("categories")
 }

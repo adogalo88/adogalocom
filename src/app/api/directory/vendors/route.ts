@@ -18,6 +18,7 @@ export async function GET(request: NextRequest) {
     const skip = (page - 1) * limit;
 
     // Build filter
+    const andConditions: Record<string, unknown>[] = [];
     const where: Record<string, unknown> = {
       role: 'VENDOR',
       isVerified: true,
@@ -25,10 +26,12 @@ export async function GET(request: NextRequest) {
     };
 
     if (search) {
-      where.OR = [
-        { name: { contains: search, mode: 'insensitive' } },
-        { description: { contains: search, mode: 'insensitive' } },
-      ];
+      andConditions.push({
+        OR: [
+          { name: { contains: search, mode: 'insensitive' } },
+          { description: { contains: search, mode: 'insensitive' } },
+        ],
+      });
     }
 
     if (cityId) {
@@ -36,9 +39,16 @@ export async function GET(request: NextRequest) {
     }
 
     if (categoryIds.length > 0) {
-      where.projectsAsVendor = {
-        some: { categoryId: { in: categoryIds } },
-      };
+      // Vendor matches: has done projects in category OR has selected category as specialization
+      andConditions.push({
+        OR: [
+          { projectsAsVendor: { some: { categoryId: { in: categoryIds } } } },
+          { vendorCategories: { some: { id: { in: categoryIds } } } },
+        ],
+      });
+    }
+    if (andConditions.length > 0) {
+      where.AND = andConditions;
     }
 
     if (minRating) {

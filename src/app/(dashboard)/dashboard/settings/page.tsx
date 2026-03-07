@@ -47,6 +47,11 @@ export default function SettingsPage() {
   const [supplierCategoryIds, setSupplierCategoryIds] = useState<string[]>([]);
   const [savingCategories, setSavingCategories] = useState(false);
 
+  // Kategori spesialis untuk VENDOR
+  const [projectCategories, setProjectCategories] = useState<{ id: string; name: string }[]>([]);
+  const [vendorCategoryIds, setVendorCategoryIds] = useState<string[]>([]);
+  const [savingVendorCategories, setSavingVendorCategories] = useState(false);
+
   // Keahlian untuk TUKANG
   const [skills, setSkills] = useState<{ id: string; name: string }[]>([]);
   const [tukangSkillIds, setTukangSkillIds] = useState<string[]>([]);
@@ -78,7 +83,13 @@ export default function SettingsPage() {
       .then((r) => r.json())
       .then((d) => setMaterialCategories(Array.isArray(d?.categories) ? d.categories : []));
     fetch('/api/skills').then((r) => r.json()).then((d) => (d.success && Array.isArray(d.skills)) && setSkills(d.skills));
+    fetch('/api/categories').then((r) => r.json()).then((d) => setProjectCategories(Array.isArray(d?.categories) ? d.categories : []));
   }, []);
+
+  const userVendorCategories = (user as { vendorCategories?: { id: string; name: string }[] } | null)?.vendorCategories ?? [];
+  useEffect(() => {
+    setVendorCategoryIds(userVendorCategories.map((c) => c.id));
+  }, [user?.id, userVendorCategories.length]);
 
   const userMaterialCategories = (user as { materialCategories?: { id: string; name: string }[] } | null)?.materialCategories ?? [];
   const userSkills = (user as { skills?: { id: string; name: string }[] } | null)?.skills ?? [];
@@ -336,6 +347,28 @@ export default function SettingsPage() {
     }
   };
 
+  const onSaveVendorCategories = async () => {
+    if (user?.role !== 'VENDOR') return;
+    setSavingVendorCategories(true);
+    try {
+      const response = await fetch('/api/users/me', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ vendorCategoryIds }),
+      });
+      if (!response.ok) {
+        const err = await response.json();
+        throw new Error(err.error || 'Gagal menyimpan');
+      }
+      await refreshUser();
+      toast.success('Kategori spesialis berhasil disimpan');
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Gagal menyimpan kategori spesialis');
+    } finally {
+      setSavingVendorCategories(false);
+    }
+  };
+
   const onSaveMaterialCategories = async () => {
     if (user?.role !== 'SUPPLIER') return;
     setSavingCategories(true);
@@ -405,7 +438,7 @@ export default function SettingsPage() {
       </div>
 
       <Tabs defaultValue="profile" className="space-y-6">
-        <TabsList className={`grid w-full md:w-auto ${user?.role === 'SUPPLIER' ? 'grid-cols-6' : (user?.role === 'VENDOR' || user?.role === 'TUKANG') ? 'grid-cols-5' : 'grid-cols-4'}`}>
+        <TabsList className={`grid w-full md:w-auto ${user?.role === 'SUPPLIER' ? 'grid-cols-6' : (user?.role === 'VENDOR' || user?.role === 'TUKANG') ? 'grid-cols-6' : 'grid-cols-4'}`}>
           <TabsTrigger value="profile" className="gap-2">
             <User className="h-4 w-4" />
             <span className="hidden sm:inline">Profil</span>
@@ -424,6 +457,12 @@ export default function SettingsPage() {
             <TabsTrigger value="material-categories" className="gap-2">
               <Package className="h-4 w-4" />
               <span className="hidden sm:inline">Kategori Material</span>
+            </TabsTrigger>
+          )}
+          {user?.role === 'VENDOR' && (
+            <TabsTrigger value="vendor-categories" className="gap-2">
+              <Package className="h-4 w-4" />
+              <span className="hidden sm:inline">Kategori Spesialis</span>
             </TabsTrigger>
           )}
           <TabsTrigger value="bank" className="gap-2">
@@ -773,6 +812,52 @@ export default function SettingsPage() {
                   {savingVerif && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
                   Simpan Data Verifikasi
                 </Button>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        )}
+
+        {/* Kategori Spesialis (Vendor only) */}
+        {user?.role === 'VENDOR' && (
+          <TabsContent value="vendor-categories">
+            <Card className="glass-card">
+              <CardHeader>
+                <CardTitle>Kategori Spesialis</CardTitle>
+                <CardDescription>Pilih kategori proyek yang Anda layani. Akan tampil di direktori vendor dan saat undangan proyek.</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {projectCategories.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">Belum ada kategori proyek. Admin dapat menambahkannya di Dashboard → Kategori.</p>
+                ) : (
+                  <>
+                    <div className="rounded-lg border p-4 space-y-2 max-h-64 overflow-y-auto">
+                      {projectCategories.map((cat) => (
+                        <label key={cat.id} className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={vendorCategoryIds.includes(cat.id)}
+                            onChange={() =>
+                              setVendorCategoryIds((prev) =>
+                                prev.includes(cat.id) ? prev.filter((id) => id !== cat.id) : [...prev, cat.id]
+                              )
+                            }
+                            className="rounded border-gray-300"
+                          />
+                          <span>{cat.name}</span>
+                        </label>
+                      ))}
+                    </div>
+                    <Button
+                      type="button"
+                      className="bg-gradient-to-r from-[#fd904c] to-[#e57835]"
+                      disabled={savingVendorCategories}
+                      onClick={onSaveVendorCategories}
+                    >
+                      {savingVendorCategories && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+                      Simpan Kategori Spesialis
+                    </Button>
+                  </>
+                )}
               </CardContent>
             </Card>
           </TabsContent>

@@ -62,10 +62,7 @@ const roleNavigation: Record<string, NavItem[]> = {
   VENDOR: [
     { title: 'Dashboard', href: '/dashboard', icon: <Home className="h-5 w-5" /> },
     { title: 'Proyek Tender', href: '/proyek-tender', icon: <FolderKanban className="h-5 w-5" /> },
-    { title: 'Proyek Saya', href: '#', icon: <Briefcase className="h-5 w-5" />, children: [
-      { title: 'Daftar Proyek', href: '/dashboard/my-projects', icon: <FolderKanban className="h-4 w-4" /> },
-      { title: 'Penawaran Saya', href: '/dashboard/penawaran-saya', icon: <ClipboardList className="h-4 w-4" /> },
-    ]},
+    { title: 'Proyek Saya', href: '/dashboard/my-projects', icon: <Briefcase className="h-5 w-5" /> },
     { title: 'Material', href: '/dashboard/materials', icon: <Package className="h-5 w-5" /> },
     { title: 'RAB/BOQ', href: '/dashboard/boq', icon: <FileText className="h-5 w-5" /> },
     { title: 'Tim Kerja', href: '/dashboard/team', icon: <Users className="h-5 w-5" /> },
@@ -153,12 +150,6 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
   const [expandedItems, setExpandedItems] = useState<string[]>([]);
 
   const navigation = user?.role ? roleNavigation[user.role] : [];
-
-  useEffect(() => {
-    if (pathname.includes('/dashboard/my-projects') || pathname.includes('/dashboard/penawaran-saya')) {
-      setExpandedItems((prev) => (prev.includes('Proyek Saya') ? prev : [...prev, 'Proyek Saya']));
-    }
-  }, [pathname]);
 
   const toggleExpand = (title: string) => {
     setExpandedItems((prev) =>
