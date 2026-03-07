@@ -14,9 +14,18 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Loader2, Upload, X, Plus, Trash2, Image as ImageIcon, FileText } from 'lucide-react';
+import { Loader2, Upload, X, Plus, Trash2, Image as ImageIcon, FileText, Info } from 'lucide-react';
 import { toast } from 'sonner';
 import Image from 'next/image';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Checkbox } from '@/components/ui/checkbox';
 
 const rfqItemSchema = z.object({
   itemName: z.string().min(1, 'Nama item harus diisi'),
@@ -87,6 +96,10 @@ export default function CreateProjectPage() {
   const [selectedProvinceId, setSelectedProvinceId] = useState<string>('');
   const [skills, setSkills] = useState<{ id: string; name: string }[]>([]);
   const [selectedSkillIds, setSelectedSkillIds] = useState<string[]>([]);
+  const [showCommitmentFundDialog, setShowCommitmentFundDialog] = useState(false);
+  const [agreedToCommitmentFund, setAgreedToCommitmentFund] = useState(false);
+  const [commitmentFundChecked, setCommitmentFundChecked] = useState(false);
+  const [pendingSubmitData, setPendingSubmitData] = useState<ProjectForm | null>(null);
 
   useEffect(() => {
     if (authLoading) return;
@@ -189,16 +202,9 @@ export default function CreateProjectPage() {
     append({ itemName: '', description: '', quantity: 1, unit: 'm' });
   };
 
-  const onSubmit = async (data: ProjectForm) => {
+  const doActualSubmit = async (data: ProjectForm) => {
     const type = data.type ?? 'TENDER';
     const tenderSubtype = data.tenderSubtype ?? 'WITHOUT_RFQ';
-    if (type === 'TENDER' && tenderSubtype === 'WITH_RFQ') {
-      if (!data.rfqItems || data.rfqItems.length === 0 || data.rfqItems.every(item => !item.itemName)) {
-        toast.error('Harap isi minimal satu item RFQ');
-        return;
-      }
-    }
-
     setIsSubmitting(true);
     try {
       const result = await createProject.mutateAsync({
@@ -230,6 +236,43 @@ export default function CreateProjectPage() {
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const onSubmit = async (data: ProjectForm) => {
+    const type = data.type ?? 'TENDER';
+    const tenderSubtype = data.tenderSubtype ?? 'WITHOUT_RFQ';
+    if (type === 'TENDER' && tenderSubtype === 'WITH_RFQ') {
+      if (!data.rfqItems || data.rfqItems.length === 0 || data.rfqItems.every(item => !item.itemName)) {
+        toast.error('Harap isi minimal satu item RFQ');
+        return;
+      }
+    }
+
+    if (type === 'TENDER' && !agreedToCommitmentFund) {
+      setPendingSubmitData(data);
+      setShowCommitmentFundDialog(true);
+      return;
+    }
+
+    await doActualSubmit(data);
+  };
+
+  const handleCommitmentFundAgree = () => {
+    if (pendingSubmitData && commitmentFundChecked) {
+      setAgreedToCommitmentFund(true);
+      setShowCommitmentFundDialog(false);
+      setCommitmentFundChecked(false);
+      doActualSubmit(pendingSubmitData);
+      setPendingSubmitData(null);
+    }
+  };
+
+  const handleCommitmentFundDialogClose = (open: boolean) => {
+    if (!open) {
+      setPendingSubmitData(null);
+      setCommitmentFundChecked(false);
+    }
+    setShowCommitmentFundDialog(open);
   };
 
   const onValidationError = (errors: Record<string, { message?: string }>) => {
@@ -784,6 +827,61 @@ export default function CreateProjectPage() {
           </Button>
         </div>
       </form>
+
+      {/* Dana Komitmen Popup - untuk proyek Tender/Kontrak */}
+      <Dialog open={showCommitmentFundDialog} onOpenChange={handleCommitmentFundDialogClose}>
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Info className="h-5 w-5 text-[#fd904c]" />
+              Pemberitahuan Dana Komitmen Proyek
+            </DialogTitle>
+            <DialogDescription asChild>
+              <div className="space-y-4 text-left">
+                <p>
+                  Untuk menjaga keseriusan dan kualitas ekosistem di platform Adogalo, setiap Client yang memposting proyek diwajibkan menempatkan <strong>Dana Komitmen</strong> sebesar <strong className="text-[#fd904c]">Rp200.000</strong>.
+                </p>
+                <div className="space-y-2">
+                  <p className="font-medium">Ketentuan Dana Komitmen:</p>
+                  <ul className="list-disc list-inside space-y-1 text-sm">
+                    <li>Dana Komitmen berfungsi untuk memastikan proyek yang diposting benar-benar serius dan siap dikerjakan.</li>
+                    <li>Dana ini bukan biaya layanan dan akan dikembalikan 100% kepada Client setelah:
+                      <ul className="list-none ml-4 mt-1 space-y-0.5">
+                        <li>• proyek selesai dikerjakan, dan</li>
+                        <li>• Client memberikan rating dan ulasan kepada Vendor.</li>
+                      </ul>
+                    </li>
+                    <li>Setelah proyek diposting, Admin Adogalo akan mengirimkan link pembayaran secara manual melalui WhatsApp atau kontak yang terdaftar.</li>
+                    <li>Proyek akan diproses lebih lanjut setelah Dana Komitmen dikonfirmasi oleh Admin.</li>
+                    <li>Dana Komitmen ini membantu menjaga agar ekosistem Adogalo tetap profesional bagi Client maupun Vendor.</li>
+                  </ul>
+                </div>
+                <label className="flex items-start gap-3 cursor-pointer p-3 rounded-lg border bg-muted/50 hover:bg-muted/70 transition-colors">
+                  <Checkbox
+                    checked={commitmentFundChecked}
+                    onCheckedChange={(c) => setCommitmentFundChecked(!!c)}
+                  />
+                  <span className="text-sm font-medium">
+                    Saya mengerti dan setuju dengan ketentuan Dana Komitmen Proyek sebesar Rp200.000
+                  </span>
+                </label>
+              </div>
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => handleCommitmentFundDialogClose(false)}>
+              Batal
+            </Button>
+            <Button
+              className="bg-[#fd904c] hover:bg-[#fd904c]/90"
+              disabled={!commitmentFundChecked}
+              onClick={handleCommitmentFundAgree}
+            >
+              Saya Setuju dan Lanjutkan
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
