@@ -315,11 +315,6 @@ export const GET = withAuth(async (user, request: NextRequest, context) => {
             offerFileUrl: true,
             status: true,
             createdAt: true,
-            negotiationRequestedTotal: true,
-            negotiationMessage: true,
-            negotiationStatus: true,
-            vendorCounterTotal: true,
-            vendorCounterMessage: true,
             user: {
               select: {
                 id: true,
@@ -329,7 +324,6 @@ export const GET = withAuth(async (user, request: NextRequest, context) => {
                 role: true,
                 rating: true,
                 totalReviews: true,
-                totalProjects: true,
                 isVerified: true,
                 specialty: true,
                 experience: true,
@@ -381,17 +375,26 @@ export const GET = withAuth(async (user, request: NextRequest, context) => {
       return apiForbidden('Anda tidak memiliki akses untuk melihat proyek ini');
     }
     
-    // Get user's application if exists (for VENDOR/TUKANG)
-    let userApplication = null;
+    // Get user's application if exists (for VENDOR/TUKANG) - select only base columns for compatibility
+    let userApplication: { id: string; coverLetter: string | null; proposedBudget: number | null; offerFileUrl: string | null; status: string; createdAt: Date } | null = null;
     if (user.role === UserRole.VENDOR || user.role === UserRole.TUKANG) {
-      userApplication = await db.application.findUnique({
+      const ua = await db.application.findUnique({
         where: {
           projectId_userId: {
             projectId,
             userId: user.id,
           },
         },
+        select: {
+          id: true,
+          coverLetter: true,
+          proposedBudget: true,
+          offerFileUrl: true,
+          status: true,
+          createdAt: true,
+        },
       });
+      userApplication = ua;
     }
     
     // Effective status: PUBLISHED + past deadline → EXPIRED
