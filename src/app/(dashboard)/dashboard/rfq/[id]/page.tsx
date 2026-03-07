@@ -183,12 +183,12 @@ export default function RFQDetailPage({ params }: { params: Promise<{ id: string
         }
       } else {
         toast.error(result.error || 'Gagal memuat data RFQ');
-        router.push('/dashboard/rfq');
+        router.push('/dashboard/projects');
       }
     } catch (error) {
       console.error('Error fetching RFQ:', error);
       toast.error('Gagal memuat data RFQ');
-      router.push('/dashboard/rfq');
+      router.push('/dashboard/projects');
     } finally {
       setIsLoading(false);
     }
@@ -383,9 +383,14 @@ export default function RFQDetailPage({ params }: { params: Promise<{ id: string
 
       {/* Back + Project info bar */}
       <div className="flex flex-col gap-4">
-        <Button variant="ghost" size="sm" onClick={() => router.back()} className="w-fit">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => router.push(rfq.project?.id ? `/dashboard/projects/${rfq.project.id}` : '/dashboard/projects')}
+          className="w-fit"
+        >
           <ArrowLeft className="h-4 w-4 mr-2" />
-          Kembali
+          Kembali ke detail proyek
         </Button>
         <div className="bg-white border border-slate-100 rounded-2xl p-5 shadow-sm flex flex-wrap items-center justify-between gap-4">
           <div className="flex items-center gap-4">

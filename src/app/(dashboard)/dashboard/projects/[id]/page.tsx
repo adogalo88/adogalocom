@@ -499,7 +499,7 @@ export default function ProjectDetailPage() {
                       </p>
                     </div>
                   </div>
-                  <Link href={`/dashboard/rfq?projectId=${project.id}`}>
+                  <Link href={project.rfq?.id ? `/dashboard/rfq/${project.rfq.id}` : `/dashboard/rfq?projectId=${project.id}`}>
                     <Button variant="outline">
                       Lihat RFQ
                     </Button>

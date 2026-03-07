@@ -18,6 +18,7 @@ import { useAuth } from '@/providers/AuthProvider';
 
 interface ProjectRow {
   id: string;
+  rfqId: string | null;
   projectTitle: string;
   projectCity: string | null;
   totalOffer: number | null;
@@ -83,6 +84,7 @@ export default function PenawaranSayaPage() {
         const sub = p.rfq?.submissions?.[0];
         return {
           id: p.id,
+          rfqId: p.rfq?.id ?? null,
           projectTitle: p.title ?? 'Proyek',
           projectCity: p.city?.name ?? null,
           totalOffer: sub?.totalOffer ?? null,
@@ -117,7 +119,7 @@ export default function PenawaranSayaPage() {
         <CardHeader>
           <CardTitle>Daftar Penawaran</CardTitle>
           <CardDescription>
-            Proyek yang sudah Anda buat penawarannya. Klik baris untuk membuka detail proyek (tampilan sama dengan client/admin). Di detail proyek, Lihat RFQ hanya menampilkan penawaran Anda.
+            Proyek yang sudah Anda buat penawarannya. Klik baris untuk langsung melihat penawaran Anda di halaman RFQ proyek tersebut.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -138,7 +140,7 @@ export default function PenawaranSayaPage() {
               {rows.map((row) => (
                 <li key={row.id}>
                   <Link
-                    href={`/dashboard/projects/${row.id}`}
+                    href={row.rfqId ? `/dashboard/rfq/${row.rfqId}` : `/dashboard/projects/${row.id}`}
                     className="flex flex-col sm:flex-row sm:items-center gap-3 py-4 px-2 -mx-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors"
                   >
                     <div className="flex-1 min-w-0">

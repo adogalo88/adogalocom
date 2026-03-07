@@ -110,7 +110,13 @@ export default function RFQListPage() {
       const response = await fetch(url, { credentials: 'include' });
       const result = await response.json();
       if (result.success) {
-        setRFQs(Array.isArray(result.data) ? result.data : []);
+        const list = Array.isArray(result.data) ? result.data : [];
+        setRFQs(list);
+        // Jika dari projectId dan hanya 1 RFQ, langsung redirect ke detail penawaran
+        if (projectIdFromUrl && list.length === 1 && list[0].id) {
+          router.replace(`/dashboard/rfq/${list[0].id}`);
+          return;
+        }
       } else {
         setRFQs([]);
       }
