@@ -177,7 +177,7 @@ export default function ProjectsPage() {
                     <th className="text-left py-3 px-4 font-medium text-sm">Tipe</th>
                     <th className="text-left py-3 px-4 font-medium text-sm">RFQ</th>
                     <th className="text-left py-3 px-4 font-medium text-sm">Budget</th>
-                    <th className="text-left py-3 px-4 font-medium text-sm">Lokasi</th>
+                    <th className="text-left py-3 px-4 font-medium text-sm">Kota</th>
                     <th className="text-left py-3 px-4 font-medium text-sm">Klien</th>
                     <th className="text-left py-3 px-4 font-medium text-sm">Penawaran</th>
                   </tr>
@@ -215,8 +215,8 @@ export default function ProjectsPage() {
                       <td className="py-3 px-4 text-sm">
                         {project.budget ? formatCurrency(project.budget) : '-'}
                       </td>
-                      <td className="py-3 px-4 text-sm text-muted-foreground max-w-[140px] truncate" title={project.location || ''}>
-                        {project.location || '-'}
+                      <td className="py-3 px-4 text-sm text-muted-foreground max-w-[140px] truncate" title={project.city?.name || ''}>
+                        {project.city?.name || '-'}
                       </td>
                       <td className="py-3 px-4 text-sm">
                         {project.client ? (

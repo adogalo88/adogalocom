@@ -573,14 +573,22 @@ export const PATCH = withAuth(async (user, request: NextRequest, context) => {
       if (data.status === 'COMPLETED') {
         updateData.completedAt = new Date();
         
-        // Notify vendor and team members
         const vendorId = data.vendorId || existingProject.vendorId;
         if (vendorId) {
           await createNotification(
             vendorId,
             'PROJECT_COMPLETED',
             'Proyek Selesai',
-            `Proyek "${existingProject.title}" telah ditandai selesai.`,
+            `Proyek "${existingProject.title}" telah ditandai selesai oleh admin.`,
+            { projectId }
+          );
+        }
+        if (existingProject.clientId) {
+          await createNotification(
+            existingProject.clientId,
+            'PROJECT_COMPLETED',
+            'Proyek Selesai',
+            `Proyek "${existingProject.title}" telah ditandai selesai. Anda dapat memberikan rating ke vendor di halaman detail proyek.`,
             { projectId }
           );
         }
@@ -682,6 +690,7 @@ export const PATCH = withAuth(async (user, request: NextRequest, context) => {
     });
     
     return apiSuccess({
+      success: true,
       message: 'Proyek berhasil diperbarui',
       project: formatProjectResponse(updatedProject),
     });

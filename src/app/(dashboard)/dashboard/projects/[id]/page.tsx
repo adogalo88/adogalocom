@@ -94,6 +94,7 @@ export default function ProjectDetailPage() {
   const [recommendedVendors, setRecommendedVendors] = useState<Array<{ id: string; name: string; avatar: string | null; rating: number; totalProjects?: number }>>([]);
   const [recommendVendorsLoading, setRecommendVendorsLoading] = useState(false);
   const [invitingVendorId, setInvitingVendorId] = useState<string | null>(null);
+  const [invitedVendorIds, setInvitedVendorIds] = useState<Set<string>>(new Set());
   const [openNegoAppId, setOpenNegoAppId] = useState<string | null>(null);
   const [negoRequestedTotal, setNegoRequestedTotal] = useState('');
   const [negoMessage, setNegoMessage] = useState('');
@@ -338,14 +339,14 @@ export default function ProjectDetailPage() {
         body: JSON.stringify({ status: newStatus }),
       });
 
-      const result = await response.json();
-      if (response.ok && result.success) {
+      const result = await response.json().catch(() => ({}));
+      if (response.ok) {
         const statusMessages: Record<string, string> = {
           'PUBLISHED': 'Proyek berhasil dipublikasi!',
           'COMPLETED': 'Proyek ditandai selesai!',
           'CANCELLED': 'Proyek dibatalkan',
         };
-        toast.success(statusMessages[newStatus]);
+        toast.success(result.message || statusMessages[newStatus]);
         refetch();
       } else {
         toast.error(result.error || 'Gagal mengubah status proyek');
@@ -449,8 +450,8 @@ export default function ProjectDetailPage() {
             </Button>
           )}
 
-          {/* Tombol Selesaikan Proyek - hanya Vendor yang mengerjakan atau Admin */}
-          {project.status === 'IN_PROGRESS' && (project.vendorId ?? (project.vendor as { id?: string })?.id) && (isAdmin || (isVendor && String(project.vendorId ?? (project.vendor as { id?: string })?.id ?? '') === String(user?.id))) && (
+          {/* Tombol Selesaikan Proyek - hanya Admin, khusus proyek Tender/Kontrak */}
+          {project.type === 'TENDER' && project.status === 'IN_PROGRESS' && isAdmin && (
             <Button
               className="bg-green-600 hover:bg-green-700"
               onClick={() => setShowCompleteDialog(true)}
@@ -1193,40 +1194,45 @@ export default function ProjectDetailPage() {
                               </div>
                               <ExternalLink className="h-4 w-4 text-muted-foreground shrink-0" />
                             </Link>
-                            <Button
-                              size="sm"
-                              className="bg-[#fd904c] hover:bg-[#e57835] shrink-0"
-                              disabled={!!invitingVendorId}
-                              onClick={async (e) => {
-                                e.preventDefault();
-                                setInvitingVendorId(vendor.id);
-                                try {
-                                  const res = await fetch(`/api/projects/${projectId}/invite-vendor`, {
-                                    method: 'POST',
-                                    headers: { 'Content-Type': 'application/json' },
-                                    credentials: 'include',
-                                    body: JSON.stringify({ vendorId: vendor.id }),
-                                  });
-                                  const data = await res.json();
-                                  if (data?.success) {
-                                    toast.success(`Undangan berhasil dikirim ke ${vendor.name}`);
-                                  } else {
-                                    toast.error(data?.error || 'Gagal mengirim undangan');
+                            {invitedVendorIds.has(vendor.id) ? (
+                              <span className="text-sm text-muted-foreground shrink-0">Anda sudah mengundang vendor ini</span>
+                            ) : (
+                              <Button
+                                size="sm"
+                                className="bg-[#fd904c] hover:bg-[#e57835] shrink-0"
+                                disabled={!!invitingVendorId}
+                                onClick={async (e) => {
+                                  e.preventDefault();
+                                  setInvitingVendorId(vendor.id);
+                                  try {
+                                    const res = await fetch(`/api/projects/${projectId}/invite-vendor`, {
+                                      method: 'POST',
+                                      headers: { 'Content-Type': 'application/json' },
+                                      credentials: 'include',
+                                      body: JSON.stringify({ vendorId: vendor.id }),
+                                    });
+                                    const data = await res.json();
+                                    if (res.ok && (data?.success !== false)) {
+                                      toast.success(`Undangan berhasil dikirim ke ${vendor.name}`);
+                                      setInvitedVendorIds((prev) => new Set(prev).add(vendor.id));
+                                    } else {
+                                      toast.error(data?.error || 'Gagal mengirim undangan');
+                                    }
+                                  } catch {
+                                    toast.error('Gagal mengirim undangan');
+                                  } finally {
+                                    setInvitingVendorId(null);
                                   }
-                                } catch {
-                                  toast.error('Gagal mengirim undangan');
-                                } finally {
-                                  setInvitingVendorId(null);
-                                }
-                              }}
-                            >
-                              {invitingVendorId === vendor.id ? (
-                                <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                              ) : (
-                                <UserPlus className="h-4 w-4 mr-2" />
-                              )}
-                              Undang vendor untuk proyek ini
-                            </Button>
+                                }}
+                              >
+                                {invitingVendorId === vendor.id ? (
+                                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                                ) : (
+                                  <UserPlus className="h-4 w-4 mr-2" />
+                                )}
+                                Undang vendor untuk proyek ini
+                              </Button>
+                            )}
                           </div>
                         </li>
                       ))}
