@@ -17,6 +17,7 @@ import {
   MapPin,
   Calendar,
   Users,
+  FolderKanban,
   Wallet,
   FileText,
   CheckCircle,
@@ -28,6 +29,7 @@ import {
   Ban,
   Trash2,
   ShieldCheck,
+  Star,
 } from 'lucide-react';
 import Link from 'next/link';
 import { toast } from 'sonner';
@@ -821,19 +823,21 @@ export default function ProjectDetailPage() {
                     {project.client?.name?.charAt(0) || '?'}
                   </AvatarFallback>
                 </Avatar>
-                <div>
+                <div className="flex-1 min-w-0">
                   <p className="font-medium">{project.client?.name}</p>
-                  <p className="text-sm text-muted-foreground">{project.client?.email}</p>
+                  <p className="text-sm text-muted-foreground truncate">{project.client?.email}</p>
+                  <div className="flex items-center gap-3 mt-2 text-sm text-muted-foreground">
+                    <span className="flex items-center gap-1 text-amber-600">
+                      <Star className="h-4 w-4 fill-amber-400" />
+                      {(project.client as { rating?: number })?.rating?.toFixed(1) ?? '0'}
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <FolderKanban className="h-4 w-4" />
+                      {(project.client as { completedTenderCount?: number })?.completedTenderCount ?? 0} proyek selesai
+                    </span>
+                  </div>
                 </div>
               </div>
-              {!isOwner && (
-                <Link href={`/dashboard/messages?with=${project.clientId}`}>
-                  <Button variant="outline" className="w-full mt-4">
-                    <MessageSquare className="h-4 w-4 mr-2" />
-                    Hubungi Klien
-                  </Button>
-                </Link>
-              )}
             </CardContent>
           </Card>
 
