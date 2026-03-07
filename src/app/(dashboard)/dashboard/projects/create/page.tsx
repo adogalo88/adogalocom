@@ -34,24 +34,31 @@ const rfqItemSchema = z.object({
   unit: z.string().min(1, 'Satuan harus diisi'),
 });
 
+// Coerce empty string / NaN to undefined for optional number fields (fixes "expected number, received NaN")
+const coerceOptionalNum = (v: unknown) => {
+  if (v === '' || v === null || v === undefined) return undefined;
+  const n = Number(v);
+  return Number.isNaN(n) ? undefined : n;
+};
+
 const projectSchema = z.object({
   title: z.string().min(5, 'Judul minimal 5 karakter'),
   description: z.string().min(20, 'Deskripsi minimal 20 karakter'),
   type: z.enum(['TENDER', 'HARIAN']),
   tenderSubtype: z.enum(['WITH_RFQ', 'WITHOUT_RFQ']).optional(),
-  budget: z.number().min(0).optional(),
+  budget: z.preprocess(coerceOptionalNum, z.number().min(0).optional()),
   location: z.string().optional(),
   cityId: z.string().optional(),
   address: z.string().max(500).optional(),
-  workerNeeded: z.number().min(1).optional(),
+  workerNeeded: z.preprocess(coerceOptionalNum, z.number().min(1).optional()),
   categoryId: z.string().optional(),
   skillIds: z.array(z.string()).optional(),
   startDate: z.string().optional(),
   endDate: z.string().optional(),
   offerDeadline: z.string().optional(),
   applicationDeadline: z.string().optional(),
-  minSalary: z.number().min(0).optional().nullable(),
-  maxSalary: z.number().min(0).optional().nullable(),
+  minSalary: z.preprocess(coerceOptionalNum, z.number().min(0).optional().nullable()),
+  maxSalary: z.preprocess(coerceOptionalNum, z.number().min(0).optional().nullable()),
   // RFQ hanya wajib divalidasi saat subtipe WITH_RFQ; kalau WITHOUT_RFQ abaikan
   rfqItems: z.array(z.object({
     itemName: z.string(),
