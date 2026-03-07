@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, use } from 'react';
+import { useState, useEffect, use, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -26,10 +26,15 @@ import {
   Send,
   Building2,
   Hash,
+  UserPlus,
+  Star,
+  ExternalLink,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '@/providers/AuthProvider';
 import { cn } from '@/lib/utils';
+import Link from 'next/link';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
 interface RFQItemPrice {
   id: string;
@@ -110,6 +115,7 @@ interface RFQ {
     endDate: string | null;
     offerDeadline?: string | null;
     clientId?: string;
+    categoryId?: string | null;
     client: { id: string; name: string; email: string; phone: string | null; avatar: string | null };
     city?: { id: string; name: string; province?: { name: string } } | null;
   };
@@ -161,10 +167,40 @@ export default function RFQDetailPage({ params }: { params: Promise<{ id: string
   const [counterTotal, setCounterTotal] = useState('');
   const [counterMessage, setCounterMessage] = useState('');
   const [submittingRespond, setSubmittingRespond] = useState(false);
+  const [inviteVendors, setInviteVendors] = useState<Array<{ id: string; name: string; avatar: string | null; rating: number; totalProjects: number; description?: string | null }>>([]);
+  const [inviteVendorsLoading, setInviteVendorsLoading] = useState(false);
+  const [invitingVendorId, setInvitingVendorId] = useState<string | null>(null);
 
   useEffect(() => {
     fetchRFQ();
   }, [id]);
+
+  const fetchInviteVendors = useCallback(async () => {
+    if (!rfq?.project?.id) return;
+    setInviteVendorsLoading(true);
+    try {
+      const categoryId = rfq.project.categoryId;
+      const params = new URLSearchParams();
+      if (categoryId) params.set('categoryIds', categoryId);
+      params.set('limit', '50');
+      const res = await fetch(`/api/directory/vendors?${params}`, { credentials: 'include' });
+      const data = await res.json();
+      if (data?.success && Array.isArray(data.data)) {
+        setInviteVendors(data.data);
+      }
+    } catch (e) {
+      console.error(e);
+      toast.error('Gagal memuat daftar vendor');
+    } finally {
+      setInviteVendorsLoading(false);
+    }
+  }, [rfq?.project?.id, rfq?.project?.categoryId]);
+
+  useEffect(() => {
+    if (activeTab === 'invite-vendor' && rfq?.project?.id) {
+      fetchInviteVendors();
+    }
+  }, [activeTab, rfq?.project?.id, fetchInviteVendors]);
 
   const fetchRFQ = async () => {
     try {
@@ -448,10 +484,16 @@ export default function RFQDetailPage({ params }: { params: Promise<{ id: string
             Item Pekerjaan
           </TabsTrigger>
           {isClient && (
-            <TabsTrigger value="submissions" className="gap-2">
-              <Users className="h-4 w-4" />
-              Daftar Penawaran ({submittedSubmissions.length})
-            </TabsTrigger>
+            <>
+              <TabsTrigger value="submissions" className="gap-2">
+                <Users className="h-4 w-4" />
+                Daftar Penawaran ({submittedSubmissions.length})
+              </TabsTrigger>
+              <TabsTrigger value="invite-vendor" className="gap-2">
+                <UserPlus className="h-4 w-4" />
+                Undang Vendor
+              </TabsTrigger>
+            </>
           )}
           {isVendor && mySubmission && (
             <TabsTrigger value="my-offer" className="gap-2">
@@ -780,6 +822,104 @@ export default function RFQDetailPage({ params }: { params: Promise<{ id: string
                   </Card>
                 );
               })}
+            </div>
+          )}
+        </TabsContent>
+
+        <TabsContent value="invite-vendor" className="mt-4 space-y-4">
+          <h2 className="text-lg font-bold text-slate-800 flex items-center gap-2">
+            <UserPlus className="h-5 w-5 text-[#fd904c]" />
+            Undang Vendor
+          </h2>
+          <p className="text-sm text-muted-foreground">
+            {rfq.project.categoryId
+              ? 'Vendor yang sesuai kategori proyek akan ditampilkan di bawah. Klik untuk melihat profil atau undang ke proyek ini.'
+              : 'Menampilkan vendor terverifikasi. Pilih vendor dan undang untuk mengirim penawaran.'}
+          </p>
+          {inviteVendorsLoading ? (
+            <div className="flex justify-center py-12">
+              <Loader2 className="h-8 w-8 animate-spin text-[#fd904c]" />
+            </div>
+          ) : inviteVendors.length === 0 ? (
+            <Card className="border border-slate-100">
+              <CardContent className="py-12 text-center">
+                <UserPlus className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                <p className="text-muted-foreground">
+                  {rfq.project.categoryId
+                    ? 'Tidak ada vendor yang sesuai kategori proyek.'
+                    : 'Belum ada vendor terverifikasi.'}
+                </p>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="space-y-3">
+              {inviteVendors
+                .filter((v) => !rfq.submissions?.some((s) => s.vendor.id === v.id))
+                .map((vendor) => (
+                  <Card key={vendor.id} className="border border-slate-100 shadow-sm">
+                    <CardContent className="p-4">
+                      <div className="flex flex-wrap items-center justify-between gap-4">
+                        <Link
+                          href={`/directory/vendors/${vendor.id}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-3 min-w-0 flex-1 hover:opacity-80 transition-opacity"
+                        >
+                          <Avatar className="h-12 w-12 shrink-0">
+                            <AvatarImage src={vendor.avatar || undefined} />
+                            <AvatarFallback className="bg-gradient-to-br from-[#fd904c] to-[#e57835] text-white">
+                              {vendor.name?.slice(0, 2).toUpperCase() || '?'}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div className="min-w-0">
+                            <p className="font-semibold text-slate-800">{vendor.name}</p>
+                            <div className="flex items-center gap-2 text-xs text-slate-500 mt-0.5">
+                              <span className="flex items-center gap-1 text-amber-600">
+                                <Star className="h-3.5 w-3.5 fill-amber-400" />
+                                {vendor.rating?.toFixed(1) || '0'}
+                              </span>
+                              <span>{vendor.totalProjects ?? 0} proyek</span>
+                            </div>
+                          </div>
+                          <ExternalLink className="h-4 w-4 text-slate-400 shrink-0" />
+                        </Link>
+                        <Button
+                          size="sm"
+                          className="bg-[#fd904c] hover:bg-[#fd904c]/90 shrink-0"
+                          disabled={invitingVendorId === vendor.id}
+                          onClick={async () => {
+                            setInvitingVendorId(vendor.id);
+                            try {
+                              const res = await fetch(`/api/projects/${rfq.project.id}/invite-vendor`, {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                credentials: 'include',
+                                body: JSON.stringify({ vendorId: vendor.id }),
+                              });
+                              const data = await res.json();
+                              if (data.success) {
+                                toast.success(`Undangan berhasil dikirim ke ${vendor.name}`);
+                              } else {
+                                toast.error(data.error || 'Gagal mengirim undangan');
+                              }
+                            } catch {
+                              toast.error('Gagal mengirim undangan');
+                            } finally {
+                              setInvitingVendorId(null);
+                            }
+                          }}
+                        >
+                          {invitingVendorId === vendor.id ? (
+                            <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                          ) : (
+                            <UserPlus className="h-4 w-4 mr-2" />
+                          )}
+                          Undang ke proyek ini
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
             </div>
           )}
         </TabsContent>

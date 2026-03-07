@@ -41,6 +41,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 function parseJsonArray(val: unknown): string[] {
   if (Array.isArray(val)) return val as string[];
@@ -75,6 +76,7 @@ export default function ProjectDetailPage() {
   const [submittingSkillRatings, setSubmittingSkillRatings] = useState(false);
   const [comments, setComments] = useState<{ id: string; content: string; createdAt: string; user: { id: string; name: string; role: string; avatar: string | null } }[]>([]);
   const [commentText, setCommentText] = useState('');
+  const [projectTab, setProjectTab] = useState('info');
   const [submittingComment, setSubmittingComment] = useState(false);
   const chatContainerRef = useRef<HTMLDivElement>(null);
 
@@ -358,8 +360,31 @@ export default function ProjectDetailPage() {
 
       {/* Content - full width */}
       <div className="grid lg:grid-cols-3 gap-6">
-        {/* Main Content */}
-        <div className="lg:col-span-2 space-y-6">
+        {/* Main Content - Tabs */}
+        <div className="lg:col-span-2">
+          <Tabs
+            value={projectTab}
+            onValueChange={(v) => {
+              if (v === 'rfq' && project.type === 'TENDER' && project.tenderSubtype === 'WITH_RFQ' && project.rfq?.id) {
+                router.push(`/dashboard/rfq/${project.rfq.id}`);
+                return;
+              }
+              setProjectTab(v);
+            }}
+          >
+            <TabsList className="mb-4">
+              <TabsTrigger value="info">Informasi Proyek</TabsTrigger>
+              {project.type === 'TENDER' && (
+                <TabsTrigger value="diskusi">Diskusi</TabsTrigger>
+              )}
+              {project.type === 'TENDER' && project.tenderSubtype === 'WITH_RFQ' && project.rfq?.id ? (
+                <TabsTrigger value="rfq">RFQ / Penawaran</TabsTrigger>
+              ) : project.type === 'TENDER' && isOwner ? (
+                <TabsTrigger value="penawaran">Penawaran</TabsTrigger>
+              ) : null}
+            </TabsList>
+
+            <TabsContent value="info" className="space-y-6 mt-0">
           {/* Description */}
           <Card className="glass-card">
             <CardHeader>
@@ -507,33 +532,17 @@ export default function ProjectDetailPage() {
               </CardContent>
             </Card>
           )}
+            </TabsContent>
 
-          {/* RFQ Link for WITH_RFQ projects */}
-          {project.type === 'TENDER' && project.tenderSubtype === 'WITH_RFQ' && (
-            <Card className="glass-card border-[#fd904c]">
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="h-10 w-10 rounded-full bg-[#fd904c]/10 flex items-center justify-center">
-                      <FileText className="h-5 w-5 text-[#fd904c]" />
-                    </div>
-                    <div>
-                      <p className="font-medium">RFQ (Request for Quotation)</p>
-                      <p className="text-sm text-muted-foreground">
-                        Kelola penawaran dari vendor
-                      </p>
-                    </div>
-                  </div>
-                  <Link href={project.rfq?.id ? `/dashboard/rfq/${project.rfq.id}` : `/dashboard/rfq?projectId=${project.id}`}>
-                    <Button variant="outline">
-                      Lihat RFQ
-                    </Button>
-                  </Link>
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
+            {project.type === 'TENDER' && project.tenderSubtype === 'WITH_RFQ' && project.rfq?.id && (
+            <TabsContent value="rfq" className="mt-0">
+              <div className="py-8 text-center text-muted-foreground">
+                Mengalihkan ke halaman penawaran RFQ...
+              </div>
+            </TabsContent>
+            )}
+            {project.type === 'TENDER' && (
+            <TabsContent value="diskusi" className="mt-0">
           {/* Diskusi Proyek (TENDER) - client bisa diskusi dengan vendor */}
           {project.type === 'TENDER' && (
             <Card className="glass-card">
@@ -603,10 +612,12 @@ export default function ProjectDetailPage() {
                 )}
               </CardContent>
             </Card>
-          )}
+            </TabsContent>
+            )}
 
+            {isOwner && (
+            <TabsContent value="penawaran" className="mt-0">
           {/* Applications / RFQ Penawaran Tab (for owner) */}
-          {isOwner && (
             <Card className="glass-card">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -738,7 +749,9 @@ export default function ProjectDetailPage() {
                 )}
               </CardContent>
             </Card>
+            </TabsContent>
           )}
+          </Tabs>
         </div>
 
         {/* Sidebar */}

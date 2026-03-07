@@ -11,6 +11,62 @@ export function isBrevoConfigured(): boolean {
   return Boolean(apiKey && apiKey.length > 0);
 }
 
+export async function sendProjectInviteEmail(
+  toEmail: string,
+  projectTitle: string,
+  projectLink: string
+): Promise<{ success: boolean; error?: string }> {
+  if (!apiKey) {
+    return { success: false, error: 'BREVO_API_KEY not set' };
+  }
+
+  const subject = `Undangan Proyek: ${projectTitle} | Adogalo`;
+  const htmlContent = `
+    <div style="font-family: sans-serif; max-width: 520px; margin: 0 auto;">
+      <h2 style="color: #fd904c;">Adogalo</h2>
+      <p>Anda diundang untuk mengikuti proyek:</p>
+      <p style="font-size: 18px; font-weight: bold; color: #333;">${projectTitle}</p>
+      <p style="margin-top: 20px;">
+        <a href="${projectLink}" style="display: inline-block; padding: 12px 24px; background: #fd904c; color: white; text-decoration: none; border-radius: 8px; font-weight: bold;">
+          Lihat Detail Proyek
+        </a>
+      </p>
+      <p style="color: #666; font-size: 14px; margin-top: 24px;">
+        Klik tombol di atas untuk melihat detail proyek dan mengirim penawaran.
+      </p>
+    </div>
+  `;
+  const textContent = `Undangan proyek: ${projectTitle}. Lihat detail: ${projectLink}`;
+
+  try {
+    const res = await fetch('https://api.brevo.com/v3/smtp/email', {
+      method: 'POST',
+      headers: {
+        'api-key': apiKey,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        sender: { name: senderName, email: senderEmail },
+        to: [{ email: toEmail }],
+        subject,
+        htmlContent,
+        textContent,
+      }),
+    });
+
+    if (!res.ok) {
+      const body = await res.text();
+      console.error('[Brevo] Send project invite error:', res.status, body);
+      return { success: false, error: body || `HTTP ${res.status}` };
+    }
+    return { success: true };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    console.error('[Brevo] Send project invite failed:', message);
+    return { success: false, error: message };
+  }
+}
+
 export async function sendOTPEmail(
   toEmail: string,
   otpCode: string,

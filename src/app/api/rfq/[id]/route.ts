@@ -37,6 +37,7 @@ export async function GET(
             endDate: true,
             offerDeadline: true,
             clientId: true,
+            categoryId: true,
             client: {
               select: {
                 id: true,
