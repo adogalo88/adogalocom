@@ -200,11 +200,8 @@ export default function ProjectDetailPage() {
   const updateApplication = useUpdateApplication(selectedApplication ?? '');
   const deleteProject = useDeleteProject(projectId);
 
-  const isOwner = Boolean(
-    user?.id &&
-    project &&
-    (String(project.clientId ?? (project.client as { id?: string })?.id ?? '') === String(user.id)
-  );
+  const clientId = project?.clientId ?? (project?.client as { id?: string } | null)?.id;
+  const isOwner = !!user?.id && !!project && String(clientId ?? '') === String(user.id);
   const isVendor = user?.role === 'VENDOR';
   const isTukang = user?.role === 'TUKANG';
   const isAdmin = user?.role === 'ADMIN';
