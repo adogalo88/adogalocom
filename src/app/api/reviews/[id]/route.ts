@@ -11,6 +11,7 @@ import { apiSuccess, apiError, apiNotFound, apiForbidden, withAuth, createNotifi
 const updateReviewSchema = z.object({
   rating: z.number().int().min(1, 'Rating minimal 1').max(5, 'Rating maksimal 5').optional(),
   comment: z.string().min(10, 'Komentar minimal 10 karakter').max(1000, 'Komentar maksimal 1000 karakter').optional(),
+  reply: z.string().min(10, 'Balasan minimal 10 karakter').max(1000, 'Balasan maksimal 1000 karakter').optional(),
 });
 
 // =====================
@@ -22,6 +23,11 @@ function canModifyReview(user: SafeUser, review: { reviewerId: string }): boolea
   if (user.role === 'ADMIN') return true;
   // Reviewer can modify their own review
   return user.id === review.reviewerId;
+}
+
+// Reviewee dapat membalas sekali saja
+function canReplyReview(user: SafeUser, review: { revieweeId: string; reply: string | null }): boolean {
+  return user.id === review.revieweeId && !review.reply;
 }
 
 // =====================
@@ -132,24 +138,50 @@ export const PATCH = withAuth(async (user: SafeUser, request: NextRequest, conte
       return apiNotFound('Review tidak ditemukan');
     }
 
-    // Check modify permission
-    if (!canModifyReview(user, review)) {
-      return apiForbidden('Anda tidak memiliki akses untuk mengubah review ini');
-    }
-
     const body = await request.json();
-
     const validationResult = updateReviewSchema.safeParse(body);
     if (!validationResult.success) {
       return apiError('Validasi gagal', 400, validationResult.error.flatten());
     }
 
     const updateData = validationResult.data;
+    const isReplyOnly = updateData.reply != null && updateData.rating === undefined && updateData.comment === undefined;
 
-    // Filter out undefined values
+    // Reviewee bisa membalas sekali saja (hanya reply)
+    if (isReplyOnly) {
+      if (!canReplyReview(user, review)) {
+        return apiForbidden('Anda tidak dapat membalas ulasan ini (hanya yang direview dapat membalas sekali)');
+      }
+      const updated = await db.review.update({
+        where: { id: reviewId },
+        data: {
+          reply: updateData.reply!,
+          repliedAt: new Date(),
+        },
+        include: {
+          reviewer: { select: { id: true, name: true, avatar: true, role: true } },
+          reviewee: { select: { id: true, name: true, avatar: true, role: true } },
+          project: { select: { id: true, title: true } },
+        },
+      });
+      await createNotification(
+        review.reviewerId,
+        'REVIEW_REPLY',
+        'Balasan Ulasan',
+        `${review.reviewee.name} membalas ulasan Anda`,
+        { reviewId: review.id }
+      );
+      return apiSuccess({ message: 'Balasan berhasil dikirim', data: updated });
+    }
+
+    // Perubahan rating/comment: hanya reviewer atau admin
+    if (!canModifyReview(user, review)) {
+      return apiForbidden('Anda tidak memiliki akses untuk mengubah review ini');
+    }
+
     const dataToUpdate = Object.fromEntries(
       Object.entries(updateData).filter(([_, value]) => value !== undefined)
-    );
+    ) as { rating?: number; comment?: string };
 
     if (Object.keys(dataToUpdate).length === 0) {
       return apiError('Tidak ada data yang diperbarui', 400);

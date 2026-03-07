@@ -697,8 +697,8 @@ export default function ProjectDetailPage() {
             </Card>
           )}
 
-          {/* Rating Vendor (proyek tender selesai - client memberi rating ke vendor dengan 5 metrik) */}
-          {isOwner && project.status === 'COMPLETED' && project.type === 'TENDER' && project.vendorId && project.vendor && (
+          {/* Rating Vendor (proyek tender selesai - client memberi rating ke vendor dengan 5 metrik, hanya sekali) */}
+          {isOwner && project.status === 'COMPLETED' && project.type === 'TENDER' && project.vendorId && project.vendor && !(project as { clientReviewedVendor?: boolean }).clientReviewedVendor && (
             <Card className="glass-card border-emerald-500/30">
               <CardHeader>
                 <CardTitle>Beri Rating ke Vendor</CardTitle>
@@ -782,8 +782,8 @@ export default function ProjectDetailPage() {
             </Card>
           )}
 
-          {/* Rating Client (proyek tender selesai - vendor memberi rating ke client dengan 5 metrik) */}
-          {isVendor && project.status === 'COMPLETED' && project.type === 'TENDER' && project.vendorId && String(project.vendorId) === String(user?.id) && project.client && (
+          {/* Rating Client (proyek tender selesai - vendor memberi rating ke client dengan 5 metrik, hanya sekali) */}
+          {isVendor && project.status === 'COMPLETED' && project.type === 'TENDER' && project.vendorId && String(project.vendorId) === String(user?.id) && project.client && !(project as { vendorReviewedClient?: boolean }).vendorReviewedClient && (
             <Card className="glass-card border-amber-500/30">
               <CardHeader>
                 <CardTitle>Beri Rating ke Client</CardTitle>

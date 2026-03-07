@@ -863,6 +863,8 @@ model Review {
   comment    String
   reviewType String?  // CLIENT_TO_VENDOR | VENDOR_TO_CLIENT
   dimensionRatings Json? // Skor per dimensi 1-5
+  reply      String?  // Balasan reviewee (1x saja)
+  repliedAt  DateTime? // Kapan balasan dikirim
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 

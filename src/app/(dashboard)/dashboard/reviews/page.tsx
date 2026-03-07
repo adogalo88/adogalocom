@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { useReviews, useProjects, useCreateReview, formatCurrency, formatDate, getProjectStatusConfig } from '@/hooks/api';
 import { useAuth } from '@/providers/AuthProvider';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -99,10 +100,19 @@ function inferReviewType(dims: Record<string, number>): 'CLIENT_TO_VENDOR' | 'VE
   return null;
 }
 
-// Review Card Component
-function ReviewCard({ review, type }: { review: any; type: 'given' | 'received' }) {
+// Review Card Component - received: reviewee bisa membalas 1x
+function ReviewCard({ review, type, currentUserId, onReplySubmit }: {
+  review: any;
+  type: 'given' | 'received';
+  currentUserId?: string;
+  onReplySubmit?: (reviewId: string, reply: string) => Promise<void>;
+}) {
+  const [showReplyForm, setShowReplyForm] = useState(false);
+  const [replyText, setReplyText] = useState('');
+  const [submittingReply, setSubmittingReply] = useState(false);
   const user = type === 'given' ? review.reviewee : review.reviewer;
   const actionText = type === 'given' ? 'Anda review' : 'mereview Anda';
+  const canReply = type === 'received' && currentUserId === review.reviewee?.id && !review.reply;
   const rawDims = review.dimensionRatings;
   const dims: Record<string, number> | null =
     rawDims && typeof rawDims === 'object' && !Array.isArray(rawDims)
@@ -152,6 +162,68 @@ function ReviewCard({ review, type }: { review: any; type: 'given' | 'received' 
 
         <p className="text-sm text-muted-foreground">{review.comment}</p>
 
+        {review.reply && (
+          <div className="rounded-lg bg-muted/50 p-3 border-l-4 border-primary/50">
+            <p className="text-xs font-medium text-muted-foreground mb-1">Balasan dari {review.reviewee?.name}</p>
+            <p className="text-sm text-foreground">{review.reply}</p>
+            {review.repliedAt && (
+              <p className="text-xs text-muted-foreground mt-1">{formatDate(review.repliedAt)}</p>
+            )}
+          </div>
+        )}
+
+        {canReply && !review.reply && (
+          <div className="pt-2">
+            {!showReplyForm ? (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowReplyForm(true)}
+                className="text-xs"
+              >
+                <MessageSquare className="h-3.5 w-3.5 mr-1" />
+                Balas Ulasan (sekali saja)
+              </Button>
+            ) : (
+              <div className="space-y-2">
+                <Textarea
+                  placeholder="Tulis balasan Anda (min. 10 karakter)..."
+                  value={replyText}
+                  onChange={(e) => setReplyText(e.target.value)}
+                  className="min-h-[70px] text-sm"
+                  maxLength={1000}
+                />
+                <div className="flex gap-2">
+                  <Button
+                    size="sm"
+                    disabled={replyText.trim().length < 10 || submittingReply}
+                    onClick={async () => {
+                      if (!onReplySubmit || replyText.trim().length < 10) return;
+                      setSubmittingReply(true);
+                      try {
+                        await onReplySubmit(review.id, replyText.trim());
+                        setReplyText('');
+                        setShowReplyForm(false);
+                        toast.success('Balasan terkirim');
+                      } catch {
+                        toast.error('Gagal mengirim balasan');
+                      } finally {
+                        setSubmittingReply(false);
+                      }
+                    }}
+                  >
+                    {submittingReply && <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" />}
+                    Kirim Balasan
+                  </Button>
+                  <Button variant="ghost" size="sm" onClick={() => { setShowReplyForm(false); setReplyText(''); }}>
+                    Batal
+                  </Button>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
         {review.project && (
           <div className="flex items-center gap-2 text-xs text-muted-foreground pt-2 border-t border-border">
             <FolderKanban className="h-3 w-3" />
@@ -190,6 +262,19 @@ export default function ReviewsPage() {
   });
 
   const createReview = useCreateReview();
+  const queryClient = useQueryClient();
+
+  const handleReplySubmit = async (reviewId: string, reply: string) => {
+    const res = await fetch(`/api/reviews/${reviewId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ reply }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || 'Gagal mengirim balasan');
+    queryClient.invalidateQueries({ queryKey: ['reviews'] });
+  };
 
   const givenReviews = givenReviewsData?.data || [];
   const receivedReviews = receivedReviewsData?.data || [];
@@ -399,7 +484,7 @@ export default function ReviewsPage() {
               ) : (
                 <div className="space-y-4 max-h-[600px] overflow-y-auto pr-2">
                   {receivedReviews.map((review) => (
-                    <ReviewCard key={review.id} review={review} type="received" />
+                    <ReviewCard key={review.id} review={review} type="received" currentUserId={user?.id} onReplySubmit={handleReplySubmit} />
                   ))}
                 </div>
               )}
@@ -441,7 +526,7 @@ export default function ReviewsPage() {
               ) : (
                 <div className="space-y-4 max-h-[600px] overflow-y-auto pr-2">
                   {givenReviews.map((review) => (
-                    <ReviewCard key={review.id} review={review} type="given" />
+                    <ReviewCard key={review.id} review={review} type="given" currentUserId={user?.id} />
                   ))}
                 </div>
               )}

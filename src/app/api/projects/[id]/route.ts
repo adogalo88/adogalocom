@@ -418,6 +418,40 @@ export const GET = withAuth(async (user, request: NextRequest, context) => {
     }
 
     let formatted = formatProjectResponse(responseData, userApplication, user);
+
+    // Cek apakah client sudah mereview vendor (untuk sembunyikan form rating)
+    let clientHasReviewedVendor = false;
+    let vendorHasReviewedClient = false;
+    if (project.clientId && project.vendorId) {
+      const [clientReview, vendorReview] = await Promise.all([
+        db.review.findUnique({
+          where: {
+            projectId_reviewerId_revieweeId: {
+              projectId,
+              reviewerId: project.clientId,
+              revieweeId: project.vendorId,
+            },
+          },
+        }),
+        db.review.findUnique({
+          where: {
+            projectId_reviewerId_revieweeId: {
+              projectId,
+              reviewerId: project.vendorId,
+              revieweeId: project.clientId,
+            },
+          },
+        }),
+      ]);
+      clientHasReviewedVendor = !!clientReview;
+      vendorHasReviewedClient = !!vendorReview;
+    }
+    formatted = {
+      ...formatted,
+      clientReviewedVendor: clientHasReviewedVendor,
+      vendorReviewedClient: vendorHasReviewedClient,
+    };
+
     if (formatted.client && project.clientId) {
       const clientCompletedTenderCount = await db.project.count({
         where: { clientId: project.clientId, type: 'TENDER', status: 'COMPLETED' },
@@ -575,6 +609,11 @@ export const PATCH = withAuth(async (user, request: NextRequest, context) => {
         
         const vendorId = data.vendorId || existingProject.vendorId;
         if (vendorId) {
+          // Increment vendor totalProjects (jumlah proyek selesai)
+          await db.user.update({
+            where: { id: vendorId },
+            data: { totalProjects: { increment: 1 } },
+          });
           await createNotification(
             vendorId,
             'PROJECT_COMPLETED',
