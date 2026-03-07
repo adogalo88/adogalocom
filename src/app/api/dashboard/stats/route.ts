@@ -30,41 +30,96 @@ export async function GET() {
       }
       case 'VENDOR': {
         // Proyek yang vendor ini kerjakan (sebagai vendorId)
-        const vendorProjectIds = await db.project
-          .findMany({ where: { vendorId: user.id }, select: { id: true } })
-          .then((rows) => rows.map((p) => p.id));
+        const vendorProjects = await db.project.findMany({
+          where: { vendorId: user.id },
+          select: { id: true, status: true },
+          include: { rfq: { select: { id: true } } },
+        });
+        const vendorProjectIds = vendorProjects.map((p) => p.id);
 
-        const [projectsCompleted, projectsActive, teamMembers, revenueResult, pendingResult] = await Promise.all([
-          db.project.count({ where: { vendorId: user.id, status: ProjectStatus.COMPLETED } }),
-          db.project.count({ where: { vendorId: user.id, status: ProjectStatus.IN_PROGRESS } }),
-          db.teamMember.count({ where: { project: { vendorId: user.id } } }),
-          vendorProjectIds.length > 0
-            ? db.transaction.aggregate({
-                where: {
-                  projectId: { in: vendorProjectIds },
-                  status: TransactionStatus.COMPLETED,
-                  type: TransactionType.PROJECT_PAYMENT,
-                },
-                _sum: { total: true },
-              })
-            : Promise.resolve({ _sum: { total: null } }),
-          vendorProjectIds.length > 0
-            ? db.transaction.aggregate({
-                where: {
-                  projectId: { in: vendorProjectIds },
-                  status: { in: [TransactionStatus.PENDING, TransactionStatus.PROCESSING] },
-                  type: TransactionType.PROJECT_PAYMENT,
-                },
-                _sum: { total: true },
-              })
-            : Promise.resolve({ _sum: { total: null } }),
-        ]);
+        const [projectsCompleted, projectsActive, teamMembers, revenueResult, pendingResult, projectIdsWithTx] =
+          await Promise.all([
+            db.project.count({ where: { vendorId: user.id, status: ProjectStatus.COMPLETED } }),
+            db.project.count({ where: { vendorId: user.id, status: ProjectStatus.IN_PROGRESS } }),
+            db.teamMember.count({ where: { project: { vendorId: user.id } } }),
+            vendorProjectIds.length > 0
+              ? db.transaction.aggregate({
+                  where: {
+                    projectId: { in: vendorProjectIds },
+                    status: TransactionStatus.COMPLETED,
+                    type: TransactionType.PROJECT_PAYMENT,
+                  },
+                  _sum: { total: true },
+                })
+              : Promise.resolve({ _sum: { total: null } }),
+            vendorProjectIds.length > 0
+              ? db.transaction.aggregate({
+                  where: {
+                    projectId: { in: vendorProjectIds },
+                    status: { in: [TransactionStatus.PENDING, TransactionStatus.PROCESSING] },
+                    type: TransactionType.PROJECT_PAYMENT,
+                  },
+                  _sum: { total: true },
+                })
+              : Promise.resolve({ _sum: { total: null } }),
+            vendorProjectIds.length > 0
+              ? db.transaction
+                  .findMany({
+                    where: {
+                      projectId: { in: vendorProjectIds },
+                      type: TransactionType.PROJECT_PAYMENT,
+                    },
+                    select: { projectId: true },
+                  })
+                  .then((rows) => new Set(rows.map((r) => r.projectId).filter(Boolean) as string[]))
+              : Promise.resolve(new Set<string>()),
+          ]);
+
+        // Proyek selesai yang belum punya record transaksi: ambil nilai dari rfq_submissions (ACCEPTED) atau application (ACCEPTED)
+        let revenueFromMissingTx = 0;
+        const completedWithoutTx = vendorProjects.filter(
+          (p) => p.status === ProjectStatus.COMPLETED && !projectIdsWithTx.has(p.id)
+        );
+        if (completedWithoutTx.length > 0) {
+          const projectIdsNoTx = completedWithoutTx.map((p) => p.id);
+          const projectIdsWithRfq = new Set(completedWithoutTx.filter((p) => p.rfq?.id).map((p) => p.id));
+          const rfqIds = completedWithoutTx.filter((p) => p.rfq?.id).map((p) => p.rfq!.id);
+          const projectIdsWithoutRfq = projectIdsNoTx.filter((id) => !projectIdsWithRfq.has(id));
+          const [acceptedSubmissions, acceptedApplications] = await Promise.all([
+            rfqIds.length > 0
+              ? db.rFQSubmission.findMany({
+                  where: {
+                    rfqId: { in: rfqIds },
+                    vendorId: user.id,
+                    status: 'ACCEPTED',
+                  },
+                  select: { totalOffer: true },
+                })
+              : Promise.resolve([]),
+            projectIdsWithoutRfq.length > 0
+              ? db.application.findMany({
+                  where: {
+                    projectId: { in: projectIdsWithoutRfq },
+                    userId: user.id,
+                    status: 'ACCEPTED',
+                  },
+                  select: { proposedBudget: true },
+                })
+              : Promise.resolve([]),
+          ]);
+          revenueFromMissingTx =
+            acceptedSubmissions.reduce((s, sub) => s + (sub.totalOffer ?? 0), 0) +
+            acceptedApplications.reduce((s, app) => s + (app.proposedBudget ?? 0), 0);
+        }
+
+        const revenueFromTx = revenueResult._sum.total ?? 0;
+        const pendingFromTx = pendingResult._sum.total ?? 0;
         return NextResponse.json({
           projectsCompleted,
           projectsActive,
           teamMembers,
-          revenue: revenueResult._sum.total ?? 0,
-          pendingRevenue: pendingResult._sum.total ?? 0,
+          revenue: revenueFromTx + revenueFromMissingTx,
+          pendingRevenue: pendingFromTx,
         });
       }
       case 'TUKANG': {
