@@ -29,24 +29,42 @@ export async function GET() {
         });
       }
       case 'VENDOR': {
-        const [projectsCompleted, projectsActive, teamMembers, revenueResult] = await Promise.all([
+        // Proyek yang vendor ini kerjakan (sebagai vendorId)
+        const vendorProjectIds = await db.project
+          .findMany({ where: { vendorId: user.id }, select: { id: true } })
+          .then((rows) => rows.map((p) => p.id));
+
+        const [projectsCompleted, projectsActive, teamMembers, revenueResult, pendingResult] = await Promise.all([
           db.project.count({ where: { vendorId: user.id, status: ProjectStatus.COMPLETED } }),
           db.project.count({ where: { vendorId: user.id, status: ProjectStatus.IN_PROGRESS } }),
           db.teamMember.count({ where: { project: { vendorId: user.id } } }),
-          db.transaction.aggregate({
-            where: {
-              project: { vendorId: user.id },
-              status: TransactionStatus.COMPLETED,
-              type: TransactionType.PROJECT_PAYMENT,
-            },
-            _sum: { total: true },
-          }),
+          vendorProjectIds.length > 0
+            ? db.transaction.aggregate({
+                where: {
+                  projectId: { in: vendorProjectIds },
+                  status: TransactionStatus.COMPLETED,
+                  type: TransactionType.PROJECT_PAYMENT,
+                },
+                _sum: { total: true },
+              })
+            : Promise.resolve({ _sum: { total: null } }),
+          vendorProjectIds.length > 0
+            ? db.transaction.aggregate({
+                where: {
+                  projectId: { in: vendorProjectIds },
+                  status: { in: [TransactionStatus.PENDING, TransactionStatus.PROCESSING] },
+                  type: TransactionType.PROJECT_PAYMENT,
+                },
+                _sum: { total: true },
+              })
+            : Promise.resolve({ _sum: { total: null } }),
         ]);
         return NextResponse.json({
           projectsCompleted,
           projectsActive,
           teamMembers,
           revenue: revenueResult._sum.total ?? 0,
+          pendingRevenue: pendingResult._sum.total ?? 0,
         });
       }
       case 'TUKANG': {

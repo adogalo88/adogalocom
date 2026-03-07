@@ -233,6 +233,7 @@ function VendorDashboard() {
         projectsActive: number;
         teamMembers: number;
         revenue: number;
+        pendingRevenue?: number;
       }>;
     },
   });
@@ -258,6 +259,7 @@ function VendorDashboard() {
   const projectsCompleted = stats?.projectsCompleted ?? 0;
   const projectsActive = stats?.projectsActive ?? 0;
   const revenue = stats?.revenue ?? 0;
+  const pendingRevenue = stats?.pendingRevenue ?? 0;
   const availableProjects = projectsData?.data ?? [];
   const notifications = notificationsData?.data ?? [];
 
@@ -278,6 +280,7 @@ function VendorDashboard() {
         <StatsCard
           title="Pendapatan"
           value={isLoading ? '...' : formatRupiah(revenue)}
+          description={!isLoading && pendingRevenue > 0 ? `${formatRupiah(pendingRevenue)} menunggu pembayaran` : undefined}
           icon={<TrendingUp className="h-5 w-5" />}
         />
         <StatsCard
