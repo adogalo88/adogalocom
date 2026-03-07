@@ -36,6 +36,8 @@ const projectUpdateSchema = z.object({
   files: z.string().optional().nullable(),
   tenderSubtype: z.enum(['WITH_RFQ', 'WITHOUT_RFQ']).optional().nullable(),
   cityId: z.string().optional().nullable(),
+  managementProjectUrl: z.string().optional().nullable(),
+  managementProjectId: z.string().optional().nullable(),
 });
 
 // Helper to format project response with full details
@@ -104,6 +106,8 @@ function formatProjectResponse(project: any, userApplication?: any, currentUser?
     updatedAt: project.updatedAt,
     acceptedAt: project.acceptedAt,
     completedAt: project.completedAt,
+    managementProjectUrl: project.managementProjectUrl ?? null,
+    managementProjectId: project.managementProjectId ?? null,
     client: project.client ? {
       id: project.client.id,
       name: project.client.name,
@@ -517,6 +521,8 @@ export const PATCH = withAuth(async (user, request: NextRequest, context) => {
     if (data.files !== undefined) updateData.files = data.files;
     if (data.tenderSubtype !== undefined) updateData.tenderSubtype = data.tenderSubtype;
     if (data.cityId !== undefined) updateData.cityId = data.cityId;
+    if (data.managementProjectUrl !== undefined) updateData.managementProjectUrl = data.managementProjectUrl;
+    if (data.managementProjectId !== undefined) updateData.managementProjectId = data.managementProjectId;
 
     // Handle status changes
     if (data.status) {

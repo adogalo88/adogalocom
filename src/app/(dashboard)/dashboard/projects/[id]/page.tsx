@@ -30,6 +30,9 @@ import {
   Trash2,
   ShieldCheck,
   Star,
+  ExternalLink,
+  Copy,
+  Settings2,
 } from 'lucide-react';
 import Link from 'next/link';
 import { toast } from 'sonner';
@@ -79,6 +82,9 @@ export default function ProjectDetailPage() {
   const [comments, setComments] = useState<{ id: string; content: string; createdAt: string; user: { id: string; name: string; role: string; avatar: string | null } }[]>([]);
   const [commentText, setCommentText] = useState('');
   const [projectTab, setProjectTab] = useState('info');
+  const [managementUrl, setManagementUrl] = useState('');
+  const [managementId, setManagementId] = useState('');
+  const [savingManagement, setSavingManagement] = useState(false);
   const [submittingComment, setSubmittingComment] = useState(false);
   const chatContainerRef = useRef<HTMLDivElement>(null);
 
@@ -374,7 +380,10 @@ export default function ProjectDetailPage() {
               setProjectTab(v);
             }}
           >
-            <TabsList className="mb-4">
+            <TabsList className="mb-4 flex flex-wrap">
+              {(isAdmin || (project.managementProjectUrl && project.managementProjectId)) && (
+                <TabsTrigger value="management">Managemen Proyek</TabsTrigger>
+              )}
               <TabsTrigger value="info">Informasi Proyek</TabsTrigger>
               {project.type === 'TENDER' && (
                 <TabsTrigger value="diskusi">Diskusi</TabsTrigger>
@@ -385,6 +394,117 @@ export default function ProjectDetailPage() {
                 <TabsTrigger value="penawaran">Penawaran</TabsTrigger>
               ) : null}
             </TabsList>
+
+            {(isAdmin || (project.managementProjectUrl && project.managementProjectId)) && (
+            <TabsContent value="management" className="space-y-6 mt-0">
+              {isAdmin && !project.managementProjectUrl && !project.managementProjectId ? (
+                <Card className="glass-card">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Settings2 className="h-5 w-5" />
+                      Tambah Tautan Manajemen Proyek
+                    </CardTitle>
+                    <CardDescription>
+                      Masukkan URL aplikasi manajemen proyek dan ID proyek. Setelah disimpan, tab ini akan muncul untuk client dan vendor.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div>
+                      <Label htmlFor="managementUrl">URL</Label>
+                      <Input
+                        id="managementUrl"
+                        type="url"
+                        placeholder="https://..."
+                        value={managementUrl}
+                        onChange={(e) => setManagementUrl(e.target.value)}
+                        className="mt-1"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="managementId">ID Proyek</Label>
+                      <Input
+                        id="managementId"
+                        placeholder="ID proyek di aplikasi manajemen"
+                        value={managementId}
+                        onChange={(e) => setManagementId(e.target.value)}
+                        className="mt-1"
+                      />
+                    </div>
+                    <Button
+                      disabled={savingManagement || !managementUrl.trim() || !managementId.trim()}
+                      onClick={async () => {
+                        setSavingManagement(true);
+                        try {
+                          const res = await fetch(`/api/projects/${projectId}`, {
+                            method: 'PATCH',
+                            headers: { 'Content-Type': 'application/json' },
+                            credentials: 'include',
+                            body: JSON.stringify({ managementProjectUrl: managementUrl.trim(), managementProjectId: managementId.trim() }),
+                          });
+                          const data = await res.json();
+                          if (res.ok && data?.success) {
+                            toast.success('Tautan manajemen proyek berhasil disimpan');
+                            refetch();
+                          } else {
+                            toast.error(data?.error || 'Gagal menyimpan');
+                          }
+                        } catch {
+                          toast.error('Gagal menyimpan');
+                        } finally {
+                          setSavingManagement(false);
+                        }
+                      }}
+                      className="bg-[#fd904c] hover:bg-[#e57835]"
+                    >
+                      {savingManagement && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+                      Simpan
+                    </Button>
+                  </CardContent>
+                </Card>
+              ) : (
+                <Card className="glass-card">
+                  <CardHeader>
+                    <CardTitle>Managemen Proyek</CardTitle>
+                    <CardDescription>Akses aplikasi manajemen proyek untuk melanjutkan pekerjaan</CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <Button
+                      asChild
+                      className="w-full sm:w-auto bg-[#fd904c] hover:bg-[#e57835]"
+                    >
+                      <a href={project.managementProjectUrl!} target="_blank" rel="noopener noreferrer">
+                        <ExternalLink className="h-4 w-4 mr-2" />
+                        Lanjutkan ke aplikasi manajemen proyek
+                      </a>
+                    </Button>
+                    <div className="space-y-2">
+                      <Label>ID Proyek</Label>
+                      <div className="flex items-center gap-2">
+                        <Input
+                          readOnly
+                          value={project.managementProjectId ?? ''}
+                          className="font-mono"
+                        />
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          onClick={() => {
+                            navigator.clipboard.writeText(project.managementProjectId ?? '');
+                            toast.success('ID Proyek disalin');
+                          }}
+                        >
+                          <Copy className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                    <div className="rounded-lg bg-amber-500/10 border border-amber-500/30 p-3 text-sm text-amber-800 dark:text-amber-200">
+                      Gunakan alamat email yang Anda daftarkan.
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+            </TabsContent>
+            )}
 
             <TabsContent value="info" className="space-y-6 mt-0">
           {/* Description */}
@@ -589,7 +709,7 @@ export default function ProjectDetailPage() {
                     })
                   )}
                 </div>
-                {(user?.role === 'VENDOR' || user?.role === 'CLIENT' || user?.role === 'ADMIN') && (
+                {(user?.role === 'VENDOR' || user?.role === 'CLIENT' || user?.role === 'ADMIN') && !project.vendorId && (
                   <div className="flex gap-3 pt-4 border-t">
                     <Textarea
                       placeholder="Tulis pesan... (Enter untuk kirim)"

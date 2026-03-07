@@ -76,6 +76,8 @@ export interface Project {
   applications?: Application[];
   rfq?: ProjectRFQ | null;
   _count?: { applications: number; teamMembers: number };
+  managementProjectUrl?: string | null;
+  managementProjectId?: string | null;
 }
 
 export interface Application {

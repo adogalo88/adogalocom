@@ -8,6 +8,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
   FolderKanban,
@@ -43,6 +44,7 @@ interface OfferRow {
   projectCity: string | null;
   totalOffer: number | null;
   status: string;
+  submittedAt: string | null;
 }
 
 const offerStatusLabels: Record<string, string> = {
@@ -241,7 +243,7 @@ export default function MyProjectsPage() {
           id: string;
           title: string;
           city?: { name: string } | null;
-          rfq?: { id: string; submissions?: { status: string; totalOffer: number | null }[] } | null;
+          rfq?: { id: string; submissions?: { status: string; totalOffer: number | null; submittedAt: string | null }[] } | null;
         }[];
         const list: OfferRow[] = projects.map((p) => {
           const sub = p.rfq?.submissions?.[0];
@@ -252,6 +254,7 @@ export default function MyProjectsPage() {
             projectCity: p.city?.name ?? null,
             totalOffer: sub?.totalOffer ?? null,
             status: sub?.status ?? 'DRAFT',
+            submittedAt: sub?.submittedAt ?? null,
           };
         });
         setOfferRows(list);
@@ -291,6 +294,20 @@ export default function MyProjectsPage() {
 
   const isLoading = vendorLoading || teamLoading;
   const isVendor = user?.role === 'VENDOR';
+
+  // Filter penawaran by status (all, Diterima, Ditolak)
+  const [offerFilter, setOfferFilter] = useState<string>('all');
+  const filteredOfferRows = offerFilter === 'all'
+    ? offerRows
+    : offerFilter === 'ACCEPTED'
+      ? offerRows.filter((r) => r.status === 'ACCEPTED')
+      : offerRows.filter((r) => r.status === 'REJECTED');
+
+  const formatDateTime = (dt: string | null) => {
+    if (!dt) return '–';
+    const d = new Date(dt);
+    return d.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }) + ' ' + d.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+  };
 
   return (
     <div className="space-y-6">
@@ -376,18 +393,34 @@ export default function MyProjectsPage() {
           <TabsContent value="penawaran-saya" className="mt-4">
             <Card className="glass-card">
               <CardContent className="p-4 sm:p-6">
-                <p className="text-sm text-muted-foreground mb-4">
-                  Proyek yang sudah Anda buat penawarannya. Klik baris untuk melihat penawaran di halaman RFQ.
-                </p>
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
+                  <p className="text-sm text-muted-foreground">
+                    Proyek yang sudah Anda buat penawarannya. Klik baris untuk melihat penawaran di halaman RFQ.
+                  </p>
+                  {offerRows.length > 0 && (
+                    <Select value={offerFilter} onValueChange={setOfferFilter}>
+                      <SelectTrigger className="w-[180px]">
+                        <SelectValue placeholder="Filter status" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Semua</SelectItem>
+                        <SelectItem value="ACCEPTED">Diterima</SelectItem>
+                        <SelectItem value="REJECTED">Ditolak</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  )}
+                </div>
                 {offersLoading ? (
                   <div className="flex justify-center py-16">
                     <Loader2 className="h-8 w-8 animate-spin text-[#fd904c]" />
                   </div>
                 ) : offerRows.length === 0 ? (
                   <EmptyState type="offers" />
+                ) : filteredOfferRows.length === 0 ? (
+                  <p className="text-sm text-muted-foreground py-8 text-center">Tidak ada penawaran dengan status yang dipilih.</p>
                 ) : (
                   <ul className="divide-y divide-border">
-                    {offerRows.map((row) => (
+                    {filteredOfferRows.map((row) => (
                       <li key={row.id}>
                         <Link
                           href={row.rfqId ? `/dashboard/rfq/${row.rfqId}` : `/dashboard/projects/${row.id}`}
@@ -395,12 +428,18 @@ export default function MyProjectsPage() {
                         >
                           <div className="flex-1 min-w-0">
                             <p className="font-semibold truncate">{row.projectTitle}</p>
-                            {row.projectCity && (
-                              <span className="flex items-center gap-1 text-sm text-muted-foreground mt-1">
-                                <MapPin className="h-3.5 w-3.5" />
-                                Proyek di {row.projectCity}
+                            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-1 text-sm text-muted-foreground">
+                              {row.projectCity && (
+                                <span className="flex items-center gap-1">
+                                  <MapPin className="h-3.5 w-3.5" />
+                                  Proyek di {row.projectCity}
+                                </span>
+                              )}
+                              <span className="flex items-center gap-1">
+                                <Clock className="h-3.5 w-3.5" />
+                                Waktu penawaran: {formatDateTime(row.submittedAt)}
                               </span>
-                            )}
+                            </div>
                           </div>
                           <div className="flex items-center gap-3 sm:gap-6 shrink-0">
                             <div className="text-right">
