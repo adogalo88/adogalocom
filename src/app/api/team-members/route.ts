@@ -64,13 +64,12 @@ export async function GET(request: NextRequest) {
     // Build filter based on role
     const where: Record<string, unknown> = {};
 
-    // Role-based filtering
+    // Role-based filtering (vendor hanya tender/kontrak; team member hanya untuk proyek harian)
     if (currentUser.role === 'CLIENT') {
-      // Clients can see team members for their projects
       where.project = { clientId: currentUser.id };
     } else if (currentUser.role === 'VENDOR') {
-      // Vendors can see team members for projects they manage
-      where.project = { vendorId: currentUser.id };
+      // Vendor tidak punya proyek harian → tidak ada team member
+      where.project = { vendorId: currentUser.id, type: 'HARIAN' };
     } else if (currentUser.role === 'TUKANG') {
       // Tukang can only see their own team memberships
       where.userId = currentUser.id;

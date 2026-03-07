@@ -231,7 +231,6 @@ function VendorDashboard() {
       return res.json() as Promise<{
         projectsCompleted: number;
         projectsActive: number;
-        teamMembers: number;
         revenue: number;
         pendingRevenue?: number;
       }>;

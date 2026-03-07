@@ -37,11 +37,10 @@ export async function GET() {
         });
         const vendorProjectIds = vendorProjects.map((p) => p.id);
 
-        const [projectsCompleted, projectsActive, teamMembers, revenueResult, pendingResult, projectIdsWithTx] =
+        const [projectsCompleted, projectsActive, revenueResult, pendingResult, projectIdsWithTx] =
           await Promise.all([
             db.project.count({ where: { vendorId: user.id, status: ProjectStatus.COMPLETED } }),
             db.project.count({ where: { vendorId: user.id, status: ProjectStatus.IN_PROGRESS } }),
-            db.teamMember.count({ where: { project: { vendorId: user.id } } }),
             vendorProjectIds.length > 0
               ? db.transaction.aggregate({
                   where: {
@@ -117,7 +116,6 @@ export async function GET() {
         return NextResponse.json({
           projectsCompleted,
           projectsActive,
-          teamMembers,
           revenue: revenueFromTx + revenueFromMissingTx,
           pendingRevenue: pendingFromTx,
         });
