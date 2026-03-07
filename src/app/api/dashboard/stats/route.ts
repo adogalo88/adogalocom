@@ -29,11 +29,10 @@ export async function GET() {
         });
       }
       case 'VENDOR': {
-        // Proyek yang vendor ini kerjakan (sebagai vendorId)
+        // Proyek yang vendor ini kerjakan (sebagai vendorId); rfq dipakai untuk ambil nilai dari rfq_submissions
         const vendorProjects = await db.project.findMany({
           where: { vendorId: user.id },
-          select: { id: true, status: true },
-          include: { rfq: { select: { id: true } } },
+          select: { id: true, status: true, rfq: { select: { id: true } } },
         });
         const vendorProjectIds = vendorProjects.map((p) => p.id);
 
@@ -81,9 +80,18 @@ export async function GET() {
         );
         if (completedWithoutTx.length > 0) {
           const projectIdsNoTx = completedWithoutTx.map((p) => p.id);
-          const projectIdsWithRfq = new Set(completedWithoutTx.filter((p) => p.rfq?.id).map((p) => p.id));
-          const rfqIds = completedWithoutTx.filter((p) => p.rfq?.id).map((p) => p.rfq!.id);
-          const projectIdsWithoutRfq = projectIdsNoTx.filter((id) => !projectIdsWithRfq.has(id));
+          // RFQ ids: dari relasi project.rfq, atau query rfqs by projectId (fallback)
+          let rfqIds = completedWithoutTx.filter((p) => p.rfq?.id).map((p) => p.rfq!.id);
+          let projectIdsWithRfqSet = new Set(completedWithoutTx.filter((p) => p.rfq?.id).map((p) => p.id));
+          if (rfqIds.length === 0) {
+            const rfqsByProject = await db.rFQ.findMany({
+              where: { projectId: { in: projectIdsNoTx } },
+              select: { id: true, projectId: true },
+            });
+            rfqIds = rfqsByProject.map((r) => r.id);
+            rfqsByProject.forEach((r) => projectIdsWithRfqSet.add(r.projectId));
+          }
+          const projectIdsWithoutRfq = projectIdsNoTx.filter((id) => !projectIdsWithRfqSet.has(id));
           const [acceptedSubmissions, acceptedApplications] = await Promise.all([
             rfqIds.length > 0
               ? db.rFQSubmission.findMany({
