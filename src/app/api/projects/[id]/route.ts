@@ -87,6 +87,7 @@ function formatProjectResponse(project: any, userApplication?: any, currentUser?
     type: project.type,
     tenderSubtype: project.tenderSubtype,
     status: project.status,
+    clientId: project.clientId,
     budget: project.budget,
     location: project.location,
     cityId: project.cityId,
