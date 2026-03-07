@@ -74,10 +74,29 @@ function StarRating({ rating, onRatingChange, readonly = false, size = 'md' }: {
   );
 }
 
+const DIMENSION_LABELS: Record<string, Record<string, string>> = {
+  CLIENT_TO_VENDOR: {
+    quality: 'Kualitas pekerjaan',
+    timeliness: 'Ketepatan waktu',
+    communication: 'Komunikasi',
+    professionalism: 'Profesionalitas',
+    specMatch: 'Kesesuaian hasil dengan spesifikasi',
+  },
+  VENDOR_TO_CLIENT: {
+    clarity: 'Kejelasan Proyek',
+    communication: 'Komunikasi',
+    consistency: 'Konsistensi Kesepakatan',
+    professionalism: 'Profesionalitas',
+    coordination: 'Kemudahan Koordinasi Lapangan',
+  },
+};
+
 // Review Card Component
 function ReviewCard({ review, type }: { review: any; type: 'given' | 'received' }) {
   const user = type === 'given' ? review.reviewee : review.reviewer;
   const actionText = type === 'given' ? 'Anda review' : 'mereview Anda';
+  const dims = (review.dimensionRatings || null) as Record<string, number> | null;
+  const labels = review.reviewType ? DIMENSION_LABELS[review.reviewType as keyof typeof DIMENSION_LABELS] : null;
 
   return (
     <Card className="glass-card">
@@ -97,6 +116,17 @@ function ReviewCard({ review, type }: { review: any; type: 'given' | 'received' 
           </div>
           <StarRating rating={review.rating} readonly size="sm" />
         </div>
+
+        {dims && labels && Object.keys(dims).length > 0 && (
+          <div className="space-y-1.5 py-2 border-y border-border">
+            {Object.entries(dims).map(([key, val]) => labels[key] && (
+              <div key={key} className="flex items-center justify-between gap-2 text-sm">
+                <span className="text-muted-foreground">{labels[key]}</span>
+                <StarRating rating={val} readonly size="sm" />
+              </div>
+            ))}
+          </div>
+        )}
 
         <p className="text-sm text-muted-foreground">{review.comment}</p>
 

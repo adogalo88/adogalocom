@@ -722,9 +722,15 @@ export default function ProjectDetailPage() {
                           key={star}
                           type="button"
                           onClick={() => setVendorRatingDims((p) => ({ ...p, [key]: star }))}
-                          className="text-lg text-muted-foreground hover:text-amber-500 focus:outline-none"
+                          className="transition-transform hover:scale-110 focus:outline-none"
                         >
-                          {(vendorRatingDims[key] ?? 0) >= star ? '★' : '☆'}
+                          <Star
+                            className={`h-5 w-5 ${
+                              (vendorRatingDims[key] ?? 0) >= star
+                                ? 'fill-yellow-400 text-yellow-400'
+                                : 'fill-gray-200 text-gray-200 dark:fill-gray-700 dark:text-gray-700'
+                            }`}
+                          />
                         </button>
                       ))}
                     </div>
@@ -802,9 +808,15 @@ export default function ProjectDetailPage() {
                           key={star}
                           type="button"
                           onClick={() => setClientRatingDims((p) => ({ ...p, [key]: star }))}
-                          className="text-lg text-muted-foreground hover:text-amber-500 focus:outline-none"
+                          className="transition-transform hover:scale-110 focus:outline-none"
                         >
-                          {(clientRatingDims[key] ?? 0) >= star ? '★' : '☆'}
+                          <Star
+                            className={`h-5 w-5 ${
+                              (clientRatingDims[key] ?? 0) >= star
+                                ? 'fill-yellow-400 text-yellow-400'
+                                : 'fill-gray-200 text-gray-200 dark:fill-gray-700 dark:text-gray-700'
+                            }`}
+                          />
                         </button>
                       ))}
                     </div>
