@@ -11,7 +11,7 @@ import {
   PaginatedResponse,
   createNotification,
 } from '@/lib/api-utils';
-import { TransactionStatus, TransactionType, Prisma } from '@prisma/client';
+import { ProjectStatus, TransactionStatus, TransactionType, Prisma } from '@prisma/client';
 
 // Validation schemas
 const createTransactionSchema = z.object({
@@ -149,7 +149,7 @@ export async function GET(request: NextRequest) {
       },
     });
 
-    const response: PaginatedResponse<TransactionWithRelations> = {
+    const response: PaginatedResponse<TransactionWithRelations> & { stats?: { totalCompleted: number; totalPending: number; totalCount: number } } = {
       data: transactions as TransactionWithRelations[],
       pagination: {
         page,
@@ -158,6 +158,88 @@ export async function GET(request: NextRequest) {
         totalPages: Math.ceil(total / limit),
       },
     };
+
+    // Stats untuk VENDOR: agregasi lengkap + fallback proyek tanpa transaksi
+    if (user.role === 'VENDOR') {
+      const vendorProjectIds = await db.project.findMany({
+        where: { vendorId: user.id },
+        select: { id: true, status: true, rfq: { select: { id: true } } },
+      }).then((rows) => rows.map((p) => p.id));
+      if (vendorProjectIds.length > 0) {
+        const [completedAgg, pendingAgg, txProjectIds] = await Promise.all([
+          db.transaction.aggregate({
+            where: {
+              projectId: { in: vendorProjectIds },
+              type: TransactionType.PROJECT_PAYMENT,
+              status: TransactionStatus.COMPLETED,
+            },
+            _sum: { total: true },
+          }),
+          db.transaction.aggregate({
+            where: {
+              projectId: { in: vendorProjectIds },
+              type: TransactionType.PROJECT_PAYMENT,
+              status: { in: [TransactionStatus.PENDING, TransactionStatus.PROCESSING] },
+            },
+            _sum: { total: true },
+          }),
+          db.transaction.findMany({
+            where: { projectId: { in: vendorProjectIds }, type: TransactionType.PROJECT_PAYMENT },
+            select: { projectId: true },
+          }).then((rows) => new Set(rows.map((r) => r.projectId).filter(Boolean) as string[])),
+        ]);
+        const totalCompleted = completedAgg._sum.total ?? 0;
+        let totalPending = pendingAgg._sum.total ?? 0;
+        const vendorProjects = await db.project.findMany({
+          where: { vendorId: user.id, id: { in: vendorProjectIds }, status: ProjectStatus.COMPLETED },
+          select: { id: true, rfq: { select: { id: true } } },
+        });
+        const completedWithoutTx = vendorProjects.filter((p) => !txProjectIds.has(p.id));
+        if (completedWithoutTx.length > 0) {
+          const projectIdsNoTx = completedWithoutTx.map((p) => p.id);
+          let rfqIds = completedWithoutTx.filter((p) => p.rfq?.id).map((p) => p.rfq!.id);
+          let projectIdsWithRfqSet = new Set(completedWithoutTx.filter((p) => p.rfq?.id).map((p) => p.id));
+          if (rfqIds.length === 0) {
+            const rfqsByProject = await db.rFQ.findMany({
+              where: { projectId: { in: projectIdsNoTx } },
+              select: { id: true, projectId: true },
+            });
+            rfqIds = rfqsByProject.map((r) => r.id);
+            rfqsByProject.forEach((r) => projectIdsWithRfqSet.add(r.projectId));
+          }
+          const projectIdsWithoutRfq = projectIdsNoTx.filter((id) => !projectIdsWithRfqSet.has(id));
+          const [subs, apps] = await Promise.all([
+            rfqIds.length > 0
+              ? db.rFQSubmission.findMany({
+                  where: { rfqId: { in: rfqIds }, vendorId: user.id, status: 'ACCEPTED' },
+                  select: { totalOffer: true },
+                })
+              : Promise.resolve([]),
+            projectIdsWithoutRfq.length > 0
+              ? db.application.findMany({
+                  where: {
+                    projectId: { in: projectIdsWithoutRfq },
+                    userId: user.id,
+                    status: 'ACCEPTED',
+                  },
+                  select: { proposedBudget: true },
+                })
+              : Promise.resolve([]),
+          ]);
+          const fallbackAmount =
+            subs.reduce((s, x) => s + (x.totalOffer ?? 0), 0) +
+            apps.reduce((s, x) => s + (x.proposedBudget ?? 0), 0);
+          totalPending += fallbackAmount;
+        }
+        response.stats = {
+          totalCompleted,
+          totalPending,
+          totalCount: total,
+        };
+      } else {
+        response.stats = { totalCompleted: 0, totalPending: 0, totalCount: 0 };
+      }
+    }
 
     return apiSuccess(response);
   } catch (error) {

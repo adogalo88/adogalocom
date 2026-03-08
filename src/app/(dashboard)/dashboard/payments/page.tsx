@@ -25,15 +25,20 @@ export default function PaymentsPage() {
   });
 
   const transactions = data?.data || [];
+  const stats = (data as { stats?: { totalCompleted: number; totalPending: number; totalCount: number } })?.stats;
 
-  // Calculate stats (pakai total agar sinkron dengan card Pendapatan di dashboard vendor)
-  const totalCompleted = transactions
-    .filter(t => t.status === 'COMPLETED')
-    .reduce((sum, t) => sum + ((t as { total?: number }).total ?? t.amount ?? 0), 0);
-  
-  const totalPending = transactions
-    .filter(t => t.status === 'PENDING' || t.status === 'PROCESSING')
-    .reduce((sum, t) => sum + ((t as { total?: number }).total ?? t.amount ?? 0), 0);
+  // Stats: dari API (vendor) atau hitung dari list (client/admin)
+  const totalCompleted = stats
+    ? stats.totalCompleted
+    : transactions
+        .filter(t => t.status === 'COMPLETED')
+        .reduce((sum, t) => sum + ((t as { total?: number }).total ?? t.amount ?? 0), 0);
+  const totalPending = stats
+    ? stats.totalPending
+    : transactions
+        .filter(t => t.status === 'PENDING' || t.status === 'PROCESSING')
+        .reduce((sum, t) => sum + ((t as { total?: number }).total ?? t.amount ?? 0), 0);
+  const totalCount = stats ? stats.totalCount : transactions.length;
 
   const isAdmin = user?.role === 'ADMIN';
 
@@ -82,7 +87,7 @@ export default function PaymentsPage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground">Total Transaksi</p>
-                <p className="text-2xl font-bold">{transactions.length}</p>
+                <p className="text-2xl font-bold">{totalCount}</p>
               </div>
               <div className="h-12 w-12 rounded-full bg-[#fd904c]/20 flex items-center justify-center">
                 <Wallet className="h-6 w-6 text-[#fd904c]" />

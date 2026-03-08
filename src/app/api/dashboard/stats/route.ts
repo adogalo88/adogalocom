@@ -100,7 +100,7 @@ export async function GET() {
                     vendorId: user.id,
                     status: 'ACCEPTED',
                   },
-                  select: { totalOffer: true },
+                  select: { rfqId: true, totalOffer: true },
                 })
               : Promise.resolve([]),
             projectIdsWithoutRfq.length > 0
@@ -110,13 +110,62 @@ export async function GET() {
                     userId: user.id,
                     status: 'ACCEPTED',
                   },
-                  select: { proposedBudget: true },
+                  select: { projectId: true, proposedBudget: true },
                 })
               : Promise.resolve([]),
           ]);
           revenueFromMissingTx =
             acceptedSubmissions.reduce((s, sub) => s + (sub.totalOffer ?? 0), 0) +
             acceptedApplications.reduce((s, app) => s + (app.proposedBudget ?? 0), 0);
+
+          // Lazy backfill: buat Transaction untuk proyek yang belum punya, supaya muncul di menu Pembayaran
+          if (revenueFromMissingTx > 0) {
+            const projectsWithClient = await db.project.findMany({
+              where: { id: { in: projectIdsNoTx } },
+              select: { id: true, clientId: true, title: true },
+            });
+            const projectMap = new Map(projectsWithClient.map((p) => [p.id, p]));
+            const rfqToProject = rfqIds.length > 0
+              ? await db.rFQ.findMany({ where: { id: { in: rfqIds } }, select: { id: true, projectId: true } })
+                  .then((rows) => new Map(rows.map((r) => [r.id, r.projectId])))
+              : new Map<string, string>();
+            for (const sub of acceptedSubmissions) {
+              const amt = sub.totalOffer ?? 0;
+              if (amt <= 0) continue;
+              const projectId = rfqToProject.get(sub.rfqId);
+              if (!projectId) continue;
+              const proj = projectMap.get(projectId);
+              if (!proj) continue;
+              await db.transaction.create({
+                data: {
+                  userId: proj.clientId,
+                  projectId: proj.id,
+                  type: TransactionType.PROJECT_PAYMENT,
+                  amount: amt,
+                  fee: 0,
+                  total: amt,
+                  status: 'PENDING',
+                },
+              });
+            }
+            for (const app of acceptedApplications) {
+              const amt = app.proposedBudget ?? 0;
+              if (amt <= 0) continue;
+              const proj = projectMap.get(app.projectId);
+              if (!proj) continue;
+              await db.transaction.create({
+                data: {
+                  userId: proj.clientId,
+                  projectId: proj.id,
+                  type: TransactionType.PROJECT_PAYMENT,
+                  amount: amt,
+                  fee: 0,
+                  total: amt,
+                  status: 'PENDING',
+                },
+              });
+            }
+          }
         }
 
         const revenueFromTx = revenueResult._sum.total ?? 0;
